@@ -77,6 +77,42 @@ A modern, responsive admin dashboard designed specifically for technical support
 npm run build
 ```
 
+## 🌐 Live Deployment
+
+This project is automatically deployed to GitHub Pages whenever changes are pushed to the main branch.
+
+### Live Preview
+
+🔗 **Live Demo**: [View Live Preview](https://yourusername.github.io/NextTrack-Helpdesk-man/)
+
+### Deployment Process
+
+The deployment is handled automatically through GitHub Actions:
+
+1. **Automatic Deployment**: Every push to the `main` branch triggers a deployment
+2. **Build Process**: The project is built using Vite and TypeScript
+3. **GitHub Pages**: The built files are deployed to GitHub Pages
+4. **Live Updates**: Changes are reflected on the live site within minutes
+
+### Manual Deployment
+
+If you need to deploy manually:
+
+```bash
+# Build the project
+npm run build
+
+# Deploy to GitHub Pages (requires gh-pages package)
+npm run deploy
+```
+
+### Deployment Configuration
+
+The deployment is configured through:
+- `.github/workflows/deploy.yml` - GitHub Actions workflow
+- `vite.config.ts` - Base path configuration for GitHub Pages
+- `public/.nojekyll` - Ensures proper file serving
+
 ## 🏗️ Project Structure
 
 ```

@@ -37,6 +37,7 @@ function App() {
             <div className="max-w-full">
               {activeTab === "Dashboard" && <Dashboard />}
               {activeTab === "Tickets" && <TicketGallery />}
+              
             </div>
           </main>
         </div>
