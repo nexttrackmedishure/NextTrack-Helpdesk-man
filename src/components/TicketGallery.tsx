@@ -23,9 +23,9 @@ const TicketGallery: React.FC = () => {
   
   // Location selection state
   const [selectedLocation, setSelectedLocation] = useState({
-    philippines: "Manila",
-    indonesia: "Jakarta", 
-    singapore: "Tampines"
+    philippines: "",
+    indonesia: "", 
+    singapore: ""
   });
 
   // Location data with ticket values
@@ -59,15 +59,15 @@ const TicketGallery: React.FC = () => {
     series: [
       {
         name: 'Created Tickets',
-        data: [locationData.philippines[selectedLocation.philippines as keyof typeof locationData.philippines].created]
+        data: [selectedLocation.philippines ? locationData.philippines[selectedLocation.philippines as keyof typeof locationData.philippines].created : (locationData.philippines.Manila.created + locationData.philippines.Bacolod.created)]
       },
       {
         name: 'Closed',
-        data: [locationData.philippines[selectedLocation.philippines as keyof typeof locationData.philippines].closed]
+        data: [selectedLocation.philippines ? locationData.philippines[selectedLocation.philippines as keyof typeof locationData.philippines].closed : (locationData.philippines.Manila.closed + locationData.philippines.Bacolod.closed)]
       },
       {
         name: 'Resolved',
-        data: [locationData.philippines[selectedLocation.philippines as keyof typeof locationData.philippines].resolved]
+        data: [selectedLocation.philippines ? locationData.philippines[selectedLocation.philippines as keyof typeof locationData.philippines].resolved : (locationData.philippines.Manila.resolved + locationData.philippines.Bacolod.resolved)]
       }
     ],
     fill: {
@@ -137,15 +137,15 @@ const TicketGallery: React.FC = () => {
     series: [
       {
         name: 'Created Tickets',
-        data: [locationData.indonesia[selectedLocation.indonesia as keyof typeof locationData.indonesia].created]
+        data: [selectedLocation.indonesia ? locationData.indonesia[selectedLocation.indonesia as keyof typeof locationData.indonesia].created : (locationData.indonesia.Jakarta.created + locationData.indonesia.Bali.created)]
       },
       {
         name: 'Closed',
-        data: [locationData.indonesia[selectedLocation.indonesia as keyof typeof locationData.indonesia].closed]
+        data: [selectedLocation.indonesia ? locationData.indonesia[selectedLocation.indonesia as keyof typeof locationData.indonesia].closed : (locationData.indonesia.Jakarta.closed + locationData.indonesia.Bali.closed)]
       },
       {
         name: 'Resolved',
-        data: [locationData.indonesia[selectedLocation.indonesia as keyof typeof locationData.indonesia].resolved]
+        data: [selectedLocation.indonesia ? locationData.indonesia[selectedLocation.indonesia as keyof typeof locationData.indonesia].resolved : (locationData.indonesia.Jakarta.resolved + locationData.indonesia.Bali.resolved)]
       }
     ]
   };
@@ -159,15 +159,15 @@ const TicketGallery: React.FC = () => {
     series: [
       {
         name: 'Created Tickets',
-        data: [locationData.singapore[selectedLocation.singapore as keyof typeof locationData.singapore].created]
+        data: [selectedLocation.singapore ? locationData.singapore[selectedLocation.singapore as keyof typeof locationData.singapore].created : locationData.singapore.Tampines.created]
       },
       {
         name: 'Closed',
-        data: [locationData.singapore[selectedLocation.singapore as keyof typeof locationData.singapore].closed]
+        data: [selectedLocation.singapore ? locationData.singapore[selectedLocation.singapore as keyof typeof locationData.singapore].closed : locationData.singapore.Tampines.closed]
       },
       {
         name: 'Resolved',
-        data: [locationData.singapore[selectedLocation.singapore as keyof typeof locationData.singapore].resolved]
+        data: [selectedLocation.singapore ? locationData.singapore[selectedLocation.singapore as keyof typeof locationData.singapore].resolved : locationData.singapore.Tampines.resolved]
       }
     ]
   };
@@ -578,7 +578,7 @@ const TicketGallery: React.FC = () => {
                 Southeast Asia Map
           </h3>
         </div>
-            <div id="leaflet_map" style={{ width: '100%', height: '500px', borderRadius: '8px' }}></div>
+            <div id="leaflet_map" style={{ width: '100%', height: '500px', borderRadius: '8px' }} className="border border-gray-200 dark:border-gray-700"></div>
           </div>
 
           {/* Right Section - Charts and Table */}
@@ -586,7 +586,7 @@ const TicketGallery: React.FC = () => {
             {/* Top Row - Country Charts */}
             <div className="grid grid-cols-3 gap-4">
               {/* Philippines Chart */}
-              <div className="p-4 flex flex-col bg-white border-b border-gray-200 dark:border-neutral-700 dark:bg-neutral-800 rounded-lg">
+              <div className="p-4 flex flex-col bg-white border border-gray-200 dark:border-gray-700 dark:bg-neutral-800 rounded-lg shadow-sm dark:shadow-none">
                 {/* Select */}
                 <div>
                   <div className="relative inline-block">
@@ -595,7 +595,8 @@ const TicketGallery: React.FC = () => {
                       value={selectedLocation.philippines}
                       onChange={(e) => setSelectedLocation(prev => ({ ...prev, philippines: e.target.value }))}
                     >
-                      <option value="Manila">Select Location</option>
+                      <option value="" disabled>Select Location</option>
+                      <option value="Manila">Manila</option>
                       <option value="Bacolod">Bacolod</option>
                     </select>
                   </div>
@@ -607,7 +608,7 @@ const TicketGallery: React.FC = () => {
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">
                       <span className="block font-medium text-lg text-gray-800 dark:text-neutral-200">
-                        {locationData.philippines[selectedLocation.philippines as keyof typeof locationData.philippines].created}
+                        {selectedLocation.philippines ? locationData.philippines[selectedLocation.philippines as keyof typeof locationData.philippines].created : (locationData.philippines.Manila.created + locationData.philippines.Bacolod.created)}
                       </span>
                       <span className="flex justify-center items-center gap-x-1 text-sm text-green-600 dark:text-green-500">
                         <svg className="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg>
@@ -632,7 +633,7 @@ const TicketGallery: React.FC = () => {
                         8.2%
                       </span>
                       <span className="block font-medium text-lg text-gray-800 dark:text-neutral-200">
-                        {locationData.philippines[selectedLocation.philippines as keyof typeof locationData.philippines].resolved}
+                        {selectedLocation.philippines ? locationData.philippines[selectedLocation.philippines as keyof typeof locationData.philippines].resolved : (locationData.philippines.Manila.resolved + locationData.philippines.Bacolod.resolved)}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -658,7 +659,7 @@ const TicketGallery: React.FC = () => {
               </div>
 
               {/* Indonesia Chart */}
-              <div className="p-4 flex flex-col bg-white border-b border-gray-200 dark:border-neutral-700 dark:bg-neutral-800 rounded-lg">
+              <div className="p-4 flex flex-col bg-white border border-gray-200 dark:border-gray-700 dark:bg-neutral-800 rounded-lg shadow-sm dark:shadow-none">
                 {/* Select */}
                 <div>
                   <div className="relative inline-block">
@@ -667,7 +668,8 @@ const TicketGallery: React.FC = () => {
                       value={selectedLocation.indonesia}
                       onChange={(e) => setSelectedLocation(prev => ({ ...prev, indonesia: e.target.value }))}
                     >
-                      <option value="Jakarta">Select Location</option>
+                      <option value="" disabled>Select Location</option>
+                      <option value="Jakarta">Jakarta</option>
                       <option value="Bali">Bali</option>
                     </select>
                   </div>
@@ -679,7 +681,7 @@ const TicketGallery: React.FC = () => {
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">
                       <span className="block font-medium text-lg text-gray-800 dark:text-neutral-200">
-                        {locationData.indonesia[selectedLocation.indonesia as keyof typeof locationData.indonesia].created}
+                        {selectedLocation.indonesia ? locationData.indonesia[selectedLocation.indonesia as keyof typeof locationData.indonesia].created : (locationData.indonesia.Jakarta.created + locationData.indonesia.Bali.created)}
                       </span>
                       <span className="flex justify-center items-center gap-x-1 text-sm text-green-600 dark:text-green-500">
                         <svg className="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg>
@@ -704,7 +706,7 @@ const TicketGallery: React.FC = () => {
                         6.4%
                       </span>
                       <span className="block font-medium text-lg text-gray-800 dark:text-neutral-200">
-                        {locationData.indonesia[selectedLocation.indonesia as keyof typeof locationData.indonesia].resolved}
+                        {selectedLocation.indonesia ? locationData.indonesia[selectedLocation.indonesia as keyof typeof locationData.indonesia].resolved : (locationData.indonesia.Jakarta.resolved + locationData.indonesia.Bali.resolved)}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -730,7 +732,7 @@ const TicketGallery: React.FC = () => {
               </div>
 
               {/* Singapore Chart */}
-              <div className="p-4 flex flex-col bg-white border-b border-gray-200 dark:border-neutral-700 dark:bg-neutral-800 rounded-lg">
+              <div className="p-4 flex flex-col bg-white border border-gray-200 dark:border-gray-700 dark:bg-neutral-800 rounded-lg shadow-sm dark:shadow-none">
                 {/* Select */}
                 <div>
                   <div className="relative inline-block">
@@ -739,7 +741,8 @@ const TicketGallery: React.FC = () => {
                       value={selectedLocation.singapore}
                       onChange={(e) => setSelectedLocation(prev => ({ ...prev, singapore: e.target.value }))}
                     >
-                      <option value="Tampines">Select Location</option>
+                      <option value="" disabled>Select Location</option>
+                      <option value="Tampines">Tampines</option>
                     </select>
                   </div>
                 </div>
@@ -750,7 +753,7 @@ const TicketGallery: React.FC = () => {
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">
                       <span className="block font-medium text-lg text-gray-800 dark:text-neutral-200">
-                        {locationData.singapore[selectedLocation.singapore as keyof typeof locationData.singapore].created}
+                        {selectedLocation.singapore ? locationData.singapore[selectedLocation.singapore as keyof typeof locationData.singapore].created : locationData.singapore.Tampines.created}
                       </span>
                       <span className="flex justify-center items-center gap-x-1 text-sm text-green-600 dark:text-green-500">
                         <svg className="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg>
@@ -775,7 +778,7 @@ const TicketGallery: React.FC = () => {
                         2.1%
                       </span>
                       <span className="block font-medium text-lg text-gray-800 dark:text-neutral-200">
-                        {locationData.singapore[selectedLocation.singapore as keyof typeof locationData.singapore].resolved}
+                        {selectedLocation.singapore ? locationData.singapore[selectedLocation.singapore as keyof typeof locationData.singapore].resolved : locationData.singapore.Tampines.resolved}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
