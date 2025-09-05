@@ -123,16 +123,22 @@
     };
 
     // --- Map init ---
-    const map = L.map('map', { zoomControl: true, worldCopyJump: true });
+    // Set default center point for Southeast Asia and zoom level
+    const defaultCenter = [6.0, 113.5]; // Center of Southeast Asia region
+    const defaultZoom = 5; // Fixed zoom level for consistent view
+    
+    const map = L.map('map', { 
+      zoomControl: true, 
+      worldCopyJump: true,
+      center: defaultCenter,
+      zoom: defaultZoom
+    });
 
-    // Bounding box for Southeast Asia
+    // Bounding box for Southeast Asia (kept for reset button functionality)
     const seaBounds = L.latLngBounds(
       [-11.0, 92.0],   // southwest corner (near Indonesia / Andaman Sea)
       [23.0, 135.0]    // northeast corner (above Taiwan / Philippines)
     );
-
-    // Start zoomed to Southeast Asia
-    map.fitBounds(seaBounds);
 
     let active = layers.dark.addTo(map);
 
@@ -176,9 +182,9 @@
       );
     });
 
-    // Reset view button (back to Southeast Asia)
+    // Reset view button (back to default Southeast Asia view)
     document.getElementById('resetBtn').addEventListener('click', () => {
-      map.fitBounds(seaBounds);
+      map.setView(defaultCenter, defaultZoom);
     });
 
     // Example markers

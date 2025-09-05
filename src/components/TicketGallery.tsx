@@ -7,7 +7,7 @@ import {
   MessageSquare,
   Calendar,
 } from "lucide-react";
-import { useTheme } from "../contexts/ThemeContext";
+import ReactApexChart from "react-apexcharts";
 
 // Declare Leaflet types
 declare global {
@@ -17,16 +17,171 @@ declare global {
 }
 
 const TicketGallery: React.FC = () => {
-  const { isDark } = useTheme();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus] = useState("all");
   const [selectedPriority] = useState("all");
+  
+  // Location selection state
+  const [selectedLocation, setSelectedLocation] = useState({
+    philippines: "Manila",
+    indonesia: "Jakarta", 
+    singapore: "Tampines"
+  });
+
+  // Location data with ticket values
+  const locationData = {
+    philippines: {
+      "Manila": { created: 250, closed: 180, resolved: 160 },
+      "Bacolod": { created: 168, closed: 132, resolved: 138 }
+    },
+    indonesia: {
+      "Jakarta": { created: 180, closed: 140, resolved: 120 },
+      "Bali": { created: 118, closed: 94, resolved: 78 }
+    },
+    singapore: {
+      "Tampines": { created: 89, closed: 67, resolved: 54 }
+    }
+  };
+
+  // Chart options for country charts
+  const philippinesOptions = {
+    chart: {
+      height: 200,
+      type: 'bar' as const,
+      stacked: false,
+      toolbar: {
+        show: false
+      },
+      zoom: {
+        enabled: false
+      },
+    },
+    series: [
+      {
+        name: 'Created Tickets',
+        data: [locationData.philippines[selectedLocation.philippines as keyof typeof locationData.philippines].created]
+      },
+      {
+        name: 'Closed',
+        data: [locationData.philippines[selectedLocation.philippines as keyof typeof locationData.philippines].closed]
+      },
+      {
+        name: 'Resolved',
+        data: [locationData.philippines[selectedLocation.philippines as keyof typeof locationData.philippines].resolved]
+      }
+    ],
+    fill: {
+      type: ['solid', 'solid', 'solid'],
+    },
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        columnWidth: '60%',
+        borderRadius: 4,
+      }
+    },
+    legend: {
+      show: false,
+    },
+    dataLabels: {
+      enabled: true,
+      style: {
+        fontSize: '12px',
+        fontWeight: 'bold',
+        colors: ['#fff']
+      }
+    },
+    xaxis: {
+      type: 'category' as const,
+      categories: ['Philippines'],
+      labels: {
+        style: {
+          colors: '#9ca3af',
+          fontSize: '12px',
+          fontFamily: 'Inter, ui-sans-serif',
+          fontWeight: 600
+        }
+      },
+      axisTicks: {
+        show: false
+      },
+      axisBorder: {
+        show: false
+      }
+    },
+    yaxis: {
+      labels: {
+        align: 'right' as const,
+        style: {
+          colors: '#9ca3af',
+          fontSize: '11px',
+          fontFamily: 'Inter, ui-sans-serif',
+          fontWeight: 400
+        },
+        formatter: (value: number) => `${value}`
+      }
+    },
+    colors: ['#3b82f6', '#10b981', '#f59e0b'],
+    grid: {
+      strokeDashArray: 2,
+      borderColor: '#e5e7eb'
+    }
+  };
+
+  const indonesiaOptions = {
+    ...philippinesOptions,
+    xaxis: {
+      ...philippinesOptions.xaxis,
+      categories: ['Indonesia']
+    },
+    series: [
+      {
+        name: 'Created Tickets',
+        data: [locationData.indonesia[selectedLocation.indonesia as keyof typeof locationData.indonesia].created]
+      },
+      {
+        name: 'Closed',
+        data: [locationData.indonesia[selectedLocation.indonesia as keyof typeof locationData.indonesia].closed]
+      },
+      {
+        name: 'Resolved',
+        data: [locationData.indonesia[selectedLocation.indonesia as keyof typeof locationData.indonesia].resolved]
+      }
+    ]
+  };
+
+  const singaporeOptions = {
+    ...philippinesOptions,
+    xaxis: {
+      ...philippinesOptions.xaxis,
+      categories: ['Singapore']
+    },
+    series: [
+      {
+        name: 'Created Tickets',
+        data: [locationData.singapore[selectedLocation.singapore as keyof typeof locationData.singapore].created]
+      },
+      {
+        name: 'Closed',
+        data: [locationData.singapore[selectedLocation.singapore as keyof typeof locationData.singapore].closed]
+      },
+      {
+        name: 'Resolved',
+        data: [locationData.singapore[selectedLocation.singapore as keyof typeof locationData.singapore].resolved]
+      }
+    ]
+  };
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
 
   // Load Leaflet and initialize Southeast Asia map
   useEffect(() => {
+    // Check if map is already initialized
+    if ((window as any).ticketMap) {
+      return; // Exit early if map already exists
+    }
+
     // Load Leaflet CSS
     const link = document.createElement('link');
     link.rel = 'stylesheet';
@@ -43,9 +198,16 @@ const TicketGallery: React.FC = () => {
     document.head.appendChild(script);
 
     script.onload = () => {
-      if (window.L) {
-        // Initialize map
-        const map = window.L.map('leaflet_map', { zoomControl: true });
+      if (window.L && !(window as any).ticketMap) {
+        // Initialize map with default zoom level
+        const defaultCenter = [2.0, 110.0]; // Center for wider Southeast Asia view
+        const defaultZoom = 4; // Zoomed out to show entire Southeast Asia region
+        
+        const map = window.L.map('leaflet_map', { 
+          zoomControl: true,
+          center: defaultCenter,
+          zoom: defaultZoom
+        });
 
         // Use light theme by default (as shown in the image)
         const tileLayer = window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -55,45 +217,55 @@ const TicketGallery: React.FC = () => {
 
         tileLayer.addTo(map);
 
-        // Focused bounds for Philippines, Indonesia, Singapore
-        const seaBounds = window.L.latLngBounds(
-          [-8.0, 95.0],   // southwest corner (focused on the 3 countries)
-          [16.0, 125.0]   // northeast corner
-        );
-
-        // Fit to Southeast Asia
-        map.fitBounds(seaBounds);
-
-        // Add only 3 countries: Philippines, Indonesia, Singapore
-        const countries = [
+        // Main countries with orange markers
+        const mainCountries = [
           { name: 'Philippines', capital: 'Manila', latlng: [14.5995, 120.9842] },
           { name: 'Indonesia', capital: 'Jakarta', latlng: [-6.2088, 106.8456] },
           { name: 'Singapore', capital: 'Singapore', latlng: [1.3521, 103.8198] }
         ];
 
-        countries.forEach(country => {
+        // Additional countries with blue markers
+        const additionalCountries = [
+          { name: 'Malaysia', capital: 'Kuala Lumpur', latlng: [3.1390, 101.6869] },
+          { name: 'Thailand', capital: 'Bangkok', latlng: [13.7563, 100.5018] },
+          { name: 'Vietnam', capital: 'Hanoi', latlng: [21.0285, 105.8542] },
+          { name: 'Myanmar', capital: 'Naypyidaw', latlng: [19.7633, 96.0785] },
+          { name: 'Cambodia', capital: 'Phnom Penh', latlng: [11.5564, 104.9282] },
+          { name: 'Laos', capital: 'Vientiane', latlng: [17.9757, 102.6331] },
+          { name: 'Brunei', capital: 'Bandar Seri Begawan', latlng: [4.9036, 114.9398] }
+        ];
+
+        // Add main countries with orange markers
+        mainCountries.forEach(country => {
           const marker = window.L.circleMarker(country.latlng, {
             radius: 10,
             weight: 3,
             opacity: 1,
             fillOpacity: 0.9,
-            color: '#f97316', // Orange color as shown in the image
+            color: '#f97316', // Orange color
             fillColor: '#f97316'
           }).addTo(map);
 
           marker.bindPopup(`
-            <div style="
-              text-align: center; 
-              padding: 12px; 
-              background: #ffffff; 
-              color: #1f2937; 
-              border-radius: 8px; 
-              border: 1px solid #e5e7eb;
-              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            ">
               <strong style="font-size: 16px; color: #f97316;">${country.name}</strong><br/>
               <small style="color: #6b7280;">Capital: ${country.capital}</small>
-            </div>
+          `);
+        });
+
+        // Add additional countries with blue markers
+        additionalCountries.forEach(country => {
+          const marker = window.L.circleMarker(country.latlng, {
+            radius: 8,
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.8,
+            color: '#3b82f6', // Blue color
+            fillColor: '#3b82f6'
+          }).addTo(map);
+
+          marker.bindPopup(`
+            <strong style="font-size: 16px; color: #3b82f6;">${country.name}</strong><br/>
+            <small style="color: #6b7280;">Capital: ${country.capital}</small>
           `);
         });
 
@@ -115,7 +287,7 @@ const TicketGallery: React.FC = () => {
         delete (window as any).ticketMap;
       }
     };
-  }, [isDark]); // Re-run when theme changes
+  }, []); // Remove isDark dependency to prevent re-initialization
 
   // Mock ticket data
   const tickets = [
@@ -396,14 +568,366 @@ const TicketGallery: React.FC = () => {
         </div>
       </div>
 
-      {/* Southeast Asia Map */}
+      {/* Map and Analytics Container */}
       <div className="card p-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 h-full">
+          {/* Left Section - Map */}
+          <div className="flex flex-col">
         <div className="mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Southeast Asia Map (All Countries with Tooltips)
+                Southeast Asia Map
           </h3>
         </div>
-        <div id="leaflet_map" style={{ width: '100%', height: '600px', borderRadius: '8px' }}></div>
+            <div id="leaflet_map" style={{ width: '100%', height: '500px', borderRadius: '8px' }}></div>
+          </div>
+
+          {/* Right Section - Charts and Table */}
+          <div className="flex flex-col space-y-4">
+            {/* Top Row - Country Charts */}
+            <div className="grid grid-cols-3 gap-4">
+              {/* Philippines Chart */}
+              <div className="p-4 flex flex-col bg-white border-b border-gray-200 dark:border-neutral-700 dark:bg-neutral-800 rounded-lg">
+                {/* Select */}
+                <div>
+                  <div className="relative inline-block">
+                    <select 
+                      className="text-xs text-gray-800 dark:text-neutral-400 bg-transparent border-none focus:outline-none"
+                      value={selectedLocation.philippines}
+                      onChange={(e) => setSelectedLocation(prev => ({ ...prev, philippines: e.target.value }))}
+                    >
+                      <option value="Manila">Select Location</option>
+                      <option value="Bacolod">Bacolod</option>
+                    </select>
+                  </div>
+                </div>
+                {/* End Select */}
+
+                {/* Grid */}
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <span className="block font-medium text-lg text-gray-800 dark:text-neutral-200">
+                        {locationData.philippines[selectedLocation.philippines as keyof typeof locationData.philippines].created}
+                      </span>
+                      <span className="flex justify-center items-center gap-x-1 text-sm text-green-600 dark:text-green-500">
+                        <svg className="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg>
+                        12.5%
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="shrink-0 w-3 h-1.5 inline-block bg-blue-600 rounded-xs"></span>
+                      <div className="grow">
+                        <span className="block text-sm text-gray-500 dark:text-neutral-500">
+                          Created
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* End Col */}
+
+                  <div className="flex flex-col items-end">
+                    <div className="flex items-center gap-2">
+                      <span className="flex justify-center items-center gap-x-1 text-sm text-green-600 dark:text-green-500">
+                        <svg className="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg>
+                        8.2%
+                      </span>
+                      <span className="block font-medium text-lg text-gray-800 dark:text-neutral-200">
+                        {locationData.philippines[selectedLocation.philippines as keyof typeof locationData.philippines].resolved}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="shrink-0 w-3 h-1.5 inline-block bg-amber-500 rounded-xs"></span>
+                      <div className="grow">
+                        <span className="block text-sm text-gray-500 dark:text-neutral-500">
+                          Resolved
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* End Col */}
+                </div>
+                {/* End Grid */}
+
+                {/* Apex Line Chart */}
+                <ReactApexChart
+                  options={philippinesOptions}
+                  series={philippinesOptions.series}
+                  type="bar"
+                  height={200}
+                />
+              </div>
+
+              {/* Indonesia Chart */}
+              <div className="p-4 flex flex-col bg-white border-b border-gray-200 dark:border-neutral-700 dark:bg-neutral-800 rounded-lg">
+                {/* Select */}
+                <div>
+                  <div className="relative inline-block">
+                    <select 
+                      className="text-xs text-gray-800 dark:text-neutral-400 bg-transparent border-none focus:outline-none"
+                      value={selectedLocation.indonesia}
+                      onChange={(e) => setSelectedLocation(prev => ({ ...prev, indonesia: e.target.value }))}
+                    >
+                      <option value="Jakarta">Select Location</option>
+                      <option value="Bali">Bali</option>
+                    </select>
+                  </div>
+                </div>
+                {/* End Select */}
+
+                {/* Grid */}
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <span className="block font-medium text-lg text-gray-800 dark:text-neutral-200">
+                        {locationData.indonesia[selectedLocation.indonesia as keyof typeof locationData.indonesia].created}
+                      </span>
+                      <span className="flex justify-center items-center gap-x-1 text-sm text-green-600 dark:text-green-500">
+                        <svg className="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg>
+                        9.8%
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="shrink-0 w-3 h-1.5 inline-block bg-blue-600 rounded-xs"></span>
+                      <div className="grow">
+                        <span className="block text-sm text-gray-500 dark:text-neutral-500">
+                          Created
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* End Col */}
+
+                  <div className="flex flex-col items-end">
+                    <div className="flex items-center gap-2">
+                      <span className="flex justify-center items-center gap-x-1 text-sm text-green-600 dark:text-green-500">
+                        <svg className="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg>
+                        6.4%
+                      </span>
+                      <span className="block font-medium text-lg text-gray-800 dark:text-neutral-200">
+                        {locationData.indonesia[selectedLocation.indonesia as keyof typeof locationData.indonesia].resolved}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="shrink-0 w-3 h-1.5 inline-block bg-amber-500 rounded-xs"></span>
+                      <div className="grow">
+                        <span className="block text-sm text-gray-500 dark:text-neutral-500">
+                          Resolved
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* End Col */}
+                </div>
+                {/* End Grid */}
+
+                {/* Apex Line Chart */}
+                <ReactApexChart
+                  options={indonesiaOptions}
+                  series={indonesiaOptions.series}
+                  type="bar"
+                  height={200}
+                />
+              </div>
+
+              {/* Singapore Chart */}
+              <div className="p-4 flex flex-col bg-white border-b border-gray-200 dark:border-neutral-700 dark:bg-neutral-800 rounded-lg">
+                {/* Select */}
+                <div>
+                  <div className="relative inline-block">
+                    <select 
+                      className="text-xs text-gray-800 dark:text-neutral-400 bg-transparent border-none focus:outline-none"
+                      value={selectedLocation.singapore}
+                      onChange={(e) => setSelectedLocation(prev => ({ ...prev, singapore: e.target.value }))}
+                    >
+                      <option value="Tampines">Select Location</option>
+                    </select>
+                  </div>
+                </div>
+                {/* End Select */}
+
+                {/* Grid */}
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <span className="block font-medium text-lg text-gray-800 dark:text-neutral-200">
+                        {locationData.singapore[selectedLocation.singapore as keyof typeof locationData.singapore].created}
+                      </span>
+                      <span className="flex justify-center items-center gap-x-1 text-sm text-green-600 dark:text-green-500">
+                        <svg className="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg>
+                        3.2%
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="shrink-0 w-3 h-1.5 inline-block bg-blue-600 rounded-xs"></span>
+                      <div className="grow">
+                        <span className="block text-sm text-gray-500 dark:text-neutral-500">
+                          Created
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* End Col */}
+
+                  <div className="flex flex-col items-end">
+                    <div className="flex items-center gap-2">
+                      <span className="flex justify-center items-center gap-x-1 text-sm text-green-600 dark:text-green-500">
+                        <svg className="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg>
+                        2.1%
+                      </span>
+                      <span className="block font-medium text-lg text-gray-800 dark:text-neutral-200">
+                        {locationData.singapore[selectedLocation.singapore as keyof typeof locationData.singapore].resolved}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="shrink-0 w-3 h-1.5 inline-block bg-amber-500 rounded-xs"></span>
+                      <div className="grow">
+                        <span className="block text-sm text-gray-500 dark:text-neutral-500">
+                          Resolved
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* End Col */}
+                </div>
+                {/* End Grid */}
+
+                {/* Apex Line Chart */}
+                <ReactApexChart
+                  options={singaporeOptions}
+                  series={singaporeOptions.series}
+                  type="bar"
+                  height={200}
+                />
+              </div>
+            </div>
+
+            {/* Bottom Row - Country Statistics Table */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left text-gray-500 dark:text-gray-400">
+                  <thead className="text-xs text-white uppercase bg-gray-700 dark:bg-gray-600">
+                    <tr>
+                      <th scope="col" className="px-3 py-2">
+                        COUNTRY
+                      </th>
+                      <th scope="col" className="px-3 py-2">
+                        LOCATION
+                      </th>
+                      <th scope="col" className="px-3 py-2">
+                        TOTAL TICKET
+                      </th>
+                      <th scope="col" className="px-3 py-2">
+                        PERCENTAGE
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
+                      <th scope="row" className="px-3 py-2 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                        Philippines
+                      </th>
+                      <td className="px-3 py-2">
+                        Manila
+                      </td>
+                      <td className="px-3 py-2">
+                        200
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1">
+                          <svg className="shrink-0 size-3 text-green-600 dark:text-green-500" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="m5 12 7-7 7 7"></path>
+                            <path d="M12 19V5"></path>
+                          </svg>
+                          <span className="text-xs font-medium text-green-600 dark:text-green-500">66%</span>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
+                      <th scope="row" className="px-3 py-2 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                        Philippines
+                      </th>
+                      <td className="px-3 py-2">
+                        Bacolod
+                      </td>
+                      <td className="px-3 py-2">
+                        218
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1">
+                          <svg className="shrink-0 size-3 text-red-600 dark:text-red-500" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="m19 12-7 7-7-7"></path>
+                            <path d="M12 5v14"></path>
+                          </svg>
+                          <span className="text-xs font-medium text-red-600 dark:text-red-500">35%</span>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
+                      <th scope="row" className="px-3 py-2 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                        Indonesia
+                      </th>
+                      <td className="px-3 py-2">
+                        Jakarta
+                      </td>
+                      <td className="px-3 py-2">
+                        142
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1">
+                          <svg className="shrink-0 size-3 text-red-600 dark:text-red-500" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="m19 12-7 7-7-7"></path>
+                            <path d="M12 5v14"></path>
+                          </svg>
+                          <span className="text-xs font-medium text-red-600 dark:text-red-500">3%</span>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
+                      <th scope="row" className="px-3 py-2 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                        Indonesia
+                      </th>
+                      <td className="px-3 py-2">
+                        Bali
+                      </td>
+                      <td className="px-3 py-2">
+                        95
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1">
+                          <svg className="shrink-0 size-3 text-green-600 dark:text-green-500" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="m5 12 7-7 7 7"></path>
+                            <path d="M12 19V5"></path>
+                          </svg>
+                          <span className="text-xs font-medium text-green-600 dark:text-green-500">8%</span>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
+                      <th scope="row" className="px-3 py-2 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                        Singapore
+                      </th>
+                      <td className="px-3 py-2">
+                        Tampines
+                      </td>
+                      <td className="px-3 py-2">
+                        89
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1">
+                          <svg className="shrink-0 size-3 text-green-600 dark:text-green-500" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="m5 12 7-7 7 7"></path>
+                            <path d="M12 19V5"></path>
+                          </svg>
+                          <span className="text-xs font-medium text-green-600 dark:text-green-500">2%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Enhanced Tickets Table */}
