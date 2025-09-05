@@ -1,20 +1,11 @@
 import React, { useState, useEffect } from "react";
 import {
-  Search,
-  Filter,
   Plus,
-  MoreVertical,
   Clock,
   AlertCircle,
   CheckCircle,
-  XCircle,
   MessageSquare,
-  User,
   Calendar,
-  Tag,
-  Eye,
-  Edit,
-  Trash2,
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 
@@ -28,8 +19,8 @@ declare global {
 const TicketGallery: React.FC = () => {
   const { isDark } = useTheme();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("all");
-  const [selectedPriority, setSelectedPriority] = useState("all");
+  const [selectedStatus] = useState("all");
+  const [selectedPriority] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
@@ -249,20 +240,6 @@ const TicketGallery: React.FC = () => {
      }
    };
 
-     const getStatusColor = (status: string) => {
-     switch (status) {
-       case "Open":
-         return "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400";
-       case "In Progress":
-         return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400";
-       case "Resolved":
-         return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400";
-       case "Closed":
-         return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400";
-       default:
-         return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400";
-     }
-   };
 
    const getStatusProgress = (status: string) => {
      switch (status) {
@@ -332,20 +309,6 @@ const TicketGallery: React.FC = () => {
      }
    };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "Open":
-        return <AlertCircle className="w-4 h-4 text-orange-500" />;
-      case "In Progress":
-        return <Clock className="w-4 h-4 text-blue-500" />;
-      case "Resolved":
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case "Closed":
-        return <XCircle className="w-4 h-4 text-gray-500" />;
-      default:
-        return <MessageSquare className="w-4 h-4 text-gray-500" />;
-    }
-  };
 
   const filteredTickets = tickets.filter((ticket) => {
     const matchesSearch = ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -544,7 +507,7 @@ const TicketGallery: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {paginatedTickets.map((ticket, index) => (
+            {paginatedTickets.map((ticket) => (
               <tr key={ticket.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600">
                 <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white border-r border-gray-300 dark:border-gray-600">
                   <div>

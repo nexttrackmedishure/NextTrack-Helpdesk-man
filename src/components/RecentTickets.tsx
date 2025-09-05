@@ -1,13 +1,4 @@
 import React from "react";
-import {
-  Clock,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  MessageSquare,
-  Tag,
-  Calendar,
-} from "lucide-react";
 
 const RecentTickets: React.FC = () => {
   const tickets = [
@@ -211,7 +202,7 @@ const RecentTickets: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {tickets.map((ticket, index) => (
+          {tickets.map((ticket) => (
             <tr key={ticket.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600">
               <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white border-r border-gray-300 dark:border-gray-600">
                 <div>

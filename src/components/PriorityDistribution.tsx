@@ -1,11 +1,10 @@
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 import ReactApexChart from "react-apexcharts";
 
 const PriorityDistribution: React.FC = () => {
   const [chartData, setChartData] = useState([35.1, 23.5, 2.4, 5.4, 8.2]);
   const [checkedDevices, setCheckedDevices] = useState<string[]>([]);
-  const chartRef = useRef<any>(null);
 
   const getChartOptions = () => {
     return {
@@ -14,11 +13,11 @@ const PriorityDistribution: React.FC = () => {
     chart: { 
         height: 320,
         width: "100%",
-        type: "donut",
+        type: "donut" as const,
       },
       stroke: {
         colors: ["transparent"],
-        lineCap: "",
+        lineCap: "round" as const,
     },
     plotOptions: {
       pie: {
@@ -46,8 +45,8 @@ const PriorityDistribution: React.FC = () => {
               show: true,
                 fontFamily: "Inter, sans-serif",
                 offsetY: -20,
-                formatter: function (value: number) {
-                  return Math.round(value) + " tickets"
+                formatter: function (val: string) {
+                  return Math.round(Number(val)) + " tickets"
                 },
               },
             },
@@ -65,7 +64,7 @@ const PriorityDistribution: React.FC = () => {
         enabled: false,
       },
     legend: {
-        position: "bottom",
+        position: "bottom" as const,
         fontFamily: "Inter, sans-serif",
       },
       yaxis: {
@@ -77,8 +76,8 @@ const PriorityDistribution: React.FC = () => {
       },
       xaxis: {
           labels: {
-          formatter: function (value: number) {
-            return Math.round(value) + " tickets"
+          formatter: function (value: string) {
+            return Math.round(Number(value)) + " tickets"
           },
         },
         axisTicks: {

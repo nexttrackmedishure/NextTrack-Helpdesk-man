@@ -1,5 +1,5 @@
 import React from "react";
-import { Menu, Search, Bell, ChevronDown } from "lucide-react";
+import { Search, Bell, ChevronDown } from "lucide-react";
 import { AnimatedThemeToggler } from "./magicui/animated-theme-toggler";
 
 interface HeaderProps {
@@ -7,7 +7,7 @@ interface HeaderProps {
   activeTab: string; // Add activeTab prop
 }
 
-const Header: React.FC<HeaderProps> = ({ onMenuClick, activeTab }) => {
+const Header: React.FC<HeaderProps> = ({ activeTab }) => {
   return (
     <header className="bg-white dark:bg-dark-800 border-b border-gray-200 dark:border-dark-700 px-6 py-4">
       <div className="flex items-center justify-between">

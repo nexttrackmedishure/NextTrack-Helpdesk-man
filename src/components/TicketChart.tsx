@@ -10,7 +10,7 @@ const TicketChart: React.FC = () => {
     ],
     chart: { 
       height: 400, 
-      type: 'line', 
+      type: 'line' as const, 
       stacked: false,
       width: '100%',
       toolbar: { 
@@ -26,7 +26,7 @@ const TicketChart: React.FC = () => {
         } 
       } 
     },
-    stroke: { width: [0, 2, 5], curve: 'smooth' },
+    stroke: { width: [0, 2, 5], curve: 'smooth' as const },
     plotOptions: { bar: { columnWidth: '50%' } },
     fill: { 
       opacity: [0.85, 0.25, 1], 
@@ -42,7 +42,7 @@ const TicketChart: React.FC = () => {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'],
     markers: { size: 0 },
     xaxis: { 
-      type: 'category', 
+      type: 'category' as const, 
       labels: { style: { colors: '#6b7280' } } 
     },
     yaxis: { 
@@ -66,8 +66,8 @@ const TicketChart: React.FC = () => {
       } 
     },
     legend: { 
-      position: 'top', 
-      horizontalAlign: 'left', 
+      position: 'top' as const, 
+      horizontalAlign: 'left' as const, 
       labels: { colors: '#6b7280' } 
     },
     colors: ['#3b82f6', '#10b981', '#f59e0b']
