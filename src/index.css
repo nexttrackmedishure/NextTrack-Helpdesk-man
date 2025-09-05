@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white dark:bg-dark-800 rounded-lg border border-gray-200 dark:border-dark-700 shadow-sm;
+  }
+
+  .sidebar-transition {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
+  /* World Map Styles */
+  .world-map path {
+    fill: #b9b9b9; /* Light mode default color */
+    transition: fill 0.2s ease;
+    cursor: pointer;
+  }
+
+  .world-map path:hover {
+    fill: #565656; /* Light mode hover color */
+  }
+
+  /* Dark mode styles */
+  .dark .world-map path {
+    fill: #374151; /* Dark mode default color */
+  }
+
+  .dark .world-map path:hover {
+    fill: #6b7280; /* Dark mode hover color */
+  }
+
+  /* SVG background for dark mode */
+  .world-map {
+    background-color: transparent;
+  }
+
+  .dark .world-map {
+    background-color: #1f2937;
+  }
+}
