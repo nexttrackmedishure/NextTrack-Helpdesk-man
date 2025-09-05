@@ -48,7 +48,7 @@ const Sidebar: React.FC<SidebarProps> = ({ expanded, onToggle, activeTab, onTabC
           <div className="flex items-center space-x-3 ml-6 mr-8">
             <div className="w-8 h-8 flex items-center justify-center rounded-lg overflow-hidden">
               <img 
-                src="/img/logo.png" 
+                src="/logo.png" 
                 alt="NexTrack Logo" 
                 className="w-8 h-8 object-contain"
               />
@@ -65,7 +65,7 @@ const Sidebar: React.FC<SidebarProps> = ({ expanded, onToggle, activeTab, onTabC
         ) : (
           <div className="w-8 h-8 flex items-center justify-center mx-auto rounded-lg overflow-hidden">
             <img 
-              src="/img/logo.png" 
+              src="/logo.png" 
               alt="NexTrack Logo" 
               className="w-8 h-8 object-contain"
             />
