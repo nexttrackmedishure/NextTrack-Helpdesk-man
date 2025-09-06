@@ -52,6 +52,14 @@ const TicketGallery: React.FC = () => {
     description: "",
   });
 
+  // State for custom category input
+  const [customCategory, setCustomCategory] = useState("");
+
+  // State for requestor dropdown
+  const [isRequestorDropdownOpen, setIsRequestorDropdownOpen] = useState(false);
+  const [requestorSearchTerm, setRequestorSearchTerm] = useState("");
+  const [selectedRequestors, setSelectedRequestors] = useState<string[]>([]);
+
   // Department options (sorted A to Z)
   const departmentOptions = [
     "Accounting",
@@ -843,14 +851,16 @@ const TicketGallery: React.FC = () => {
 
     // Validate required fields
     if (
-      !newRequestForm.requestor ||
+      selectedRequestors.length === 0 ||
       !newRequestForm.department ||
       !newRequestForm.ticketTitle ||
       !newRequestForm.category ||
       !newRequestForm.severity ||
       !description ||
       description === "<p></p>" ||
-      description === "<p><br></p>"
+      description === "<p><br></p>" ||
+      (newRequestForm.category === "Other (Please specify)" &&
+        !customCategory.trim())
     ) {
       alert("Please fill in all required fields.");
       return;
@@ -859,6 +869,11 @@ const TicketGallery: React.FC = () => {
     // In a real application, this would submit to the backend
     const formData = {
       ...newRequestForm,
+      requestor: selectedRequestors.join(", "), // Join multiple selected requestors
+      category:
+        newRequestForm.category === "Other (Please specify)"
+          ? customCategory
+          : newRequestForm.category,
       description: description,
     };
     console.log("New Request Submitted:", formData);
@@ -875,6 +890,10 @@ const TicketGallery: React.FC = () => {
       severity: "",
       description: "",
     });
+    setCustomCategory("");
+    setSelectedRequestors([]);
+    setRequestorSearchTerm("");
+    setIsRequestorDropdownOpen(false);
     setIsNewRequestModalOpen(false);
   };
 
@@ -910,6 +929,26 @@ const TicketGallery: React.FC = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showEmojiPicker]);
+
+  // Requestor dropdown handlers
+  const handleRequestorToggle = (requestor: string) => {
+    setSelectedRequestors((prev) => {
+      if (prev.includes(requestor)) {
+        return prev.filter((r) => r !== requestor);
+      } else {
+        return [...prev, requestor];
+      }
+    });
+  };
+
+  const handleRequestorSearch = (term: string) => {
+    setRequestorSearchTerm(term);
+  };
+
+  // Filter requestors based on search term
+  const filteredRequestors = requestorOptions.filter((requestor) =>
+    requestor.toLowerCase().includes(requestorSearchTerm.toLowerCase())
+  );
 
   // Initialize Tiptap editor when modal opens
   useEffect(() => {
@@ -1754,18 +1793,7 @@ const TicketGallery: React.FC = () => {
               Manage and track all support tickets
             </p>
           </div>
-          <button className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200">
-            <Plus className="w-4 h-4 mr-2" />
-            New Ticket
-          </button>
-        </div>
-
-        {/* Stats Cards Header */}
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Ticket Statistics
-          </h2>
-          <div className="flex items-center gap-3">
+          <div className="flex justify-end">
             <button
               onClick={() => setIsNewRequestModalOpen(true)}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-200"
@@ -1773,14 +1801,21 @@ const TicketGallery: React.FC = () => {
               <Plus className="w-4 h-4" />
               New Request
             </button>
-            <button
-              onClick={() => setIsDrawerOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
-            >
-              <Eye className="w-4 h-4" />
-              Status Flow
-            </button>
           </div>
+        </div>
+
+        {/* Stats Cards Header */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Ticket Statistics
+          </h2>
+          <button
+            onClick={() => setIsDrawerOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
+          >
+            <Eye className="w-4 h-4" />
+            Status Flow
+          </button>
         </div>
 
         {/* Stats Cards */}
@@ -3630,174 +3665,325 @@ const TicketGallery: React.FC = () => {
 
         {/* New Request Modal */}
         {isNewRequestModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden border border-gray-200 dark:border-gray-700">
               {/* Modal Header */}
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-                <div className="flex items-center gap-4">
-                  <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                    <ChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                  </button>
-                  <div className="flex items-center gap-3">
-                    <Link className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                    <span className="font-mono text-sm text-gray-600 dark:text-gray-400">
-                      {newRequestForm.ticketNo}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <Flag className="w-4 h-4 text-red-500" />
-                      <span className="text-sm font-medium text-red-600 dark:text-red-400">
-                        {newRequestForm.severity || "Select Severity"}
-                      </span>
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 border-b border-gray-200 dark:border-gray-600">
+                <div className="flex items-center justify-between p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                        <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                          Create New Request
+                        </h2>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="font-mono text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                            {newRequestForm.ticketNo}
+                          </span>
+                          {newRequestForm.severity && (
+                            <div className="flex items-center gap-1">
+                              <Flag className="w-3 h-3 text-red-500" />
+                              <span className="text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
+                                {newRequestForm.severity}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                    <Edit className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                  </button>
-                  <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                    <Bookmark className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                  </button>
-                  <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                    <MoreVertical className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                  </button>
                   <button
                     onClick={() => setIsNewRequestModalOpen(false)}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
                   >
-                    <X className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                    <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                   </button>
                 </div>
               </div>
 
               {/* Modal Content */}
-              <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-                {/* Ticket Title */}
-                <div className="mb-6">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sprout className="w-5 h-5 text-green-600" />
-                    <input
-                      type="text"
-                      placeholder="Enter ticket title..."
-                      value={newRequestForm.ticketTitle}
-                      onChange={(e) =>
-                        handleFormChange("ticketTitle", e.target.value)
-                      }
-                      className="text-2xl font-bold bg-transparent border-none outline-none text-gray-900 dark:text-white placeholder-gray-400 w-full"
-                    />
+              <div className="p-8 overflow-y-auto max-h-[calc(95vh-180px)]">
+                {/* Ticket Title Section */}
+                <div className="mb-8">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                      <Sprout className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Request Title
+                    </h3>
                   </div>
-                </div>
-
-                {/* Form Fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  {/* Date */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Date
-                    </label>
-                    <input
-                      type="date"
-                      value={newRequestForm.date}
-                      onChange={(e) => handleFormChange("date", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  {/* Requestor */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Requestor *
-                    </label>
-                    <select
-                      value={newRequestForm.requestor}
-                      onChange={(e) =>
-                        handleFormChange("requestor", e.target.value)
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">Select Requestor</option>
-                      {requestorOptions.map((requestor) => (
-                        <option key={requestor} value={requestor}>
-                          {requestor}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Department */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Department *
-                    </label>
-                    <select
-                      value={newRequestForm.department}
-                      onChange={(e) =>
-                        handleFormChange("department", e.target.value)
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">Select Department</option>
-                      {departmentOptions.map((dept) => (
-                        <option key={dept} value={dept}>
-                          {dept}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Severity */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Severity *
-                    </label>
-                    <select
-                      value={newRequestForm.severity}
-                      onChange={(e) =>
-                        handleFormChange("severity", e.target.value)
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">Select Severity</option>
-                      {severityOptions.map((severity) => (
-                        <option key={severity} value={severity}>
-                          {severity}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Category */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Category *
-                  </label>
-                  <select
-                    value={newRequestForm.category}
+                  <input
+                    type="text"
+                    placeholder="Enter a clear, descriptive title for your request..."
+                    value={newRequestForm.ticketTitle}
                     onChange={(e) =>
-                      handleFormChange("category", e.target.value)
+                      handleFormChange("ticketTitle", e.target.value)
                     }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select Category</option>
-                    {categoryOptions.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
+                    className="w-full px-4 py-3 text-lg font-medium bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  />
                 </div>
 
-                {/* Description */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Ticket Description *
-                  </label>
+                {/* Form Fields Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                  {/* Left Column */}
+                  <div className="space-y-6">
+                    {/* Date */}
+                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                        <Calendar className="w-4 h-4 inline mr-2" />
+                        Request Date
+                      </label>
+                      <div className="relative max-w-sm">
+                        <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                          <svg
+                            className="w-4 h-4 text-gray-500 dark:text-gray-400"
+                            aria-hidden="true"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z" />
+                          </svg>
+                        </div>
+                        <input
+                          id="datepicker-actions"
+                          datepicker
+                          datepicker-buttons
+                          datepicker-autoselect-today
+                          type="text"
+                          value={newRequestForm.date}
+                          onChange={(e) =>
+                            handleFormChange("date", e.target.value)
+                          }
+                          className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                          placeholder="Select date"
+                        />
+                      </div>
+                    </div>
 
-                  {/* Tiptap Rich Text Editor */}
-                  <div className="bg-white border border-gray-200 rounded-xl overflow-hidden dark:bg-neutral-800 dark:border-neutral-700">
+                    {/* Requestor */}
+                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                        <span className="text-red-500">*</span> Requestor
+                      </label>
+
+                      {/* Dropdown Button */}
+                      <button
+                        id="dropdownSearchButton"
+                        onClick={() =>
+                          setIsRequestorDropdownOpen(!isRequestorDropdownOpen)
+                        }
+                        className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 w-full justify-between"
+                        type="button"
+                      >
+                        {selectedRequestors.length === 0
+                          ? "Select Requestor"
+                          : selectedRequestors.length === 1
+                          ? selectedRequestors[0]
+                          : `${selectedRequestors.length} requestors selected`}
+                        <svg
+                          className="w-2.5 h-2.5 ms-3"
+                          aria-hidden="true"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 10 6"
+                        >
+                          <path
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="m1 1 4 4 4-4"
+                          />
+                        </svg>
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {isRequestorDropdownOpen && (
+                        <div className="z-10 bg-white rounded-lg shadow-sm w-full dark:bg-gray-700 border border-gray-200 dark:border-gray-600 mt-2">
+                          <div className="p-3">
+                            <label
+                              htmlFor="input-group-search"
+                              className="sr-only"
+                            >
+                              Search
+                            </label>
+                            <div className="relative">
+                              <div className="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+                                <svg
+                                  className="w-4 h-4 text-gray-500 dark:text-gray-400"
+                                  aria-hidden="true"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="none"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path
+                                    stroke="currentColor"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
+                                  />
+                                </svg>
+                              </div>
+                              <input
+                                type="text"
+                                id="input-group-search"
+                                className="block w-full p-2 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                placeholder="Search user"
+                                value={requestorSearchTerm}
+                                onChange={(e) =>
+                                  handleRequestorSearch(e.target.value)
+                                }
+                              />
+                            </div>
+                          </div>
+                          <ul
+                            className="h-48 px-3 pb-3 overflow-y-auto text-sm text-gray-700 dark:text-gray-200"
+                            aria-labelledby="dropdownSearchButton"
+                          >
+                            {filteredRequestors.map((requestor, index) => (
+                              <li key={requestor}>
+                                <div className="flex items-center ps-2 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-600">
+                                  <input
+                                    id={`checkbox-item-${index}`}
+                                    type="checkbox"
+                                    checked={selectedRequestors.includes(
+                                      requestor
+                                    )}
+                                    onChange={() =>
+                                      handleRequestorToggle(requestor)
+                                    }
+                                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                  />
+                                  <label
+                                    htmlFor={`checkbox-item-${index}`}
+                                    className="w-full py-2 ms-2 text-sm font-medium text-gray-900 rounded-sm dark:text-gray-300 cursor-pointer"
+                                  >
+                                    {requestor}
+                                  </label>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Department */}
+                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                        <span className="text-red-500">*</span> Department
+                      </label>
+                      <select
+                        value={newRequestForm.department}
+                        onChange={(e) =>
+                          handleFormChange("department", e.target.value)
+                        }
+                        className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      >
+                        <option value="">Select Department</option>
+                        {departmentOptions.map((dept) => (
+                          <option key={dept} value={dept}>
+                            {dept}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Right Column */}
+                  <div className="space-y-6">
+                    {/* Severity */}
+                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                        <Flag className="w-4 h-4 inline mr-2" />
+                        <span className="text-red-500">*</span> Severity Level
+                      </label>
+                      <select
+                        value={newRequestForm.severity}
+                        onChange={(e) =>
+                          handleFormChange("severity", e.target.value)
+                        }
+                        className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      >
+                        <option value="">Select Severity</option>
+                        {severityOptions.map((severity) => (
+                          <option key={severity} value={severity}>
+                            {severity}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Category */}
+                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                        <span className="text-red-500">*</span> Category
+                      </label>
+                      <select
+                        value={newRequestForm.category}
+                        onChange={(e) => {
+                          handleFormChange("category", e.target.value);
+                          // Clear custom category when selecting a different option
+                          if (e.target.value !== "Other (Please specify)") {
+                            setCustomCategory("");
+                          }
+                        }}
+                        className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      >
+                        <option value="">Select Category</option>
+                        {categoryOptions.map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                      </select>
+
+                      {/* Custom Category Input - Show when "Other (Please specify)" is selected */}
+                      {newRequestForm.category === "Other (Please specify)" && (
+                        <div className="mt-4">
+                          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <span className="text-red-500">*</span> Please
+                            specify your issue:
+                          </label>
+                          <input
+                            type="text"
+                            value={customCategory}
+                            onChange={(e) => setCustomCategory(e.target.value)}
+                            placeholder="Describe your specific issue or problem..."
+                            className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Description Section */}
+                <div className="mb-8">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Request Description
+                    </h3>
+                    <span className="text-red-500 text-sm">*</span>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    Provide detailed information about your request. Use the
+                    formatting tools below to structure your content.
+                  </p>
+
+                  {/* Enhanced Tiptap Rich Text Editor */}
+                  <div className="bg-white border-2 border-gray-200 rounded-xl overflow-hidden dark:bg-gray-800 dark:border-gray-600 shadow-sm hover:shadow-md transition-shadow duration-200">
                     <div id="hs-editor-tiptap-blockquote-alt">
-                      <div className="sticky top-0 bg-white flex align-middle gap-x-0.5 border-b border-gray-200 p-2 dark:bg-neutral-900 dark:border-neutral-700">
+                      <div className="sticky top-0 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 flex align-middle gap-x-1 border-b border-gray-200 dark:border-gray-600 p-3">
                         <button
                           className="size-8 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
                           type="button"
@@ -4042,22 +4228,33 @@ const TicketGallery: React.FC = () => {
                       </div>
 
                       <div
-                        className="h-40 overflow-auto"
+                        className="h-48 overflow-auto p-4 bg-white dark:bg-gray-800"
                         data-hs-editor-field=""
                       ></div>
                     </div>
                   </div>
                 </div>
 
-                {/* Submit Button */}
-                <div className="flex justify-end">
-                  <button
-                    onClick={handleSubmitRequest}
-                    className="px-6 py-3 bg-gray-800 dark:bg-gray-700 text-white font-medium rounded-lg hover:bg-gray-900 dark:hover:bg-gray-600 transition-colors duration-200"
-                  >
-                    <Save className="w-4 h-4 inline mr-2" />
-                    Submit Request
-                  </button>
+                {/* Action Buttons */}
+                <div className="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-600">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    <span className="text-red-500">*</span> Required fields
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setIsNewRequestModalOpen(false)}
+                      className="px-6 py-3 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSubmitRequest}
+                      className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
+                    >
+                      <Save className="w-4 h-4" />
+                      Submit Request
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
