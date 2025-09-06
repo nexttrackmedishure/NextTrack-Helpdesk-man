@@ -13,7 +13,6 @@ import {
   X,
   Minus,
   Eye,
-  EyeOff,
   ChevronRight,
   Edit,
   Bookmark,
@@ -21,13 +20,8 @@ import {
   Link,
   Flag,
   Sprout,
-  Zap,
-  User,
-  Users,
   Save,
   Smile,
-  Paperclip,
-  Sparkles,
 } from "lucide-react";
 import ReactApexChart from "react-apexcharts";
 
@@ -960,7 +954,7 @@ const TicketGallery: React.FC = () => {
               };
             },
             addNodeView() {
-              return ({ node }: { node: any }) => {
+              return ({ node: _node }: { node: any }) => {
                 const blockquote = document.createElement("blockquote");
 
                 Object.entries(this.options.HTMLAttributes).forEach(
@@ -4004,7 +3998,7 @@ const TicketGallery: React.FC = () => {
                             <path d="m14.5 4-5 16"></path>
                           </svg>
                         </button>
-                        
+
                         {/* Emoji Button - Last in toolbar */}
                         <div className="relative emoji-picker-container">
                           <button
