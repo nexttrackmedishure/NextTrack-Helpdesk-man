@@ -22,6 +22,7 @@ import {
   Sprout,
   Save,
   Smile,
+  RotateCcw,
 } from "lucide-react";
 import ReactApexChart from "react-apexcharts";
 
@@ -59,6 +60,35 @@ const TicketGallery: React.FC = () => {
   const [isRequestorDropdownOpen, setIsRequestorDropdownOpen] = useState(false);
   const [requestorSearchTerm, setRequestorSearchTerm] = useState("");
   const [selectedRequestors, setSelectedRequestors] = useState<string[]>([]);
+
+  // State for category dropdown
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [categorySearchTerm, setCategorySearchTerm] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+  // State for severity dropdown
+  const [isSeverityDropdownOpen, setIsSeverityDropdownOpen] = useState(false);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (
+        !target.closest("#dropdownRadioHelper") &&
+        !target.closest("#dropdownRadioHelperButton")
+      ) {
+        setIsSeverityDropdownOpen(false);
+      }
+    };
+
+    if (isSeverityDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isSeverityDropdownOpen]);
 
   // Department options (sorted A to Z)
   const departmentOptions = [
@@ -164,11 +194,36 @@ const TicketGallery: React.FC = () => {
     "Ransomware Attack",
     "Firewall Block",
     "Phishing Attempt",
-    "Other (Please specify)",
   ];
 
   // Severity options
-  const severityOptions = ["Critical", "Urgent", "High", "Normal", "Low"];
+  const severityOptions = [
+    {
+      value: "Critical",
+      label: "Critical",
+      description: "System down, data loss, or security breach",
+    },
+    {
+      value: "Urgent",
+      label: "Urgent",
+      description: "Major functionality affected, business impact",
+    },
+    {
+      value: "High",
+      label: "High",
+      description: "Important issue affecting multiple users",
+    },
+    {
+      value: "Normal",
+      label: "Normal",
+      description: "Standard issue with moderate impact",
+    },
+    {
+      value: "Low",
+      label: "Low",
+      description: "Minor issue with minimal business impact",
+    },
+  ];
 
   // Requestor options (mock data - in real app would come from user accounts)
   const requestorOptions = [
@@ -854,13 +909,11 @@ const TicketGallery: React.FC = () => {
       selectedRequestors.length === 0 ||
       !newRequestForm.department ||
       !newRequestForm.ticketTitle ||
-      !newRequestForm.category ||
+      selectedCategories.length === 0 ||
       !newRequestForm.severity ||
       !description ||
       description === "<p></p>" ||
-      description === "<p><br></p>" ||
-      (newRequestForm.category === "Other (Please specify)" &&
-        !customCategory.trim())
+      description === "<p><br></p>"
     ) {
       alert("Please fill in all required fields.");
       return;
@@ -870,10 +923,7 @@ const TicketGallery: React.FC = () => {
     const formData = {
       ...newRequestForm,
       requestor: selectedRequestors.join(", "), // Join multiple selected requestors
-      category:
-        newRequestForm.category === "Other (Please specify)"
-          ? customCategory
-          : newRequestForm.category,
+      category: selectedCategories.join(", "), // Join multiple selected categories
       description: description,
     };
     console.log("New Request Submitted:", formData);
@@ -894,6 +944,9 @@ const TicketGallery: React.FC = () => {
     setSelectedRequestors([]);
     setRequestorSearchTerm("");
     setIsRequestorDropdownOpen(false);
+    setSelectedCategories([]);
+    setCategorySearchTerm("");
+    setIsCategoryDropdownOpen(false);
     setIsNewRequestModalOpen(false);
   };
 
@@ -931,7 +984,7 @@ const TicketGallery: React.FC = () => {
   }, [showEmojiPicker]);
 
   // Requestor dropdown handlers
-  const handleRequestorToggle = (requestor: string) => {
+  const handleRequestorSelect = (requestor: string) => {
     setSelectedRequestors((prev) => {
       if (prev.includes(requestor)) {
         return prev.filter((r) => r !== requestor);
@@ -939,6 +992,8 @@ const TicketGallery: React.FC = () => {
         return [...prev, requestor];
       }
     });
+    // Auto-close dropdown when an item is selected
+    setIsRequestorDropdownOpen(false);
   };
 
   const handleRequestorSearch = (term: string) => {
@@ -949,6 +1004,41 @@ const TicketGallery: React.FC = () => {
   const filteredRequestors = requestorOptions.filter((requestor) =>
     requestor.toLowerCase().includes(requestorSearchTerm.toLowerCase())
   );
+
+  // Category dropdown handlers
+  const handleCategorySelect = (category: string) => {
+    setSelectedCategories((prev) => {
+      if (prev.includes(category)) {
+        return prev.filter((c) => c !== category);
+      } else {
+        return [...prev, category];
+      }
+    });
+    // Auto-close dropdown when an item is selected
+    setIsCategoryDropdownOpen(false);
+  };
+
+  const handleCategorySearch = (term: string) => {
+    setCategorySearchTerm(term);
+  };
+
+  // Filter categories based on search term
+  const filteredCategories = categoryOptions.filter((category) =>
+    category.toLowerCase().includes(categorySearchTerm.toLowerCase())
+  );
+
+  // Reset category selection
+  const handleCategoryReset = () => {
+    setSelectedCategories([]);
+    setCategorySearchTerm("");
+    setCustomCategory("");
+  };
+
+  // Reset requestor selection
+  const handleRequestorReset = () => {
+    setSelectedRequestors([]);
+    setRequestorSearchTerm("");
+  };
 
   // Initialize Tiptap editor when modal opens
   useEffect(() => {
@@ -3705,10 +3795,10 @@ const TicketGallery: React.FC = () => {
               </div>
 
               {/* Modal Content */}
-              <div className="p-8 overflow-y-auto max-h-[calc(95vh-180px)]">
+              <div className="p-6 overflow-y-auto max-h-[calc(95vh-160px)]">
                 {/* Ticket Title Section */}
-                <div className="mb-8">
-                  <div className="flex items-center gap-3 mb-4">
+                <div className="mb-6">
+                  <div className="flex items-center gap-3 mb-3">
                     <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
                       <Sprout className="w-5 h-5 text-green-600 dark:text-green-400" />
                     </div>
@@ -3723,16 +3813,16 @@ const TicketGallery: React.FC = () => {
                     onChange={(e) =>
                       handleFormChange("ticketTitle", e.target.value)
                     }
-                    className="w-full px-4 py-3 text-lg font-medium bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    className="w-full px-4 py-2 text-lg font-medium bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                   />
                 </div>
 
                 {/* Form Fields Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
                   {/* Left Column */}
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     {/* Date */}
-                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
+                    <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-xl">
                       <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                         <Calendar className="w-4 h-4 inline mr-2" />
                         Request Date
@@ -3759,17 +3849,26 @@ const TicketGallery: React.FC = () => {
                           onChange={(e) =>
                             handleFormChange("date", e.target.value)
                           }
-                          className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                          className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                           placeholder="Select date"
                         />
                       </div>
                     </div>
 
                     {/* Requestor */}
-                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
-                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                        <span className="text-red-500">*</span> Requestor
-                      </label>
+                    <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-xl">
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                          <span className="text-red-500">*</span> Requestor
+                        </label>
+                        <button
+                          onClick={handleRequestorReset}
+                          className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                          title="Reset requestor selection"
+                        >
+                          <RotateCcw className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                        </button>
+                      </div>
 
                       {/* Dropdown Button */}
                       <button
@@ -3777,7 +3876,7 @@ const TicketGallery: React.FC = () => {
                         onClick={() =>
                           setIsRequestorDropdownOpen(!isRequestorDropdownOpen)
                         }
-                        className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 w-full justify-between"
+                        className="text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-300 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center w-full justify-between"
                         type="button"
                       >
                         {selectedRequestors.length === 0
@@ -3848,24 +3947,32 @@ const TicketGallery: React.FC = () => {
                           >
                             {filteredRequestors.map((requestor, index) => (
                               <li key={requestor}>
-                                <div className="flex items-center ps-2 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-600">
-                                  <input
-                                    id={`checkbox-item-${index}`}
-                                    type="checkbox"
-                                    checked={selectedRequestors.includes(
-                                      requestor
-                                    )}
-                                    onChange={() =>
-                                      handleRequestorToggle(requestor)
-                                    }
-                                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
-                                  />
-                                  <label
-                                    htmlFor={`checkbox-item-${index}`}
-                                    className="w-full py-2 ms-2 text-sm font-medium text-gray-900 rounded-sm dark:text-gray-300 cursor-pointer"
-                                  >
+                                <div
+                                  className={`flex items-center ps-2 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer py-2 ${
+                                    selectedRequestors.includes(requestor)
+                                      ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                                      : ""
+                                  }`}
+                                  onClick={() =>
+                                    handleRequestorSelect(requestor)
+                                  }
+                                >
+                                  <span className="text-sm font-medium">
                                     {requestor}
-                                  </label>
+                                  </span>
+                                  {selectedRequestors.includes(requestor) && (
+                                    <svg
+                                      className="w-4 h-4 ml-auto text-blue-600 dark:text-blue-400"
+                                      fill="currentColor"
+                                      viewBox="0 0 20 20"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>
+                                  )}
                                 </div>
                               </li>
                             ))}
@@ -3875,7 +3982,7 @@ const TicketGallery: React.FC = () => {
                     </div>
 
                     {/* Department */}
-                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
+                    <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-xl">
                       <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                         <span className="text-red-500">*</span> Department
                       </label>
@@ -3884,7 +3991,7 @@ const TicketGallery: React.FC = () => {
                         onChange={(e) =>
                           handleFormChange("department", e.target.value)
                         }
-                        className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                       >
                         <option value="">Select Department</option>
                         {departmentOptions.map((dept) => (
@@ -3897,67 +4004,210 @@ const TicketGallery: React.FC = () => {
                   </div>
 
                   {/* Right Column */}
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     {/* Severity */}
-                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
+                    <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-xl">
                       <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                         <Flag className="w-4 h-4 inline mr-2" />
                         <span className="text-red-500">*</span> Severity Level
                       </label>
-                      <select
-                        value={newRequestForm.severity}
-                        onChange={(e) =>
-                          handleFormChange("severity", e.target.value)
-                        }
-                        className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      >
-                        <option value="">Select Severity</option>
-                        {severityOptions.map((severity) => (
-                          <option key={severity} value={severity}>
-                            {severity}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="relative">
+                        <button
+                          id="dropdownRadioHelperButton"
+                          data-dropdown-toggle="dropdownRadioHelper"
+                          onClick={() =>
+                            setIsSeverityDropdownOpen(!isSeverityDropdownOpen)
+                          }
+                          className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
+                          type="button"
+                        >
+                          {newRequestForm.severity || "Select Severity"}
+                          <svg
+                            className="w-2.5 h-2.5 ms-3"
+                            aria-hidden="true"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 10 6"
+                          >
+                            <path
+                              stroke="currentColor"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="m1 1 4 4 4-4"
+                            />
+                          </svg>
+                        </button>
+
+                        {/* Dropdown menu */}
+                        {isSeverityDropdownOpen && (
+                          <div
+                            id="dropdownRadioHelper"
+                            className="absolute z-10 bg-white divide-y divide-gray-100 rounded-lg shadow-sm w-full dark:bg-gray-700 dark:divide-gray-600 border border-gray-200 dark:border-gray-600 mt-1"
+                          >
+                            <ul
+                              className="p-3 space-y-1 text-sm text-gray-700 dark:text-gray-200"
+                              aria-labelledby="dropdownRadioHelperButton"
+                            >
+                              {severityOptions.map((severity, index) => (
+                                <li key={severity.value}>
+                                  <div className="flex p-2 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-600">
+                                    <div className="flex items-center h-5">
+                                      <input
+                                        id={`helper-radio-${index}`}
+                                        name="helper-radio"
+                                        type="radio"
+                                        value={severity.value}
+                                        checked={
+                                          newRequestForm.severity ===
+                                          severity.value
+                                        }
+                                        onChange={(e) => {
+                                          handleFormChange(
+                                            "severity",
+                                            e.target.value
+                                          );
+                                          setIsSeverityDropdownOpen(false);
+                                        }}
+                                        className="w-4 h-4 text-gray-600 bg-gray-100 border-gray-300 focus:ring-gray-500 dark:focus:ring-gray-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                      />
+                                    </div>
+                                    <div className="ms-2 text-sm">
+                                      <label
+                                        htmlFor={`helper-radio-${index}`}
+                                        className="font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                      >
+                                        <div>{severity.label}</div>
+                                        <p className="text-xs font-normal text-gray-500 dark:text-gray-300">
+                                          {severity.description}
+                                        </p>
+                                      </label>
+                                    </div>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Category */}
-                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
-                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                        <span className="text-red-500">*</span> Category
-                      </label>
-                      <select
-                        value={newRequestForm.category}
-                        onChange={(e) => {
-                          handleFormChange("category", e.target.value);
-                          // Clear custom category when selecting a different option
-                          if (e.target.value !== "Other (Please specify)") {
-                            setCustomCategory("");
-                          }
-                        }}
-                        className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      >
-                        <option value="">Select Category</option>
-                        {categoryOptions.map((category) => (
-                          <option key={category} value={category}>
-                            {category}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-xl">
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                          <span className="text-red-500">*</span> Category
+                        </label>
+                        <button
+                          onClick={handleCategoryReset}
+                          className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                          title="Reset category selection"
+                        >
+                          <RotateCcw className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                        </button>
+                      </div>
 
-                      {/* Custom Category Input - Show when "Other (Please specify)" is selected */}
-                      {newRequestForm.category === "Other (Please specify)" && (
-                        <div className="mt-4">
-                          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                            <span className="text-red-500">*</span> Please
-                            specify your issue:
-                          </label>
-                          <input
-                            type="text"
-                            value={customCategory}
-                            onChange={(e) => setCustomCategory(e.target.value)}
-                            placeholder="Describe your specific issue or problem..."
-                            className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      {/* Dropdown Button */}
+                      <button
+                        onClick={() =>
+                          setIsCategoryDropdownOpen(!isCategoryDropdownOpen)
+                        }
+                        className="text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-300 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center w-full justify-between"
+                        type="button"
+                      >
+                        {selectedCategories.length === 0
+                          ? "Select Category"
+                          : selectedCategories.length === 1
+                          ? selectedCategories[0]
+                          : `${selectedCategories.length} categories selected`}
+                        <svg
+                          className="w-2.5 h-2.5 ms-3"
+                          aria-hidden="true"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 10 6"
+                        >
+                          <path
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="m1 1 4 4 4-4"
                           />
+                        </svg>
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {isCategoryDropdownOpen && (
+                        <div className="z-10 bg-white rounded-lg shadow-sm w-full dark:bg-gray-700 border border-gray-200 dark:border-gray-600 mt-2">
+                          <div className="p-3">
+                            <label
+                              htmlFor="category-search"
+                              className="sr-only"
+                            >
+                              Search
+                            </label>
+                            <div className="relative">
+                              <div className="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+                                <svg
+                                  className="w-4 h-4 text-gray-500 dark:text-gray-400"
+                                  aria-hidden="true"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="none"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path
+                                    stroke="currentColor"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
+                                  />
+                                </svg>
+                              </div>
+                              <input
+                                type="text"
+                                id="category-search"
+                                className="block w-full p-2 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                placeholder="Search category"
+                                value={categorySearchTerm}
+                                onChange={(e) =>
+                                  handleCategorySearch(e.target.value)
+                                }
+                              />
+                            </div>
+                          </div>
+                          <ul className="h-48 px-3 pb-3 overflow-y-auto text-sm text-gray-700 dark:text-gray-200">
+                            {filteredCategories.map((category, index) => (
+                              <li key={category}>
+                                <div
+                                  className={`flex items-center ps-2 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer py-2 ${
+                                    selectedCategories.includes(category)
+                                      ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                                      : ""
+                                  }`}
+                                  onClick={() => handleCategorySelect(category)}
+                                >
+                                  <span className="text-sm font-medium">
+                                    {category}
+                                  </span>
+                                  {selectedCategories.includes(category) && (
+                                    <svg
+                                      className="w-4 h-4 ml-auto text-blue-600 dark:text-blue-400"
+                                      fill="currentColor"
+                                      viewBox="0 0 20 20"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>
+                                  )}
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
                         </div>
                       )}
                     </div>
@@ -3965,8 +4215,8 @@ const TicketGallery: React.FC = () => {
                 </div>
 
                 {/* Description Section */}
-                <div className="mb-8">
-                  <div className="flex items-center gap-3 mb-4">
+                <div className="mb-6">
+                  <div className="flex items-center gap-3 mb-3">
                     <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                       <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                     </div>
@@ -3975,7 +4225,7 @@ const TicketGallery: React.FC = () => {
                     </h3>
                     <span className="text-red-500 text-sm">*</span>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                     Provide detailed information about your request. Use the
                     formatting tools below to structure your content.
                   </p>
@@ -4228,7 +4478,7 @@ const TicketGallery: React.FC = () => {
                       </div>
 
                       <div
-                        className="h-48 overflow-auto p-4 bg-white dark:bg-gray-800"
+                        className="h-36 overflow-auto p-3 bg-white dark:bg-gray-800"
                         data-hs-editor-field=""
                       ></div>
                     </div>
