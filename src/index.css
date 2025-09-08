@@ -45,4 +45,55 @@
   .dark .world-map {
     background-color: #1f2937;
   }
+
+  /* Hide scrollbar while keeping scroll functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none; /* Internet Explorer 10+ */
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
+  }
+
+  /* Custom scrollbar styles for modal */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: #2d1b69; /* violet-900 */
+    border-radius: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #7c3aed; /* violet-600 */
+    border-radius: 4px;
+    transition: background 0.2s ease;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #a855f7; /* violet-500 */
+  }
+
+  .scrollbar-thumb-violet-600::-webkit-scrollbar-thumb {
+    background: #7c3aed;
+  }
+
+  .scrollbar-track-violet-900::-webkit-scrollbar-track {
+    background: #2d1b69;
+  }
+
+  .scrollbar-track-violet-800::-webkit-scrollbar-track {
+    background: #3b0764;
+  }
+
+  .hover\:scrollbar-thumb-violet-500:hover::-webkit-scrollbar-thumb {
+    background: #a855f7;
+  }
 }

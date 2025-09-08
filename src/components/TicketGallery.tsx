@@ -16,8 +16,10 @@ import {
   Flag,
   Sprout,
   Save,
-  Smile,
-  RotateCcw,
+  User,
+  Building,
+  Tag,
+  UserCheck,
 } from "lucide-react";
 import ReactApexChart from "react-apexcharts";
 
@@ -41,7 +43,6 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
   const [selectedStatus] = useState("all");
   const [selectedPriority] = useState("all");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   // Form state for new request
   const [newRequestForm, setNewRequestForm] = useState({
@@ -52,21 +53,21 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     ticketTitle: "",
     category: "",
     severity: "",
+    assignee: "",
+    branch: "",
     description: "",
   });
 
-  // State for requestor dropdown
-  const [isRequestorDropdownOpen, setIsRequestorDropdownOpen] = useState(false);
-  const [requestorSearchTerm, setRequestorSearchTerm] = useState("");
-  const [selectedRequestors, setSelectedRequestors] = useState<string[]>([]);
-
-  // State for category dropdown
-  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
-  const [categorySearchTerm, setCategorySearchTerm] = useState("");
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-
   // State for severity dropdown
   const [isSeverityDropdownOpen, setIsSeverityDropdownOpen] = useState(false);
+
+  // State for new radio dropdowns
+  const [isDepartmentDropdownOpen, setIsDepartmentDropdownOpen] =
+    useState(false);
+  const [isRequestorDropdownOpen, setIsRequestorDropdownOpen] = useState(false);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [isAssigneeDropdownOpen, setIsAssigneeDropdownOpen] = useState(false);
+  const [isBranchDropdownOpen, setIsBranchDropdownOpen] = useState(false);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -74,20 +75,49 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
       const target = event.target as Element;
       if (
         !target.closest("#dropdownRadioHelper") &&
-        !target.closest("#dropdownRadioHelperButton")
+        !target.closest("#dropdownRadioHelperButton") &&
+        !target.closest("#dropdownDepartmentRadio") &&
+        !target.closest("#dropdownDepartmentRadioButton") &&
+        !target.closest("#dropdownRequestorRadio") &&
+        !target.closest("#dropdownRequestorRadioButton") &&
+        !target.closest("#dropdownCategoryRadio") &&
+        !target.closest("#dropdownCategoryRadioButton") &&
+        !target.closest("#dropdownAssigneeRadio") &&
+        !target.closest("#dropdownAssigneeRadioButton") &&
+        !target.closest("#dropdownBranchRadio") &&
+        !target.closest("#dropdownBranchRadioButton")
       ) {
         setIsSeverityDropdownOpen(false);
+        setIsDepartmentDropdownOpen(false);
+        setIsRequestorDropdownOpen(false);
+        setIsCategoryDropdownOpen(false);
+        setIsAssigneeDropdownOpen(false);
+        setIsBranchDropdownOpen(false);
       }
     };
 
-    if (isSeverityDropdownOpen) {
+    if (
+      isSeverityDropdownOpen ||
+      isDepartmentDropdownOpen ||
+      isRequestorDropdownOpen ||
+      isCategoryDropdownOpen ||
+      isAssigneeDropdownOpen ||
+      isBranchDropdownOpen
+    ) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isSeverityDropdownOpen]);
+  }, [
+    isSeverityDropdownOpen,
+    isDepartmentDropdownOpen,
+    isRequestorDropdownOpen,
+    isCategoryDropdownOpen,
+    isAssigneeDropdownOpen,
+    isBranchDropdownOpen,
+  ]);
 
   // Department options (sorted A to Z)
   const departmentOptions = [
@@ -236,619 +266,20 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     "Tom Wilson",
   ];
 
-  // Emoji options for the picker
-  const emojiOptions = [
-    "😀",
-    "😃",
-    "😄",
-    "😁",
-    "😆",
-    "😅",
-    "🤣",
-    "😂",
-    "🙂",
-    "🙃",
-    "😉",
-    "😊",
-    "😇",
-    "🥰",
-    "😍",
-    "🤩",
-    "😘",
-    "😗",
-    "😚",
-    "😙",
-    "😋",
-    "😛",
-    "😜",
-    "🤪",
-    "😝",
-    "🤑",
-    "🤗",
-    "🤭",
-    "🤫",
-    "🤔",
-    "🤐",
-    "🤨",
-    "😐",
-    "😑",
-    "😶",
-    "😏",
-    "😒",
-    "🙄",
-    "😬",
-    "🤥",
-    "😔",
-    "😪",
-    "🤤",
-    "😴",
-    "😷",
-    "🤒",
-    "🤕",
-    "🤢",
-    "🤮",
-    "🤧",
-    "🥵",
-    "🥶",
-    "🥴",
-    "😵",
-    "🤯",
-    "🤠",
-    "🥳",
-    "😎",
-    "🤓",
-    "🧐",
-    "👍",
-    "👎",
-    "👌",
-    "✌️",
-    "🤞",
-    "🤟",
-    "🤘",
-    "🤙",
-    "👈",
-    "👉",
-    "👆",
-    "👇",
-    "☝️",
-    "✋",
-    "🤚",
-    "🖐",
-    "🖖",
-    "👋",
-    "🤝",
-    "👏",
-    "🙌",
-    "👐",
-    "🤲",
-    "🤜",
-    "🤛",
-    "✊",
-    "👊",
-    "👎",
-    "👌",
-    "✌️",
-    "❤️",
-    "🧡",
-    "💛",
-    "💚",
-    "💙",
-    "💜",
-    "🖤",
-    "🤍",
-    "🤎",
-    "💔",
-    "❣️",
-    "💕",
-    "💞",
-    "💓",
-    "💗",
-    "💖",
-    "💘",
-    "💝",
-    "💟",
-    "☮️",
-    "✝️",
-    "☪️",
-    "🕉",
-    "☸️",
-    "✡️",
-    "🔯",
-    "🕎",
-    "☯️",
-    "☦️",
-    "🛐",
-    "⛎",
-    "♈",
-    "♉",
-    "♊",
-    "♋",
-    "♌",
-    "♍",
-    "♎",
-    "♏",
-    "♐",
-    "♑",
-    "♒",
-    "♓",
-    "🆔",
-    "⚛️",
-    "🉑",
-    "☢️",
-    "☣️",
-    "📴",
-    "📳",
-    "🈶",
-    "🈚",
-    "🈸",
-    "🈺",
-    "🈷️",
-    "✴️",
-    "🆚",
-    "💮",
-    "🉐",
-    "㊙️",
-    "㊗️",
-    "🈴",
-    "🈵",
-    "🈹",
-    "🈲",
-    "🅰️",
-    "🅱️",
-    "🆎",
-    "🆑",
-    "🅾️",
-    "🆘",
-    "❌",
-    "⭕",
-    "🛑",
-    "⛔",
-    "📛",
-    "🚫",
-    "💯",
-    "💢",
-    "♨️",
-    "🚷",
-    "🚯",
-    "🚳",
-    "🚱",
-    "🔞",
-    "📵",
-    "🚭",
-    "❗",
-    "❕",
-    "❓",
-    "❔",
-    "‼️",
-    "⁉️",
-    "🔅",
-    "🔆",
-    "〽️",
-    "⚠️",
-    "🚸",
-    "🔱",
-    "⚜️",
-    "🔰",
-    "♻️",
-    "✅",
-    "🈯",
-    "💹",
-    "❇️",
-    "✳️",
-    "❎",
-    "🌐",
-    "💠",
-    "Ⓜ️",
-    "🌀",
-    "💤",
-    "🏧",
-    "🚾",
-    "♿",
-    "🅿️",
-    "🈳",
-    "🈂️",
-    "🛂",
-    "🛃",
-    "🛄",
-    "🛅",
-    "🚹",
-    "🚺",
-    "🚼",
-    "🚻",
-    "🚮",
-    "🎦",
-    "📶",
-    "🈁",
-    "🔣",
-    "ℹ️",
-    "🔤",
-    "🔡",
-    "🔠",
-    "🆖",
-    "🆗",
-    "🆙",
-    "🆒",
-    "🆕",
-    "🆓",
-    "0️⃣",
-    "1️⃣",
-    "2️⃣",
-    "3️⃣",
-    "4️⃣",
-    "5️⃣",
-    "6️⃣",
-    "7️⃣",
-    "8️⃣",
-    "9️⃣",
-    "🔟",
-    "🔢",
-    "#️⃣",
-    "*️⃣",
-    "⏏️",
-    "▶️",
-    "⏸",
-    "⏯",
-    "⏹",
-    "⏺",
-    "⏭",
-    "⏮",
-    "⏩",
-    "⏪",
-    "⏫",
-    "⏬",
-    "◀️",
-    "🔼",
-    "🔽",
-    "➡️",
-    "⬅️",
-    "⬆️",
-    "⬇️",
-    "↗️",
-    "↘️",
-    "↙️",
-    "↖️",
-    "↕️",
-    "↔️",
-    "↩️",
-    "↪️",
-    "⤴️",
-    "⤵️",
-    "🔀",
-    "🔁",
-    "🔂",
-    "🔃",
-    "🔄",
-    "🔅",
-    "🔆",
-    "🎵",
-    "🎶",
-    "➕",
-    "➖",
-    "➗",
-    "✖️",
-    "♾",
-    "💲",
-    "💱",
-    "™️",
-    "©️",
-    "®️",
-    "〰️",
-    "➰",
-    "➿",
-    "🔚",
-    "🔙",
-    "🔛",
-    "🔝",
-    "🔜",
-    "✔️",
-    "☑️",
-    "🔘",
-    "⚪",
-    "⚫",
-    "🔴",
-    "🔵",
-    "🟠",
-    "🟡",
-    "🟢",
-    "🟣",
-    "🟤",
-    "⚫",
-    "⚪",
-    "🟥",
-    "🟧",
-    "🟨",
-    "🟩",
-    "🟦",
-    "🟪",
-    "🟫",
-    "⬛",
-    "⬜",
-    "◼️",
-    "◻️",
-    "◾",
-    "◽",
-    "▪️",
-    "▫️",
-    "🔶",
-    "🔷",
-    "🔸",
-    "🔹",
-    "🔺",
-    "🔻",
-    "💠",
-    "🔘",
-    "🔳",
-    "🔲",
-    "🏁",
-    "🚩",
-    "🎌",
-    "🏴",
-    "🏳️",
-    "🏳️‍🌈",
-    "🏳️‍⚧️",
-    "🏴‍☠️",
-    "🇦🇨",
-    "🇦🇩",
-    "🇦🇪",
-    "🇦🇫",
-    "🇦🇬",
-    "🇦🇮",
-    "🇦🇱",
-    "🇦🇲",
-    "🇦🇴",
-    "🇦🇶",
-    "🇦🇷",
-    "🇦🇸",
-    "🇦🇹",
-    "🇦🇺",
-    "🇦🇼",
-    "🇦🇽",
-    "🇦🇿",
-    "🇧🇦",
-    "🇧🇧",
-    "🇧🇩",
-    "🇧🇪",
-    "🇧🇫",
-    "🇧🇬",
-    "🇧🇭",
-    "🇧🇮",
-    "🇧🇯",
-    "🇧🇱",
-    "🇧🇲",
-    "🇧🇳",
-    "🇧🇴",
-    "🇧🇶",
-    "🇧🇷",
-    "🇧🇸",
-    "🇧🇹",
-    "🇧🇻",
-    "🇧🇼",
-    "🇧🇾",
-    "🇧🇿",
-    "🇨🇦",
-    "🇨🇨",
-    "🇨🇩",
-    "🇨🇫",
-    "🇨🇬",
-    "🇨🇭",
-    "🇨🇮",
-    "🇨🇰",
-    "🇨🇱",
-    "🇨🇲",
-    "🇨🇳",
-    "🇨🇴",
-    "🇨🇵",
-    "🇨🇷",
-    "🇨🇺",
-    "🇨🇻",
-    "🇨🇼",
-    "🇨🇽",
-    "🇨🇾",
-    "🇨🇿",
-    "🇩🇪",
-    "🇩🇬",
-    "🇩🇯",
-    "🇩🇰",
-    "🇩🇲",
-    "🇩🇴",
-    "🇩🇿",
-    "🇪🇦",
-    "🇪🇨",
-    "🇪🇪",
-    "🇪🇬",
-    "🇪🇭",
-    "🇪🇷",
-    "🇪🇸",
-    "🇪🇹",
-    "🇪🇺",
-    "🇫🇮",
-    "🇫🇯",
-    "🇫🇰",
-    "🇫🇲",
-    "🇫🇴",
-    "🇫🇷",
-    "🇬🇦",
-    "🇬🇧",
-    "🇬🇩",
-    "🇬🇪",
-    "🇬🇫",
-    "🇬🇬",
-    "🇬🇭",
-    "🇬🇮",
-    "🇬🇱",
-    "🇬🇲",
-    "🇬🇳",
-    "🇬🇵",
-    "🇬🇶",
-    "🇬🇷",
-    "🇬🇸",
-    "🇬🇹",
-    "🇬🇺",
-    "🇬🇼",
-    "🇬🇾",
-    "🇭🇰",
-    "🇭🇲",
-    "🇭🇳",
-    "🇭🇷",
-    "🇭🇹",
-    "🇭🇺",
-    "🇮🇨",
-    "🇮🇩",
-    "🇮🇪",
-    "🇮🇱",
-    "🇮🇲",
-    "🇮🇳",
-    "🇮🇴",
-    "🇮🇶",
-    "🇮🇷",
-    "🇮🇸",
-    "🇮🇹",
-    "🇯🇪",
-    "🇯🇲",
-    "🇯🇴",
-    "🇯🇵",
-    "🇰🇪",
-    "🇰🇬",
-    "🇰🇭",
-    "🇰🇮",
-    "🇰🇲",
-    "🇰🇳",
-    "🇰🇵",
-    "🇰🇷",
-    "🇰🇼",
-    "🇰🇾",
-    "🇰🇿",
-    "🇱🇦",
-    "🇱🇧",
-    "🇱🇨",
-    "🇱🇮",
-    "🇱🇰",
-    "🇱🇷",
-    "🇱🇸",
-    "🇱🇹",
-    "🇱🇺",
-    "🇱🇻",
-    "🇱🇾",
-    "🇲🇦",
-    "🇲🇨",
-    "🇲🇩",
-    "🇲🇪",
-    "🇲🇫",
-    "🇲🇬",
-    "🇲🇭",
-    "🇲🇰",
-    "🇲🇱",
-    "🇲🇲",
-    "🇲🇳",
-    "🇲🇴",
-    "🇲🇵",
-    "🇲🇶",
-    "🇲🇷",
-    "🇲🇸",
-    "🇲🇹",
-    "🇲🇺",
-    "🇲🇻",
-    "🇲🇼",
-    "🇲🇽",
-    "🇲🇾",
-    "🇲🇿",
-    "🇳🇦",
-    "🇳🇨",
-    "🇳🇪",
-    "🇳🇫",
-    "🇳🇬",
-    "🇳🇮",
-    "🇳🇱",
-    "🇳🇴",
-    "🇳🇵",
-    "🇳🇷",
-    "🇳🇺",
-    "🇳🇿",
-    "🇴🇲",
-    "🇵🇦",
-    "🇵🇪",
-    "🇵🇫",
-    "🇵🇬",
-    "🇵🇭",
-    "🇵🇰",
-    "🇵🇱",
-    "🇵🇲",
-    "🇵🇳",
-    "🇵🇷",
-    "🇵🇸",
-    "🇵🇹",
-    "🇵🇼",
-    "🇵🇾",
-    "🇶🇦",
-    "🇷🇪",
-    "🇷🇴",
-    "🇷🇸",
-    "🇷🇺",
-    "🇷🇼",
-    "🇸🇦",
-    "🇸🇧",
-    "🇸🇨",
-    "🇸🇩",
-    "🇸🇪",
-    "🇸🇬",
-    "🇸🇭",
-    "🇸🇮",
-    "🇸🇯",
-    "🇸🇰",
-    "🇸🇱",
-    "🇸🇲",
-    "🇸🇳",
-    "🇸🇴",
-    "🇸🇷",
-    "🇸🇸",
-    "🇸🇹",
-    "🇸🇻",
-    "🇸🇽",
-    "🇸🇾",
-    "🇸🇿",
-    "🇹🇦",
-    "🇹🇨",
-    "🇹🇩",
-    "🇹🇫",
-    "🇹🇬",
-    "🇹🇭",
-    "🇹🇯",
-    "🇹🇰",
-    "🇹🇱",
-    "🇹🇲",
-    "🇹🇳",
-    "🇹🇴",
-    "🇹🇷",
-    "🇹🇹",
-    "🇹🇻",
-    "🇹🇼",
-    "🇹🇿",
-    "🇺🇦",
-    "🇺🇬",
-    "🇺🇲",
-    "🇺🇳",
-    "🇺🇸",
-    "🇺🇾",
-    "🇺🇿",
-    "🇻🇦",
-    "🇻🇨",
-    "🇻🇪",
-    "🇻🇬",
-    "🇻🇮",
-    "🇻🇳",
-    "🇻🇺",
-    "🇼🇫",
-    "🇼🇸",
-    "🇽🇰",
-    "🇾🇪",
-    "🇾🇹",
-    "🇿🇦",
-    "🇿🇲",
-    "🇿🇼",
-    "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-    "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
-    "🏴󠁧󠁢󠁷󠁬󠁳󠁿",
+  // Assignee options (mock data - in real app would come from support team)
+  const assigneeOptions = [
+    "Alice Johnson",
+    "Bob Smith",
+    "Carol Davis",
+    "David Wilson",
+    "Eva Brown",
+    "Frank Taylor",
+    "Grace Chen",
+    "Henry Miller",
   ];
+
+  // Branch options
+  const branchOptions = ["Manila", "Bacolod", "Jakarta", "Bali", "Singapore"];
 
   // Function to calculate relative time
   const getRelativeTime = (createdDate: Date, lastUpdateDate: Date) => {
@@ -905,11 +336,13 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
 
     // Validate required fields
     if (
-      selectedRequestors.length === 0 ||
+      !newRequestForm.requestor ||
       !newRequestForm.department ||
       !newRequestForm.ticketTitle ||
-      selectedCategories.length === 0 ||
+      !newRequestForm.category ||
       !newRequestForm.severity ||
+      !newRequestForm.assignee ||
+      !newRequestForm.branch ||
       !description ||
       description === "<p></p>" ||
       description === "<p><br></p>"
@@ -921,8 +354,6 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     // In a real application, this would submit to the backend
     const formData = {
       ...newRequestForm,
-      requestor: selectedRequestors.join(", "), // Join multiple selected requestors
-      category: selectedCategories.join(", "), // Join multiple selected categories
       description: description,
     };
     console.log("New Request Submitted:", formData);
@@ -937,104 +368,16 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
       ticketTitle: "",
       category: "",
       severity: "",
+      assignee: "",
+      branch: "",
       description: "",
     });
-    setSelectedRequestors([]);
-    setRequestorSearchTerm("");
+    setIsDepartmentDropdownOpen(false);
     setIsRequestorDropdownOpen(false);
-    setSelectedCategories([]);
-    setCategorySearchTerm("");
     setIsCategoryDropdownOpen(false);
+    setIsAssigneeDropdownOpen(false);
+    setIsBranchDropdownOpen(false);
     setIsNewRequestModalOpen(false);
-  };
-
-  // Emoji handler
-  const handleEmojiClick = (emoji: string) => {
-    // Insert emoji into Tiptap editor if available and mounted
-    const editor = (window as any).tiptapEditor;
-    if (editor && editor.view && !editor.isDestroyed) {
-      editor.chain().focus().insertContent(emoji).run();
-    } else {
-      // Fallback to form state if editor not available
-      setNewRequestForm((prev) => ({
-        ...prev,
-        description: prev.description + emoji,
-      }));
-    }
-    setShowEmojiPicker(false);
-  };
-
-  // Close emoji picker when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showEmojiPicker) {
-        const target = event.target as Element;
-        if (!target.closest(".emoji-picker-container")) {
-          setShowEmojiPicker(false);
-        }
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showEmojiPicker]);
-
-  // Requestor dropdown handlers
-  const handleRequestorSelect = (requestor: string) => {
-    setSelectedRequestors((prev) => {
-      if (prev.includes(requestor)) {
-        return prev.filter((r) => r !== requestor);
-      } else {
-        return [...prev, requestor];
-      }
-    });
-    // Auto-close dropdown when an item is selected
-    setIsRequestorDropdownOpen(false);
-  };
-
-  const handleRequestorSearch = (term: string) => {
-    setRequestorSearchTerm(term);
-  };
-
-  // Filter requestors based on search term
-  const filteredRequestors = requestorOptions.filter((requestor) =>
-    requestor.toLowerCase().includes(requestorSearchTerm.toLowerCase())
-  );
-
-  // Category dropdown handlers
-  const handleCategorySelect = (category: string) => {
-    setSelectedCategories((prev) => {
-      if (prev.includes(category)) {
-        return prev.filter((c) => c !== category);
-      } else {
-        return [...prev, category];
-      }
-    });
-    // Auto-close dropdown when an item is selected
-    setIsCategoryDropdownOpen(false);
-  };
-
-  const handleCategorySearch = (term: string) => {
-    setCategorySearchTerm(term);
-  };
-
-  // Filter categories based on search term
-  const filteredCategories = categoryOptions.filter((category) =>
-    category.toLowerCase().includes(categorySearchTerm.toLowerCase())
-  );
-
-  // Reset category selection
-  const handleCategoryReset = () => {
-    setSelectedCategories([]);
-    setCategorySearchTerm("");
-  };
-
-  // Reset requestor selection
-  const handleRequestorReset = () => {
-    setSelectedRequestors([]);
-    setRequestorSearchTerm("");
   };
 
   // Initialize Tiptap editor when modal opens
@@ -1047,26 +390,10 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
           const starterKitModule = "https://esm.sh/@tiptap/starter-kit";
           const placeholderModule =
             "https://esm.sh/@tiptap/extension-placeholder";
-          const paragraphModule = "https://esm.sh/@tiptap/extension-paragraph";
-          const boldModule = "https://esm.sh/@tiptap/extension-bold";
-          const underlineModule = "https://esm.sh/@tiptap/extension-underline";
-          const linkModule = "https://esm.sh/@tiptap/extension-link";
-          const bulletListModule =
-            "https://esm.sh/@tiptap/extension-bullet-list";
-          const orderedListModule =
-            "https://esm.sh/@tiptap/extension-ordered-list";
-          const listItemModule = "https://esm.sh/@tiptap/extension-list-item";
 
           const { Editor, Node } = (await import(coreModule)) as any;
           const StarterKit = (await import(starterKitModule)) as any;
           const Placeholder = (await import(placeholderModule)) as any;
-          const Paragraph = (await import(paragraphModule)) as any;
-          const Bold = (await import(boldModule)) as any;
-          const Underline = (await import(underlineModule)) as any;
-          const Link = (await import(linkModule)) as any;
-          const BulletList = (await import(bulletListModule)) as any;
-          const OrderedList = (await import(orderedListModule)) as any;
-          const ListItem = (await import(listItemModule)) as any;
 
           const CustomBlockquote = Node.create({
             name: "customBlockquote",
@@ -1136,50 +463,51 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
             ),
             editorProps: {
               attributes: {
-                class: "relative min-h-40 p-3",
+                class: "relative min-h-20 p-2 scrollbar-hide",
               },
             },
             extensions: [
               StarterKit.default.configure({
                 blockquote: false,
                 history: false,
+                paragraph: {
+                  HTMLAttributes: {
+                    class: "text-sm text-gray-800 dark:text-neutral-200",
+                  },
+                },
+                bold: {
+                  HTMLAttributes: {
+                    class: "font-bold",
+                  },
+                },
+                bulletList: {
+                  HTMLAttributes: {
+                    class:
+                      "list-disc list-inside text-gray-800 dark:text-white",
+                  },
+                },
+                orderedList: {
+                  HTMLAttributes: {
+                    class:
+                      "list-decimal list-inside text-gray-800 dark:text-white",
+                  },
+                },
+                listItem: {
+                  HTMLAttributes: {
+                    class: "marker:text-sm",
+                  },
+                },
+                link: {
+                  HTMLAttributes: {
+                    class:
+                      "inline-flex items-center gap-x-1 text-blue-600 decoration-2 hover:underline focus:outline-hidden focus:underline font-medium dark:text-white",
+                  },
+                },
+                underline: true,
               }),
               Placeholder.default.configure({
                 placeholder: "Describe your issue in detail...",
                 emptyNodeClass: "before:text-gray-400",
-              }),
-              Paragraph.default.configure({
-                HTMLAttributes: {
-                  class: "text-sm text-gray-800 dark:text-neutral-200",
-                },
-              }),
-              Bold.default.configure({
-                HTMLAttributes: {
-                  class: "font-bold",
-                },
-              }),
-              Underline.default,
-              Link.default.configure({
-                HTMLAttributes: {
-                  class:
-                    "inline-flex items-center gap-x-1 text-blue-600 decoration-2 hover:underline focus:outline-hidden focus:underline font-medium dark:text-white",
-                },
-              }),
-              BulletList.default.configure({
-                HTMLAttributes: {
-                  class: "list-disc list-inside text-gray-800 dark:text-white",
-                },
-              }),
-              OrderedList.default.configure({
-                HTMLAttributes: {
-                  class:
-                    "list-decimal list-inside text-gray-800 dark:text-white",
-                },
-              }),
-              ListItem.default.configure({
-                HTMLAttributes: {
-                  class: "marker:text-sm",
-                },
               }),
               CustomBlockquote.configure({
                 HTMLAttributes: {
@@ -1854,6 +1182,15 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
         {`
           .ProseMirror:focus {
             outline: none;
+          }
+
+          .ProseMirror {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          
+          .ProseMirror::-webkit-scrollbar {
+            display: none;
           }
 
           .tiptap ul p,
@@ -3752,751 +3089,906 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
 
         {/* New Request Modal */}
         {isNewRequestModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden border border-gray-200 dark:border-gray-700">
-              {/* Modal Header */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 border-b border-gray-200 dark:border-gray-600">
-                <div className="flex items-center justify-between p-6">
-                  <div className="flex items-center gap-4">
+          <div
+            className="fixed inset-0 z-50 overflow-x-hidden overflow-y-auto scrollbar-hide"
+            role="dialog"
+            tabIndex={-1}
+            aria-labelledby="hs-vertically-centered-modal-label"
+          >
+            <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity"></div>
+            <div className="relative min-h-screen flex items-start justify-center p-4">
+              <div className="w-full max-w-4xl mt-4 opacity-100 duration-500 ease-out transition-all">
+                <div className="w-full flex flex-col bg-white border border-gray-200 shadow-2xl rounded-xl pointer-events-auto dark:bg-neutral-800 dark:border-neutral-700 dark:shadow-neutral-700/70">
+                  {/* Modal Header */}
+                  <div className="flex justify-between items-center py-2 px-4 border-b border-gray-200 dark:border-neutral-700">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                        <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div>
-                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                          Create New Request
-                        </h2>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="font-mono text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-                            {newRequestForm.ticketNo}
-                          </span>
-                          {newRequestForm.severity && (
-                            <div className="flex items-center gap-1">
-                              <Flag className="w-3 h-3 text-red-500" />
-                              <span className="text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
-                                {newRequestForm.severity}
-                              </span>
-                            </div>
-                          )}
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                          <MessageSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         </div>
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setIsNewRequestModalOpen(false)}
-                    className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
-                  >
-                    <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Modal Content */}
-              <div className="p-6 overflow-y-auto max-h-[calc(95vh-160px)]">
-                {/* Ticket Title Section */}
-                <div className="mb-6">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                      <Sprout className="w-5 h-5 text-green-600 dark:text-green-400" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Request Title
-                    </h3>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Enter a clear, descriptive title for your request..."
-                    value={newRequestForm.ticketTitle}
-                    onChange={(e) =>
-                      handleFormChange("ticketTitle", e.target.value)
-                    }
-                    className="w-full px-4 py-2 text-lg font-medium bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  />
-                </div>
-
-                {/* Form Fields Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-                  {/* Left Column */}
-                  <div className="space-y-4">
-                    {/* Date */}
-                    <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-xl">
-                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                        <Calendar className="w-4 h-4 inline mr-2" />
-                        Request Date
-                      </label>
-                      <div className="relative max-w-sm">
-                        <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
-                          <svg
-                            className="w-4 h-4 text-gray-500 dark:text-gray-400"
-                            aria-hidden="true"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
+                        <div>
+                          <h3
+                            id="hs-vertically-centered-modal-label"
+                            className="font-bold text-gray-800 dark:text-white"
                           >
-                            <path d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z" />
-                          </svg>
-                        </div>
-                        <input
-                          id="datepicker-actions"
-                          type="date"
-                          value={newRequestForm.date}
-                          onChange={(e) =>
-                            handleFormChange("date", e.target.value)
-                          }
-                          className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                          placeholder="Select date"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Requestor */}
-                    <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-xl">
-                      <div className="flex items-center justify-between mb-3">
-                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
-                          <span className="text-red-500">*</span> Requestor
-                        </label>
-                        <button
-                          onClick={handleRequestorReset}
-                          className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
-                          title="Reset requestor selection"
-                        >
-                          <RotateCcw className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                        </button>
-                      </div>
-
-                      {/* Dropdown Button */}
-                      <button
-                        id="dropdownSearchButton"
-                        onClick={() =>
-                          setIsRequestorDropdownOpen(!isRequestorDropdownOpen)
-                        }
-                        className="text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-300 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center w-full justify-between"
-                        type="button"
-                      >
-                        {selectedRequestors.length === 0
-                          ? "Select Requestor"
-                          : selectedRequestors.length === 1
-                          ? selectedRequestors[0]
-                          : `${selectedRequestors.length} requestors selected`}
-                        <svg
-                          className="w-2.5 h-2.5 ms-3"
-                          aria-hidden="true"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 10 6"
-                        >
-                          <path
-                            stroke="currentColor"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="m1 1 4 4 4-4"
-                          />
-                        </svg>
-                      </button>
-
-                      {/* Dropdown Menu */}
-                      {isRequestorDropdownOpen && (
-                        <div className="z-10 bg-white rounded-lg shadow-sm w-full dark:bg-gray-700 border border-gray-200 dark:border-gray-600 mt-2">
-                          <div className="p-3">
-                            <label
-                              htmlFor="input-group-search"
-                              className="sr-only"
-                            >
-                              Search
-                            </label>
-                            <div className="relative">
-                              <div className="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-                                <svg
-                                  className="w-4 h-4 text-gray-500 dark:text-gray-400"
-                                  aria-hidden="true"
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill="none"
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path
-                                    stroke="currentColor"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
-                                  />
-                                </svg>
+                            Create New Request
+                          </h3>
+                          <div className="flex items-center gap-3 mt-0.5">
+                            <span className="font-mono text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                              {newRequestForm.ticketNo}
+                            </span>
+                            {newRequestForm.severity && (
+                              <div className="flex items-center gap-1">
+                                <Flag className="w-3 h-3 text-red-500" />
+                                <span className="text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
+                                  {newRequestForm.severity}
+                                </span>
                               </div>
-                              <input
-                                type="text"
-                                id="input-group-search"
-                                className="block w-full p-2 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                                placeholder="Search user"
-                                value={requestorSearchTerm}
-                                onChange={(e) =>
-                                  handleRequestorSearch(e.target.value)
-                                }
-                              />
-                            </div>
+                            )}
                           </div>
-                          <ul
-                            className="h-48 px-3 pb-3 overflow-y-auto text-sm text-gray-700 dark:text-gray-200"
-                            aria-labelledby="dropdownSearchButton"
-                          >
-                            {filteredRequestors.map((requestor, _) => (
-                              <li key={requestor}>
-                                <div
-                                  className={`flex items-center ps-2 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer py-2 ${
-                                    selectedRequestors.includes(requestor)
-                                      ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                                      : ""
-                                  }`}
-                                  onClick={() =>
-                                    handleRequestorSelect(requestor)
-                                  }
-                                >
-                                  <span className="text-sm font-medium">
-                                    {requestor}
-                                  </span>
-                                  {selectedRequestors.includes(requestor) && (
-                                    <svg
-                                      className="w-4 h-4 ml-auto text-blue-600 dark:text-blue-400"
-                                      fill="currentColor"
-                                      viewBox="0 0 20 20"
-                                    >
-                                      <path
-                                        fillRule="evenodd"
-                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                        clipRule="evenodd"
-                                      />
-                                    </svg>
-                                  )}
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Department */}
-                    <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-xl">
-                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                        <span className="text-red-500">*</span> Department
-                      </label>
-                      <select
-                        value={newRequestForm.department}
-                        onChange={(e) =>
-                          handleFormChange("department", e.target.value)
-                        }
-                        className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      >
-                        <option value="">Select Department</option>
-                        {departmentOptions.map((dept) => (
-                          <option key={dept} value={dept}>
-                            {dept}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Right Column */}
-                  <div className="space-y-4">
-                    {/* Severity */}
-                    <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-xl">
-                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                        <Flag className="w-4 h-4 inline mr-2" />
-                        <span className="text-red-500">*</span> Severity Level
-                      </label>
-                      <div className="relative">
-                        <button
-                          id="dropdownRadioHelperButton"
-                          data-dropdown-toggle="dropdownRadioHelper"
-                          onClick={() =>
-                            setIsSeverityDropdownOpen(!isSeverityDropdownOpen)
-                          }
-                          className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
-                          type="button"
-                        >
-                          {newRequestForm.severity || "Select Severity"}
-                          <svg
-                            className="w-2.5 h-2.5 ms-3"
-                            aria-hidden="true"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 10 6"
-                          >
-                            <path
-                              stroke="currentColor"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="m1 1 4 4 4-4"
-                            />
-                          </svg>
-                        </button>
-
-                        {/* Dropdown menu */}
-                        {isSeverityDropdownOpen && (
-                          <div
-                            id="dropdownRadioHelper"
-                            className="absolute z-10 bg-white divide-y divide-gray-100 rounded-lg shadow-sm w-full dark:bg-gray-700 dark:divide-gray-600 border border-gray-200 dark:border-gray-600 mt-1"
-                          >
-                            <ul
-                              className="p-3 space-y-1 text-sm text-gray-700 dark:text-gray-200"
-                              aria-labelledby="dropdownRadioHelperButton"
-                            >
-                              {severityOptions.map((severity, index) => (
-                                <li key={severity.value}>
-                                  <div className="flex p-2 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-600">
-                                    <div className="flex items-center h-5">
-                                      <input
-                                        id={`helper-radio-${index}`}
-                                        name="helper-radio"
-                                        type="radio"
-                                        value={severity.value}
-                                        checked={
-                                          newRequestForm.severity ===
-                                          severity.value
-                                        }
-                                        onChange={(e) => {
-                                          handleFormChange(
-                                            "severity",
-                                            e.target.value
-                                          );
-                                          setIsSeverityDropdownOpen(false);
-                                        }}
-                                        className="w-4 h-4 text-gray-600 bg-gray-100 border-gray-300 focus:ring-gray-500 dark:focus:ring-gray-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
-                                      />
-                                    </div>
-                                    <div className="ms-2 text-sm">
-                                      <label
-                                        htmlFor={`helper-radio-${index}`}
-                                        className="font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
-                                      >
-                                        <div>{severity.label}</div>
-                                        <p className="text-xs font-normal text-gray-500 dark:text-gray-300">
-                                          {severity.description}
-                                        </p>
-                                      </label>
-                                    </div>
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Category */}
-                    <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-xl">
-                      <div className="flex items-center justify-between mb-3">
-                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
-                          <span className="text-red-500">*</span> Category
-                        </label>
-                        <button
-                          onClick={handleCategoryReset}
-                          className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
-                          title="Reset category selection"
-                        >
-                          <RotateCcw className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                        </button>
-                      </div>
-
-                      {/* Dropdown Button */}
-                      <button
-                        onClick={() =>
-                          setIsCategoryDropdownOpen(!isCategoryDropdownOpen)
-                        }
-                        className="text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-300 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center w-full justify-between"
-                        type="button"
-                      >
-                        {selectedCategories.length === 0
-                          ? "Select Category"
-                          : selectedCategories.length === 1
-                          ? selectedCategories[0]
-                          : `${selectedCategories.length} categories selected`}
-                        <svg
-                          className="w-2.5 h-2.5 ms-3"
-                          aria-hidden="true"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 10 6"
-                        >
-                          <path
-                            stroke="currentColor"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="m1 1 4 4 4-4"
-                          />
-                        </svg>
-                      </button>
-
-                      {/* Dropdown Menu */}
-                      {isCategoryDropdownOpen && (
-                        <div className="z-10 bg-white rounded-lg shadow-sm w-full dark:bg-gray-700 border border-gray-200 dark:border-gray-600 mt-2">
-                          <div className="p-3">
-                            <label
-                              htmlFor="category-search"
-                              className="sr-only"
-                            >
-                              Search
-                            </label>
-                            <div className="relative">
-                              <div className="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-                                <svg
-                                  className="w-4 h-4 text-gray-500 dark:text-gray-400"
-                                  aria-hidden="true"
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill="none"
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path
-                                    stroke="currentColor"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
-                                  />
-                                </svg>
-                              </div>
-                              <input
-                                type="text"
-                                id="category-search"
-                                className="block w-full p-2 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                                placeholder="Search category"
-                                value={categorySearchTerm}
-                                onChange={(e) =>
-                                  handleCategorySearch(e.target.value)
-                                }
-                              />
-                            </div>
-                          </div>
-                          <ul className="h-48 px-3 pb-3 overflow-y-auto text-sm text-gray-700 dark:text-gray-200">
-                            {filteredCategories.map((category, _) => (
-                              <li key={category}>
-                                <div
-                                  className={`flex items-center ps-2 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer py-2 ${
-                                    selectedCategories.includes(category)
-                                      ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                                      : ""
-                                  }`}
-                                  onClick={() => handleCategorySelect(category)}
-                                >
-                                  <span className="text-sm font-medium">
-                                    {category}
-                                  </span>
-                                  {selectedCategories.includes(category) && (
-                                    <svg
-                                      className="w-4 h-4 ml-auto text-blue-600 dark:text-blue-400"
-                                      fill="currentColor"
-                                      viewBox="0 0 20 20"
-                                    >
-                                      <path
-                                        fillRule="evenodd"
-                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                        clipRule="evenodd"
-                                      />
-                                    </svg>
-                                  )}
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Description Section */}
-                <div className="mb-6">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                      <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Request Description
-                    </h3>
-                    <span className="text-red-500 text-sm">*</span>
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    Provide detailed information about your request. Use the
-                    formatting tools below to structure your content.
-                  </p>
-
-                  {/* Enhanced Tiptap Rich Text Editor */}
-                  <div className="bg-white border-2 border-gray-200 rounded-xl overflow-hidden dark:bg-gray-800 dark:border-gray-600 shadow-sm hover:shadow-md transition-shadow duration-200">
-                    <div id="hs-editor-tiptap-blockquote-alt">
-                      <div className="sticky top-0 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 flex align-middle gap-x-1 border-b border-gray-200 dark:border-gray-600 p-3">
-                        <button
-                          className="size-8 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                          type="button"
-                          data-hs-editor-bold=""
-                        >
-                          <svg
-                            className="shrink-0 size-4"
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M14 12a4 4 0 0 0 0-8H6v8"></path>
-                            <path d="M15 20a4 4 0 0 0 0-8H6v8Z"></path>
-                          </svg>
-                        </button>
-                        <button
-                          className="size-8 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                          type="button"
-                          data-hs-editor-italic=""
-                        >
-                          <svg
-                            className="shrink-0 size-4"
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <line x1="19" x2="10" y1="4" y2="4"></line>
-                            <line x1="14" x2="5" y1="20" y2="20"></line>
-                            <line x1="15" x2="9" y1="4" y2="20"></line>
-                          </svg>
-                        </button>
-                        <button
-                          className="size-8 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                          type="button"
-                          data-hs-editor-underline=""
-                        >
-                          <svg
-                            className="shrink-0 size-4"
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M6 4v6a6 6 0 0 0 12 0V4"></path>
-                            <line x1="4" x2="20" y1="20" y2="20"></line>
-                          </svg>
-                        </button>
-                        <button
-                          className="size-8 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                          type="button"
-                          data-hs-editor-strike=""
-                        >
-                          <svg
-                            className="shrink-0 size-4"
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M16 4H9a3 3 0 0 0-2.83 4"></path>
-                            <path d="M14 12a4 4 0 0 1 0 8H6"></path>
-                            <line x1="4" x2="20" y1="12" y2="12"></line>
-                          </svg>
-                        </button>
-                        <button
-                          className="size-8 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                          type="button"
-                          data-hs-editor-link=""
-                        >
-                          <svg
-                            className="shrink-0 size-4"
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                          </svg>
-                        </button>
-                        <button
-                          className="size-8 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                          type="button"
-                          data-hs-editor-ol=""
-                        >
-                          <svg
-                            className="shrink-0 size-4"
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <line x1="10" x2="21" y1="6" y2="6"></line>
-                            <line x1="10" x2="21" y1="12" y2="12"></line>
-                            <line x1="10" x2="21" y1="18" y2="18"></line>
-                            <path d="M4 6h1v4"></path>
-                            <path d="M4 10h2"></path>
-                            <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path>
-                          </svg>
-                        </button>
-                        <button
-                          className="size-8 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                          type="button"
-                          data-hs-editor-ul=""
-                        >
-                          <svg
-                            className="shrink-0 size-4"
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <line x1="8" x2="21" y1="6" y2="6"></line>
-                            <line x1="8" x2="21" y1="12" y2="12"></line>
-                            <line x1="8" x2="21" y1="18" y2="18"></line>
-                            <line x1="3" x2="3.01" y1="6" y2="6"></line>
-                            <line x1="3" x2="3.01" y1="12" y2="12"></line>
-                            <line x1="3" x2="3.01" y1="18" y2="18"></line>
-                          </svg>
-                        </button>
-                        <button
-                          className="size-8 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                          type="button"
-                          data-hs-editor-blockquote=""
-                        >
-                          <svg
-                            className="shrink-0 size-4"
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M17 6H3"></path>
-                            <path d="M21 12H8"></path>
-                            <path d="M21 18H8"></path>
-                            <path d="M3 12v6"></path>
-                          </svg>
-                        </button>
-                        <button
-                          className="size-8 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                          type="button"
-                          data-hs-editor-code=""
-                        >
-                          <svg
-                            className="shrink-0 size-4"
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="m18 16 4-4-4-4"></path>
-                            <path d="m6 8-4 4 4 4"></path>
-                            <path d="m14.5 4-5 16"></path>
-                          </svg>
-                        </button>
-
-                        {/* Emoji Button - Last in toolbar */}
-                        <div className="relative emoji-picker-container">
-                          <button
-                            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                            className="size-8 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                            type="button"
-                          >
-                            <Smile className="shrink-0 size-4" />
-                          </button>
-
-                          {/* Emoji Picker - Forward positioned and wider for all emoji types */}
-                          {showEmojiPicker && (
-                            <div className="absolute top-full right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-4 w-96 max-h-96 overflow-y-auto z-50">
-                              <div className="grid grid-cols-12 gap-1">
-                                {emojiOptions
-                                  .slice(0, 120)
-                                  .map((emoji, index) => (
-                                    <button
-                                      key={index}
-                                      onClick={() => handleEmojiClick(emoji)}
-                                      className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors text-lg flex items-center justify-center"
-                                      title={emoji}
-                                    >
-                                      {emoji}
-                                    </button>
-                                  ))}
-                              </div>
-                              <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-600">
-                                <button
-                                  onClick={() => setShowEmojiPicker(false)}
-                                  className="w-full text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                                >
-                                  Close
-                                </button>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       </div>
-
-                      <div
-                        className="h-36 overflow-auto p-3 bg-white dark:bg-gray-800"
-                        data-hs-editor-field=""
-                      ></div>
                     </div>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-600">
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    <span className="text-red-500">*</span> Required fields
-                  </div>
-                  <div className="flex items-center gap-3">
                     <button
+                      type="button"
+                      className="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none focus:bg-gray-200 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:text-neutral-400 dark:focus:bg-neutral-600"
+                      aria-label="Close"
                       onClick={() => setIsNewRequestModalOpen(false)}
-                      className="px-6 py-3 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200"
                     >
-                      Cancel
+                      <span className="sr-only">Close</span>
+                      <svg
+                        className="shrink-0 size-4"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M18 6 6 18"></path>
+                        <path d="m6 6 12 12"></path>
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Modal Content */}
+                  <div className="p-3 overflow-y-auto max-h-[85vh] scrollbar-thin scrollbar-thumb-violet-600 scrollbar-track-violet-900 hover:scrollbar-thumb-violet-500">
+                    {/* Ticket Title Section */}
+                    <div className="mb-3">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="p-1 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400"
+                          >
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                          </svg>
+                        </div>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                          Request Title
+                        </h3>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Enter a clear, descriptive title for your request..."
+                        value={newRequestForm.ticketTitle}
+                        onChange={(e) =>
+                          handleFormChange("ticketTitle", e.target.value)
+                        }
+                        className="w-full px-3 py-1.5 text-sm font-medium bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      />
+                    </div>
+
+                    {/* Form Fields Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5 mb-4">
+                      {/* Left Column */}
+                      <div className="space-y-1.5">
+                        {/* Date */}
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
+                          <div className="mb-1.5">
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                              <Calendar className="w-4 h-4 inline mr-2" />
+                              Request Date
+                            </label>
+                          </div>
+                          <div className="relative max-w-sm">
+                            <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                              <svg
+                                className="w-4 h-4 text-gray-500 dark:text-gray-400"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z" />
+                              </svg>
+                            </div>
+                            <input
+                              id="datepicker-actions"
+                              type="date"
+                              value={newRequestForm.date}
+                              onChange={(e) =>
+                                handleFormChange("date", e.target.value)
+                              }
+                              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                              placeholder="Select date"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Requestor */}
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
+                          <div className="mb-1.5">
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                              <User className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Requestor
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              id="dropdownRequestorRadioButton"
+                              data-dropdown-toggle="dropdownRequestorRadio"
+                              onClick={() =>
+                                setIsRequestorDropdownOpen(
+                                  !isRequestorDropdownOpen
+                                )
+                              }
+                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-3 py-2 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
+                              type="button"
+                            >
+                              {newRequestForm.requestor || "Select Requestor"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+
+                            {/* Dropdown menu */}
+                            {isRequestorDropdownOpen && (
+                              <div
+                                id="dropdownRequestorRadio"
+                                className="absolute z-10 w-48 bg-white divide-y divide-gray-100 rounded-lg shadow-sm dark:bg-gray-700 dark:divide-gray-600 mt-1"
+                              >
+                                <ul
+                                  className="p-3 space-y-3 text-sm text-gray-700 dark:text-gray-200"
+                                  aria-labelledby="dropdownRequestorRadioButton"
+                                >
+                                  {requestorOptions.map((requestor, index) => (
+                                    <li key={requestor}>
+                                      <div className="flex items-center">
+                                        <input
+                                          id={`requestor-radio-${index}`}
+                                          type="radio"
+                                          value={requestor}
+                                          name="requestor-radio"
+                                          checked={
+                                            newRequestForm.requestor ===
+                                            requestor
+                                          }
+                                          onChange={(e) => {
+                                            handleFormChange(
+                                              "requestor",
+                                              e.target.value
+                                            );
+                                            setIsRequestorDropdownOpen(false);
+                                          }}
+                                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                        />
+                                        <label
+                                          htmlFor={`requestor-radio-${index}`}
+                                          className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                        >
+                                          {requestor}
+                                        </label>
+                                      </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Department */}
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
+                          <div className="mb-1.5">
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                              <Building className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Department
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              id="dropdownDepartmentRadioButton"
+                              data-dropdown-toggle="dropdownDepartmentRadio"
+                              onClick={() =>
+                                setIsDepartmentDropdownOpen(
+                                  !isDepartmentDropdownOpen
+                                )
+                              }
+                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-3 py-2 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
+                              type="button"
+                            >
+                              {newRequestForm.department || "Select Department"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+
+                            {/* Dropdown menu */}
+                            {isDepartmentDropdownOpen && (
+                              <div
+                                id="dropdownDepartmentRadio"
+                                className="absolute z-10 w-48 bg-white divide-y divide-gray-100 rounded-lg shadow-sm dark:bg-gray-700 dark:divide-gray-600 mt-1"
+                              >
+                                <ul
+                                  className="p-3 space-y-3 text-sm text-gray-700 dark:text-gray-200"
+                                  aria-labelledby="dropdownDepartmentRadioButton"
+                                >
+                                  {departmentOptions.map((dept, index) => (
+                                    <li key={dept}>
+                                      <div className="flex items-center">
+                                        <input
+                                          id={`department-radio-${index}`}
+                                          type="radio"
+                                          value={dept}
+                                          name="department-radio"
+                                          checked={
+                                            newRequestForm.department === dept
+                                          }
+                                          onChange={(e) => {
+                                            handleFormChange(
+                                              "department",
+                                              e.target.value
+                                            );
+                                            setIsDepartmentDropdownOpen(false);
+                                          }}
+                                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                        />
+                                        <label
+                                          htmlFor={`department-radio-${index}`}
+                                          className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                        >
+                                          {dept}
+                                        </label>
+                                      </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Column */}
+                      <div className="space-y-1.5">
+                        {/* Severity */}
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
+                          <div className="mb-1.5">
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                              <Flag className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Severity
+                              Level
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              id="dropdownRadioHelperButton"
+                              data-dropdown-toggle="dropdownRadioHelper"
+                              onClick={() =>
+                                setIsSeverityDropdownOpen(
+                                  !isSeverityDropdownOpen
+                                )
+                              }
+                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-3 py-2 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
+                              type="button"
+                            >
+                              {newRequestForm.severity || "Select Severity"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+
+                            {/* Dropdown menu */}
+                            {isSeverityDropdownOpen && (
+                              <div
+                                id="dropdownRadioHelper"
+                                className="absolute z-10 bg-white divide-y divide-gray-100 rounded-lg shadow-sm w-full dark:bg-gray-700 dark:divide-gray-600 border border-gray-200 dark:border-gray-600 mt-1"
+                              >
+                                <ul
+                                  className="p-3 space-y-1 text-sm text-gray-700 dark:text-gray-200"
+                                  aria-labelledby="dropdownRadioHelperButton"
+                                >
+                                  {severityOptions.map((severity, index) => (
+                                    <li key={severity.value}>
+                                      <div className="flex p-2 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-600">
+                                        <div className="flex items-center h-5">
+                                          <input
+                                            id={`helper-radio-${index}`}
+                                            name="helper-radio"
+                                            type="radio"
+                                            value={severity.value}
+                                            checked={
+                                              newRequestForm.severity ===
+                                              severity.value
+                                            }
+                                            onChange={(e) => {
+                                              handleFormChange(
+                                                "severity",
+                                                e.target.value
+                                              );
+                                              setIsSeverityDropdownOpen(false);
+                                            }}
+                                            className="w-4 h-4 text-gray-600 bg-gray-100 border-gray-300 focus:ring-gray-500 dark:focus:ring-gray-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                          />
+                                        </div>
+                                        <div className="ms-2 text-sm">
+                                          <label
+                                            htmlFor={`helper-radio-${index}`}
+                                            className="font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                          >
+                                            <div>{severity.label}</div>
+                                            <p className="text-xs font-normal text-gray-500 dark:text-gray-300">
+                                              {severity.description}
+                                            </p>
+                                          </label>
+                                        </div>
+                                      </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Category */}
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
+                          <div className="mb-1.5">
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                              <Tag className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Category
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              id="dropdownCategoryRadioButton"
+                              data-dropdown-toggle="dropdownCategoryRadio"
+                              onClick={() =>
+                                setIsCategoryDropdownOpen(
+                                  !isCategoryDropdownOpen
+                                )
+                              }
+                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-3 py-2 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
+                              type="button"
+                            >
+                              {newRequestForm.category || "Select Category"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+
+                            {/* Dropdown menu */}
+                            {isCategoryDropdownOpen && (
+                              <div
+                                id="dropdownCategoryRadio"
+                                className="absolute z-10 w-48 bg-white divide-y divide-gray-100 rounded-lg shadow-sm dark:bg-gray-700 dark:divide-gray-600 mt-1"
+                              >
+                                <ul
+                                  className="p-3 space-y-3 text-sm text-gray-700 dark:text-gray-200"
+                                  aria-labelledby="dropdownCategoryRadioButton"
+                                >
+                                  {categoryOptions.map((category, index) => (
+                                    <li key={category}>
+                                      <div className="flex items-center">
+                                        <input
+                                          id={`category-radio-${index}`}
+                                          type="radio"
+                                          value={category}
+                                          name="category-radio"
+                                          checked={
+                                            newRequestForm.category === category
+                                          }
+                                          onChange={(e) => {
+                                            handleFormChange(
+                                              "category",
+                                              e.target.value
+                                            );
+                                            setIsCategoryDropdownOpen(false);
+                                          }}
+                                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                        />
+                                        <label
+                                          htmlFor={`category-radio-${index}`}
+                                          className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                        >
+                                          {category}
+                                        </label>
+                                      </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Assignee */}
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
+                          <div className="mb-1.5">
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                              <UserCheck className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Assignee
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              id="dropdownAssigneeRadioButton"
+                              data-dropdown-toggle="dropdownAssigneeRadio"
+                              onClick={() =>
+                                setIsAssigneeDropdownOpen(
+                                  !isAssigneeDropdownOpen
+                                )
+                              }
+                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-3 py-2 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
+                              type="button"
+                            >
+                              {newRequestForm.assignee || "Select Assignee"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+
+                            {/* Dropdown menu */}
+                            {isAssigneeDropdownOpen && (
+                              <div
+                                id="dropdownAssigneeRadio"
+                                className="absolute z-10 w-48 bg-white divide-y divide-gray-100 rounded-lg shadow-sm dark:bg-gray-700 dark:divide-gray-600 mt-1"
+                              >
+                                <ul
+                                  className="p-3 space-y-3 text-sm text-gray-700 dark:text-gray-200"
+                                  aria-labelledby="dropdownAssigneeRadioButton"
+                                >
+                                  {assigneeOptions.map((assignee, index) => (
+                                    <li key={assignee}>
+                                      <div className="flex items-center">
+                                        <input
+                                          id={`assignee-radio-${index}`}
+                                          type="radio"
+                                          value={assignee}
+                                          name="assignee-radio"
+                                          checked={
+                                            newRequestForm.assignee === assignee
+                                          }
+                                          onChange={(e) => {
+                                            handleFormChange(
+                                              "assignee",
+                                              e.target.value
+                                            );
+                                            setIsAssigneeDropdownOpen(false);
+                                          }}
+                                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                        />
+                                        <label
+                                          htmlFor={`assignee-radio-${index}`}
+                                          className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                        >
+                                          {assignee}
+                                        </label>
+                                      </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Branch */}
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
+                          <div className="mb-1.5">
+                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                              <Building className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Branch
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              id="dropdownBranchRadioButton"
+                              data-dropdown-toggle="dropdownBranchRadio"
+                              onClick={() =>
+                                setIsBranchDropdownOpen(!isBranchDropdownOpen)
+                              }
+                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-3 py-2 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
+                              type="button"
+                            >
+                              {newRequestForm.branch || "Select Branch"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+
+                            {/* Dropdown menu */}
+                            {isBranchDropdownOpen && (
+                              <div
+                                id="dropdownBranchRadio"
+                                className="absolute z-10 w-48 bg-white divide-y divide-gray-100 rounded-lg shadow-sm dark:bg-gray-700 dark:divide-gray-600 border border-gray-200 dark:border-gray-600 mt-1"
+                              >
+                                <ul
+                                  className="p-3 space-y-1 text-sm text-gray-700 dark:text-gray-200"
+                                  aria-labelledby="dropdownBranchRadioButton"
+                                >
+                                  {branchOptions.map((branch, index) => (
+                                    <li key={branch}>
+                                      <div className="flex items-center">
+                                        <input
+                                          id={`branch-radio-${index}`}
+                                          type="radio"
+                                          value={branch}
+                                          name="branch-radio"
+                                          checked={
+                                            newRequestForm.branch === branch
+                                          }
+                                          onChange={(e) => {
+                                            handleFormChange(
+                                              "branch",
+                                              e.target.value
+                                            );
+                                            setIsBranchDropdownOpen(false);
+                                          }}
+                                          className="w-4 h-4 text-gray-600 bg-gray-100 border-gray-300 focus:ring-gray-500 dark:focus:ring-gray-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                        />
+                                        <div className="ms-2 text-sm">
+                                          <label
+                                            htmlFor={`branch-radio-${index}`}
+                                            className="font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                          >
+                                            {branch}
+                                          </label>
+                                        </div>
+                                      </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Description Section */}
+                    <div className="mb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                          <MessageSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                          Request Description
+                        </h3>
+                        <span className="text-red-500 text-sm">*</span>
+                      </div>
+
+                      {/* Enhanced Tiptap Rich Text Editor */}
+                      <div className="bg-white border-2 border-gray-200 rounded-xl overflow-hidden dark:bg-gray-800 dark:border-gray-600 shadow-sm hover:shadow-md transition-shadow duration-200">
+                        <div id="hs-editor-tiptap-blockquote-alt">
+                          <div className="sticky top-0 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 flex align-middle gap-x-1 border-b border-gray-200 dark:border-gray-600 p-1.5">
+                            <button
+                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+                              type="button"
+                              data-hs-editor-bold=""
+                            >
+                              <svg
+                                className="shrink-0 size-4"
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M14 12a4 4 0 0 0 0-8H6v8"></path>
+                                <path d="M15 20a4 4 0 0 0 0-8H6v8Z"></path>
+                              </svg>
+                            </button>
+                            <button
+                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+                              type="button"
+                              data-hs-editor-italic=""
+                            >
+                              <svg
+                                className="shrink-0 size-4"
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <line x1="19" x2="10" y1="4" y2="4"></line>
+                                <line x1="14" x2="5" y1="20" y2="20"></line>
+                                <line x1="15" x2="9" y1="4" y2="20"></line>
+                              </svg>
+                            </button>
+                            <button
+                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+                              type="button"
+                              data-hs-editor-underline=""
+                            >
+                              <svg
+                                className="shrink-0 size-4"
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M6 4v6a6 6 0 0 0 12 0V4"></path>
+                                <line x1="4" x2="20" y1="20" y2="20"></line>
+                              </svg>
+                            </button>
+                            <button
+                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+                              type="button"
+                              data-hs-editor-strike=""
+                            >
+                              <svg
+                                className="shrink-0 size-4"
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M16 4H9a3 3 0 0 0-2.83 4"></path>
+                                <path d="M14 12a4 4 0 0 1 0 8H6"></path>
+                                <line x1="4" x2="20" y1="12" y2="12"></line>
+                              </svg>
+                            </button>
+                            <button
+                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+                              type="button"
+                              data-hs-editor-link=""
+                            >
+                              <svg
+                                className="shrink-0 size-4"
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                              </svg>
+                            </button>
+                            <button
+                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+                              type="button"
+                              data-hs-editor-ol=""
+                            >
+                              <svg
+                                className="shrink-0 size-4"
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <line x1="10" x2="21" y1="6" y2="6"></line>
+                                <line x1="10" x2="21" y1="12" y2="12"></line>
+                                <line x1="10" x2="21" y1="18" y2="18"></line>
+                                <path d="M4 6h1v4"></path>
+                                <path d="M4 10h2"></path>
+                                <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path>
+                              </svg>
+                            </button>
+                            <button
+                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+                              type="button"
+                              data-hs-editor-ul=""
+                            >
+                              <svg
+                                className="shrink-0 size-4"
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <line x1="8" x2="21" y1="6" y2="6"></line>
+                                <line x1="8" x2="21" y1="12" y2="12"></line>
+                                <line x1="8" x2="21" y1="18" y2="18"></line>
+                                <line x1="3" x2="3.01" y1="6" y2="6"></line>
+                                <line x1="3" x2="3.01" y1="12" y2="12"></line>
+                                <line x1="3" x2="3.01" y1="18" y2="18"></line>
+                              </svg>
+                            </button>
+                            <button
+                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+                              type="button"
+                              data-hs-editor-blockquote=""
+                            >
+                              <svg
+                                className="shrink-0 size-4"
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M17 6H3"></path>
+                                <path d="M21 12H8"></path>
+                                <path d="M21 18H8"></path>
+                                <path d="M3 12v6"></path>
+                              </svg>
+                            </button>
+                            <button
+                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+                              type="button"
+                              data-hs-editor-code=""
+                            >
+                              <svg
+                                className="shrink-0 size-4"
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="m18 16 4-4-4-4"></path>
+                                <path d="m6 8-4 4 4 4"></path>
+                                <path d="m14.5 4-5 16"></path>
+                              </svg>
+                            </button>
+                          </div>
+
+                          <div
+                            className="h-40 overflow-auto p-4 bg-gray-800 scrollbar-thin scrollbar-thumb-violet-600 scrollbar-track-violet-800 hover:scrollbar-thumb-violet-500 text-gray-300"
+                            data-hs-editor-field=""
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex justify-end items-center gap-x-2 py-3 px-4 border-t border-gray-200 dark:border-neutral-700">
+                    <div className="text-sm text-gray-500 dark:text-gray-400 mr-auto">
+                      <span className="text-red-500">*</span> Required fields
+                    </div>
+                    <button
+                      type="button"
+                      className="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 focus:outline-none focus:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-800 dark:border-neutral-700 dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+                      onClick={() => setIsNewRequestModalOpen(false)}
+                    >
+                      Close
                     </button>
                     <button
+                      type="button"
+                      className="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none"
                       onClick={handleSubmitRequest}
-                      className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
                     >
                       <Save className="w-4 h-4" />
-                      Submit Request
+                      Submit
                     </button>
                   </div>
                 </div>
