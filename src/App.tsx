@@ -25,9 +25,9 @@ function App() {
   return (
     <ThemeProvider>
       <div className="flex h-screen bg-gray-50 dark:bg-dark-900">
-        <Sidebar 
-          expanded={sidebarExpanded} 
-          onToggle={toggleSidebar} 
+        <Sidebar
+          expanded={sidebarExpanded}
+          onToggle={toggleSidebar}
           activeTab={activeTab}
           onTabChange={handleTabChange}
         />
@@ -37,7 +37,6 @@ function App() {
             <div className="max-w-full">
               {activeTab === "Dashboard" && <Dashboard />}
               {activeTab === "Tickets" && <TicketGallery />}
-              
             </div>
           </main>
         </div>

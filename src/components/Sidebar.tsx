@@ -19,7 +19,12 @@ interface SidebarProps {
   onTabChange: (tabName: string) => void; // Add onTabChange prop
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ expanded, onToggle, activeTab, onTabChange }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  expanded,
+  onToggle,
+  activeTab,
+  onTabChange,
+}) => {
   const navigationItems = [
     { icon: LayoutDashboard, label: "Dashboard" },
     { icon: MessageSquare, label: "Tickets" },
@@ -47,9 +52,9 @@ const Sidebar: React.FC<SidebarProps> = ({ expanded, onToggle, activeTab, onTabC
         {expanded ? (
           <div className="flex items-center space-x-3 ml-6 mr-8">
             <div className="w-8 h-8 flex items-center justify-center rounded-lg overflow-hidden">
-              <img 
-                src="/logo.png" 
-                alt="NexTrack Logo" 
+              <img
+                src="./logo.png"
+                alt="NexTrack Logo"
                 className="w-8 h-8 object-contain"
               />
             </div>
@@ -57,16 +62,19 @@ const Sidebar: React.FC<SidebarProps> = ({ expanded, onToggle, activeTab, onTabC
               <span className="text-lg font-semibold text-purple-600 dark:text-purple-400">
                 NexTrack
               </span>
-              <span className="text-gray-500 dark:text-gray-400" style={{ fontSize: '8pt' }}>
+              <span
+                className="text-gray-500 dark:text-gray-400"
+                style={{ fontSize: "8pt" }}
+              >
                 IT Asset Management System
               </span>
             </div>
           </div>
         ) : (
           <div className="w-8 h-8 flex items-center justify-center mx-auto rounded-lg overflow-hidden">
-            <img 
-              src="/logo.png" 
-              alt="NexTrack Logo" 
+            <img
+              src="./logo.png"
+              alt="NexTrack Logo"
               className="w-8 h-8 object-contain"
             />
           </div>
@@ -89,7 +97,11 @@ const Sidebar: React.FC<SidebarProps> = ({ expanded, onToggle, activeTab, onTabC
                 <item.icon
                   className={`w-5 h-5 transition-transform duration-200 ${
                     expanded ? "mr-3" : "mx-auto"
-                  } ${activeTab === item.label ? "text-primary-600 dark:text-primary-400" : "group-hover:scale-110"}`}
+                  } ${
+                    activeTab === item.label
+                      ? "text-primary-600 dark:text-primary-400"
+                      : "group-hover:scale-110"
+                  }`}
                 />
                 {expanded && (
                   <span className="text-sm font-medium">{item.label}</span>
