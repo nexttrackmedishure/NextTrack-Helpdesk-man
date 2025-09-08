@@ -8,6 +8,7 @@ import TicketGallery from "./components/TicketGallery";
 function App() {
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [activeTab, setActiveTab] = useState("Dashboard");
+  const [isNewRequestModalOpen, setIsNewRequestModalOpen] = useState(false);
 
   const toggleSidebar = () => {
     setSidebarExpanded(!sidebarExpanded);
@@ -32,11 +33,18 @@ function App() {
           onTabChange={handleTabChange}
         />
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          <Header onMenuClick={toggleSidebar} activeTab={activeTab} />
+          {!isNewRequestModalOpen && (
+            <Header onMenuClick={toggleSidebar} activeTab={activeTab} />
+          )}
           <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-dark-900 p-4 md:p-6">
             <div className="max-w-full">
               {activeTab === "Dashboard" && <Dashboard />}
-              {activeTab === "Tickets" && <TicketGallery />}
+              {activeTab === "Tickets" && (
+                <TicketGallery
+                  isNewRequestModalOpen={isNewRequestModalOpen}
+                  setIsNewRequestModalOpen={setIsNewRequestModalOpen}
+                />
+              )}
             </div>
           </main>
         </div>

@@ -33,12 +33,19 @@ declare global {
   }
 }
 
-const TicketGallery: React.FC = () => {
+interface TicketGalleryProps {
+  isNewRequestModalOpen: boolean;
+  setIsNewRequestModalOpen: (open: boolean) => void;
+}
+
+const TicketGallery: React.FC<TicketGalleryProps> = ({
+  isNewRequestModalOpen,
+  setIsNewRequestModalOpen,
+}) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus] = useState("all");
   const [selectedPriority] = useState("all");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isNewRequestModalOpen, setIsNewRequestModalOpen] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   // Form state for new request
