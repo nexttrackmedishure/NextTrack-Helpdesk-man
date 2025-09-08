@@ -7,7 +7,7 @@ interface HeaderProps {
   activeTab: string; // Add activeTab prop
 }
 
-const Header: React.FC<HeaderProps> = ({ activeTab }) => {
+const Header: React.FC<HeaderProps> = () => {
   return (
     <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4 shadow-sm">
       <div className="flex items-center justify-end">

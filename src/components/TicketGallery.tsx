@@ -13,11 +13,6 @@ import {
   X,
   Minus,
   Eye,
-  ChevronRight,
-  Edit,
-  Bookmark,
-  MoreVertical,
-  Link,
   Flag,
   Sprout,
   Save,
@@ -59,9 +54,6 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     severity: "",
     description: "",
   });
-
-  // State for custom category input
-  const [customCategory, setCustomCategory] = useState("");
 
   // State for requestor dropdown
   const [isRequestorDropdownOpen, setIsRequestorDropdownOpen] = useState(false);
@@ -947,7 +939,6 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
       severity: "",
       description: "",
     });
-    setCustomCategory("");
     setSelectedRequestors([]);
     setRequestorSearchTerm("");
     setIsRequestorDropdownOpen(false);
@@ -1038,7 +1029,6 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
   const handleCategoryReset = () => {
     setSelectedCategories([]);
     setCategorySearchTerm("");
-    setCustomCategory("");
   };
 
   // Reset requestor selection
@@ -3848,10 +3838,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                         </div>
                         <input
                           id="datepicker-actions"
-                          datepicker
-                          datepicker-buttons
-                          datepicker-autoselect-today
-                          type="text"
+                          type="date"
                           value={newRequestForm.date}
                           onChange={(e) =>
                             handleFormChange("date", e.target.value)
@@ -3952,7 +3939,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             className="h-48 px-3 pb-3 overflow-y-auto text-sm text-gray-700 dark:text-gray-200"
                             aria-labelledby="dropdownSearchButton"
                           >
-                            {filteredRequestors.map((requestor, index) => (
+                            {filteredRequestors.map((requestor, _) => (
                               <li key={requestor}>
                                 <div
                                   className={`flex items-center ps-2 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer py-2 ${
@@ -4185,7 +4172,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             </div>
                           </div>
                           <ul className="h-48 px-3 pb-3 overflow-y-auto text-sm text-gray-700 dark:text-gray-200">
-                            {filteredCategories.map((category, index) => (
+                            {filteredCategories.map((category, _) => (
                               <li key={category}>
                                 <div
                                   className={`flex items-center ps-2 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer py-2 ${
