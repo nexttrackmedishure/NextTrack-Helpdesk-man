@@ -43,6 +43,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
   const [selectedStatus] = useState("all");
   const [selectedPriority] = useState("all");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
 
   // Form state for new request
   const [newRequestForm, setNewRequestForm] = useState({
@@ -327,6 +328,27 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     }));
   };
 
+  // Check if all required fields are completed
+  const isFormComplete = () => {
+    let description = newRequestForm.description;
+    if ((window as any).tiptapEditor) {
+      description = (window as any).tiptapEditor.getHTML();
+    }
+
+    return (
+      newRequestForm.requestor &&
+      newRequestForm.department &&
+      newRequestForm.ticketTitle &&
+      newRequestForm.severity &&
+      newRequestForm.category &&
+      newRequestForm.assignee &&
+      newRequestForm.branch &&
+      description &&
+      description !== "<p></p>" &&
+      description !== "<p><br></p>"
+    );
+  };
+
   const handleSubmitRequest = () => {
     // Get description from Tiptap editor if available
     let description = newRequestForm.description;
@@ -351,6 +373,17 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
       return;
     }
 
+    // Open submit confirmation modal
+    setIsSubmitModalOpen(true);
+  };
+
+  const handleConfirmSubmit = () => {
+    // Get description from Tiptap editor if available
+    let description = newRequestForm.description;
+    if ((window as any).tiptapEditor) {
+      description = (window as any).tiptapEditor.getHTML();
+    }
+
     // In a real application, this would submit to the backend
     const formData = {
       ...newRequestForm,
@@ -359,7 +392,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     console.log("New Request Submitted:", formData);
     alert("Request submitted successfully!");
 
-    // Reset form and close modal
+    // Reset form and close modals
     setNewRequestForm({
       ticketNo: `TKT-${Date.now().toString().slice(-6)}`,
       date: new Date().toISOString().split("T")[0],
@@ -377,7 +410,9 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     setIsCategoryDropdownOpen(false);
     setIsAssigneeDropdownOpen(false);
     setIsBranchDropdownOpen(false);
+    setIsSeverityDropdownOpen(false);
     setIsNewRequestModalOpen(false);
+    setIsSubmitModalOpen(false);
   };
 
   // Initialize Tiptap editor when modal opens
@@ -1203,6 +1238,19 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
             float: left;
             height: 0;
             pointer-events: none;
+          }
+
+          /* Shimmer Button Styles */
+          @property --angle {
+            syntax: '<angle>';
+            initial-value: 0deg;
+            inherits: false;
+          }
+
+          @keyframes shimmer-spin {
+            to {
+              --angle: 360deg;
+            }
           }
         `}
       </style>
@@ -3217,12 +3265,15 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             </div>
                             <input
                               id="datepicker-actions"
-                              type="date"
+                              datepicker
+                              datepicker-buttons
+                              datepicker-autoselect-today
+                              type="text"
                               value={newRequestForm.date}
                               onChange={(e) =>
                                 handleFormChange("date", e.target.value)
                               }
-                              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                               placeholder="Select date"
                             />
                           </div>
@@ -3990,6 +4041,83 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                       <Save className="w-4 h-4" />
                       Submit
                     </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Submit Confirmation Modal */}
+        {isSubmitModalOpen && (
+          <div
+            className="fixed inset-0 z-50 overflow-x-hidden overflow-y-auto scrollbar-hide"
+            role="dialog"
+            tabIndex={-1}
+            aria-labelledby="submit-modal-label"
+          >
+            <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity"></div>
+            <div className="relative min-h-screen flex items-center justify-center p-4">
+              <div className="w-full max-w-md opacity-100 duration-500 ease-out transition-all">
+                <div className="w-full flex flex-col bg-white border border-gray-200 shadow-2xl rounded-xl pointer-events-auto dark:bg-gray-800 dark:border-gray-700">
+                  {/* Modal Header */}
+                  <div className="flex justify-between items-center py-4 px-6 border-b border-gray-200 dark:border-gray-700">
+                    <h3
+                      id="submit-modal-label"
+                      className="text-lg font-semibold text-gray-900 dark:text-white"
+                    >
+                      Confirm Submission
+                    </h3>
+                    <button
+                      type="button"
+                      className="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none focus:bg-gray-200 disabled:opacity-50 disabled:pointer-events-none dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300 dark:focus:bg-gray-600"
+                      aria-label="Close"
+                      onClick={() => setIsSubmitModalOpen(false)}
+                    >
+                      <span className="sr-only">Close</span>
+                      <svg
+                        className="shrink-0 size-4"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M18 6 6 18"></path>
+                        <path d="m6 6 12 12"></path>
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Modal Content */}
+                  <div className="p-6">
+                    <div className="space-y-4">
+                      <p className="text-gray-700 dark:text-gray-300">
+                        Are you sure you want to submit this request? Please
+                        review all the information before confirming.
+                      </p>
+                      <div className="flex justify-end gap-3">
+                        <button
+                          type="button"
+                          className="py-2 px-4 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 focus:outline-none focus:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700 dark:focus:bg-gray-700"
+                          onClick={() => setIsSubmitModalOpen(false)}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          className="py-2 px-4 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none"
+                          onClick={handleConfirmSubmit}
+                        >
+                          <Save className="w-4 h-4" />
+                          Confirm Submit
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
