@@ -14,7 +14,6 @@ import {
   Minus,
   Eye,
   Flag,
-  Sprout,
   Save,
   User,
   Building,
@@ -44,6 +43,8 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
   const [selectedPriority] = useState("all");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
+  const [isCreateAgainModalOpen, setIsCreateAgainModalOpen] = useState(false);
+  const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
 
   // Form state for new request
   const [newRequestForm, setNewRequestForm] = useState({
@@ -328,27 +329,6 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     }));
   };
 
-  // Check if all required fields are completed
-  const isFormComplete = () => {
-    let description = newRequestForm.description;
-    if ((window as any).tiptapEditor) {
-      description = (window as any).tiptapEditor.getHTML();
-    }
-
-    return (
-      newRequestForm.requestor &&
-      newRequestForm.department &&
-      newRequestForm.ticketTitle &&
-      newRequestForm.severity &&
-      newRequestForm.category &&
-      newRequestForm.assignee &&
-      newRequestForm.branch &&
-      description &&
-      description !== "<p></p>" &&
-      description !== "<p><br></p>"
-    );
-  };
-
   const handleSubmitRequest = () => {
     // Get description from Tiptap editor if available
     let description = newRequestForm.description;
@@ -369,7 +349,8 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
       description === "<p></p>" ||
       description === "<p><br></p>"
     ) {
-      alert("Please fill in all required fields.");
+      // Show validation modal instead of alert
+      setIsValidationModalOpen(true);
       return;
     }
 
@@ -390,9 +371,14 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
       description: description,
     };
     console.log("New Request Submitted:", formData);
-    alert("Request submitted successfully!");
 
-    // Reset form and close modals
+    // Close submit modal and show create-again modal
+    setIsSubmitModalOpen(false);
+    setIsCreateAgainModalOpen(true);
+  };
+
+  const handleCreateAnother = () => {
+    // Reset form and close create-again modal, keep new request modal open
     setNewRequestForm({
       ticketNo: `TKT-${Date.now().toString().slice(-6)}`,
       date: new Date().toISOString().split("T")[0],
@@ -411,8 +397,23 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     setIsAssigneeDropdownOpen(false);
     setIsBranchDropdownOpen(false);
     setIsSeverityDropdownOpen(false);
+    setIsCreateAgainModalOpen(false);
+
+    // Clear Tiptap editor content
+    if ((window as any).tiptapEditor) {
+      (window as any).tiptapEditor.commands.clearContent();
+    }
+  };
+
+  const handleGoToTickets = () => {
+    // Close all modals and go to ticket tab
+    setIsCreateAgainModalOpen(false);
     setIsNewRequestModalOpen(false);
-    setIsSubmitModalOpen(false);
+  };
+
+  const handleCloseValidationModal = () => {
+    // Close validation modal
+    setIsValidationModalOpen(false);
   };
 
   // Initialize Tiptap editor when modal opens
@@ -844,6 +845,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
       },
     ],
   };
+
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
@@ -3143,7 +3145,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
             tabIndex={-1}
             aria-labelledby="hs-vertically-centered-modal-label"
           >
-            <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity"></div>
+            <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity overflow-hidden"></div>
             <div className="relative min-h-screen flex items-start justify-center p-4">
               <div className="w-full max-w-4xl mt-4 opacity-100 duration-500 ease-out transition-all">
                 <div className="w-full flex flex-col bg-white border border-gray-200 shadow-2xl rounded-xl pointer-events-auto dark:bg-neutral-800 dark:border-neutral-700 dark:shadow-neutral-700/70">
@@ -3240,12 +3242,12 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                     </div>
 
                     {/* Form Fields Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5 mb-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-1 mb-3">
                       {/* Left Column */}
-                      <div className="space-y-1.5">
+                      <div className="space-y-1">
                         {/* Date */}
-                        <div className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
-                          <div className="mb-1.5">
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
                             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                               <Calendar className="w-4 h-4 inline mr-2" />
                               Request Date
@@ -3264,24 +3266,19 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                               </svg>
                             </div>
                             <input
-                              id="datepicker-actions"
-                              datepicker
-                              datepicker-buttons
-                              datepicker-autoselect-today
-                              type="text"
+                              type="date"
                               value={newRequestForm.date}
                               onChange={(e) =>
                                 handleFormChange("date", e.target.value)
                               }
-                              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                              placeholder="Select date"
+                              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 py-1 px-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                             />
                           </div>
                         </div>
 
                         {/* Requestor */}
-                        <div className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
-                          <div className="mb-1.5">
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
                             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                               <User className="w-4 h-4 inline mr-2" />
                               <span className="text-red-500">*</span> Requestor
@@ -3296,7 +3293,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                                   !isRequestorDropdownOpen
                                 )
                               }
-                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-3 py-2 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
+                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
                               type="button"
                             >
                               {newRequestForm.requestor || "Select Requestor"}
@@ -3364,8 +3361,8 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                         </div>
 
                         {/* Department */}
-                        <div className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
-                          <div className="mb-1.5">
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
                             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                               <Building className="w-4 h-4 inline mr-2" />
                               <span className="text-red-500">*</span> Department
@@ -3380,7 +3377,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                                   !isDepartmentDropdownOpen
                                 )
                               }
-                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-3 py-2 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
+                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
                               type="button"
                             >
                               {newRequestForm.department || "Select Department"}
@@ -3448,10 +3445,10 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                       </div>
 
                       {/* Right Column */}
-                      <div className="space-y-1.5">
+                      <div className="space-y-1">
                         {/* Severity */}
-                        <div className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
-                          <div className="mb-1.5">
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
                             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                               <Flag className="w-4 h-4 inline mr-2" />
                               <span className="text-red-500">*</span> Severity
@@ -3467,7 +3464,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                                   !isSeverityDropdownOpen
                                 )
                               }
-                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-3 py-2 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
+                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
                               type="button"
                             >
                               {newRequestForm.severity || "Select Severity"}
@@ -3542,8 +3539,8 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                         </div>
 
                         {/* Category */}
-                        <div className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
-                          <div className="mb-1.5">
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
                             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                               <Tag className="w-4 h-4 inline mr-2" />
                               <span className="text-red-500">*</span> Category
@@ -3558,7 +3555,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                                   !isCategoryDropdownOpen
                                 )
                               }
-                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-3 py-2 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
+                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
                               type="button"
                             >
                               {newRequestForm.category || "Select Category"}
@@ -3625,8 +3622,8 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                         </div>
 
                         {/* Assignee */}
-                        <div className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
-                          <div className="mb-1.5">
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
                             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                               <UserCheck className="w-4 h-4 inline mr-2" />
                               <span className="text-red-500">*</span> Assignee
@@ -3641,7 +3638,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                                   !isAssigneeDropdownOpen
                                 )
                               }
-                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-3 py-2 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
+                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
                               type="button"
                             >
                               {newRequestForm.assignee || "Select Assignee"}
@@ -3708,8 +3705,8 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                         </div>
 
                         {/* Branch */}
-                        <div className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
-                          <div className="mb-1.5">
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
                             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                               <Building className="w-4 h-4 inline mr-2" />
                               <span className="text-red-500">*</span> Branch
@@ -3722,7 +3719,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                               onClick={() =>
                                 setIsBranchDropdownOpen(!isBranchDropdownOpen)
                               }
-                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-3 py-2 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
+                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
                               type="button"
                             >
                               {newRequestForm.branch || "Select Branch"}
@@ -4013,7 +4010,8 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                           </div>
 
                           <div
-                            className="h-40 overflow-auto p-4 bg-gray-800 scrollbar-thin scrollbar-thumb-violet-600 scrollbar-track-violet-800 hover:scrollbar-thumb-violet-500 text-gray-300"
+                            className="overflow-auto p-4 bg-gray-800 scrollbar-thin scrollbar-thumb-violet-600 scrollbar-track-violet-800 hover:scrollbar-thumb-violet-500 text-gray-300"
+                            style={{ height: "205px" }}
                             data-hs-editor-field=""
                           ></div>
                         </div>
@@ -4056,7 +4054,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
             tabIndex={-1}
             aria-labelledby="submit-modal-label"
           >
-            <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity"></div>
+            <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity overflow-hidden"></div>
             <div className="relative min-h-screen flex items-center justify-center p-4">
               <div className="w-full max-w-md opacity-100 duration-500 ease-out transition-all">
                 <div className="w-full flex flex-col bg-white border border-gray-200 shadow-2xl rounded-xl pointer-events-auto dark:bg-gray-800 dark:border-gray-700">
@@ -4115,6 +4113,273 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                         >
                           <Save className="w-4 h-4" />
                           Confirm Submit
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Create Again Modal */}
+        {isCreateAgainModalOpen && (
+          <div
+            className="fixed inset-0 z-50 overflow-x-hidden overflow-y-auto scrollbar-hide"
+            role="dialog"
+            tabIndex={-1}
+            aria-labelledby="create-again-modal-label"
+          >
+            <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity overflow-hidden"></div>
+            <div className="relative min-h-screen flex items-center justify-center p-4">
+              <div className="w-full max-w-md opacity-100 duration-500 ease-out transition-all">
+                <div className="w-full flex flex-col bg-white border border-gray-200 shadow-2xl rounded-xl pointer-events-auto dark:bg-gray-800 dark:border-gray-700">
+                  {/* Modal Header */}
+                  <div className="flex justify-between items-center py-4 px-6 border-b border-gray-200 dark:border-gray-700">
+                    <h3
+                      id="create-again-modal-label"
+                      className="text-lg font-semibold text-gray-900 dark:text-white"
+                    >
+                      Request Submitted Successfully!
+                    </h3>
+                    <button
+                      type="button"
+                      className="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none focus:bg-gray-200 disabled:opacity-50 disabled:pointer-events-none dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300 dark:focus:bg-gray-600"
+                      aria-label="Close"
+                      onClick={handleGoToTickets}
+                    >
+                      <span className="sr-only">Close</span>
+                      <svg
+                        className="shrink-0 size-4"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M18 6 6 18"></path>
+                        <path d="m6 6 12 12"></path>
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Modal Content */}
+                  <div className="p-6">
+                    <div className="space-y-6">
+                      <div className="text-center">
+                        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900 mb-4">
+                          <svg
+                            className="h-6 w-6 text-green-600 dark:text-green-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        </div>
+                        <p className="text-gray-700 dark:text-gray-300 mb-2">
+                          Your request has been submitted successfully!
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          What would you like to do next?
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col gap-3">
+                        <button
+                          type="button"
+                          className="w-full py-3 px-4 inline-flex items-center justify-center gap-x-2 text-sm font-medium rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none"
+                          onClick={handleCreateAnother}
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                            />
+                          </svg>
+                          Create Another Request
+                        </button>
+
+                        <button
+                          type="button"
+                          className="w-full py-3 px-4 inline-flex items-center justify-center gap-x-2 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 focus:outline-none focus:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700 dark:focus:bg-gray-700"
+                          onClick={handleGoToTickets}
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                            />
+                          </svg>
+                          Go to Tickets
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Validation Error Modal */}
+        {isValidationModalOpen && (
+          <div
+            className="fixed inset-0 z-50 overflow-x-hidden overflow-y-auto scrollbar-hide"
+            role="dialog"
+            tabIndex={-1}
+            aria-labelledby="validation-modal-label"
+          >
+            <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity overflow-hidden"></div>
+            <div className="relative min-h-screen flex items-center justify-center p-4">
+              <div className="w-full max-w-md opacity-100 duration-500 ease-out transition-all">
+                <div className="w-full flex flex-col bg-white border border-gray-200 shadow-2xl rounded-xl pointer-events-auto dark:bg-gray-800 dark:border-gray-700">
+                  {/* Modal Header */}
+                  <div className="flex justify-between items-center py-4 px-6 border-b border-gray-200 dark:border-gray-700">
+                    <h3
+                      id="validation-modal-label"
+                      className="text-lg font-semibold text-gray-900 dark:text-white"
+                    >
+                      Missing Required Fields
+                    </h3>
+                    <button
+                      type="button"
+                      className="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none focus:bg-gray-200 disabled:opacity-50 disabled:pointer-events-none dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300 dark:focus:bg-gray-600"
+                      aria-label="Close"
+                      onClick={handleCloseValidationModal}
+                    >
+                      <span className="sr-only">Close</span>
+                      <svg
+                        className="shrink-0 size-4"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M18 6 6 18"></path>
+                        <path d="m6 6 12 12"></path>
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Modal Content */}
+                  <div className="p-6">
+                    <div className="space-y-6">
+                      <div className="text-center">
+                        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900 mb-4">
+                          <svg
+                            className="h-6 w-6 text-red-600 dark:text-red-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                            />
+                          </svg>
+                        </div>
+                        <p className="text-gray-700 dark:text-gray-300 mb-2 font-medium">
+                          Please complete all required fields
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          All fields marked with{" "}
+                          <span className="text-red-500">*</span> are required
+                          to submit your request.
+                        </p>
+                      </div>
+
+                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 font-medium">
+                          Required fields:
+                        </p>
+                        <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                          <li className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                            Requestor
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                            Department
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                            Ticket Title
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                            Category
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                            Severity Level
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                            Assignee
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                            Branch
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
+                            Request Description
+                          </li>
+                        </ul>
+                      </div>
+
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          className="py-2 px-4 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none"
+                          onClick={handleCloseValidationModal}
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          I Understand
                         </button>
                       </div>
                     </div>
