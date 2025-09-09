@@ -8,7 +8,7 @@ interface HeaderProps {
   activeTab: string; // Add activeTab prop
 }
 
-const Header: React.FC<HeaderProps> = () => {
+const Header: React.FC<HeaderProps> = ({ activeTab }) => {
   const { user, logout } = useAuth();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -26,6 +26,59 @@ const Header: React.FC<HeaderProps> = () => {
       .toUpperCase()
       .slice(0, 2);
   };
+
+  // Dynamic header content based on active tab
+  const getHeaderContent = () => {
+    switch (activeTab) {
+      case "Dashboard":
+        return {
+          title: "Dashboard",
+          subtitle: "Overview of your support system",
+        };
+      case "Tickets":
+        return {
+          title: "Ticket Gallery",
+          subtitle: "Manage and track all support tickets",
+        };
+      case "Customers":
+        return {
+          title: "Customers",
+          subtitle: "Manage customer information and relationships",
+        };
+      case "Knowledge Base":
+        return {
+          title: "Knowledge Base",
+          subtitle: "Create and manage support articles",
+        };
+      case "Analytics":
+        return {
+          title: "Analytics",
+          subtitle: "View insights and performance metrics",
+        };
+      case "Categories":
+        return {
+          title: "Categories",
+          subtitle: "Organize and manage ticket categories",
+        };
+      case "History":
+        return {
+          title: "History",
+          subtitle: "View past activities and changes",
+        };
+      case "Settings":
+        return {
+          title: "Settings",
+          subtitle: "Configure system preferences and options",
+        };
+      default:
+        return {
+          title: "Dashboard",
+          subtitle: "Overview of your support system",
+        };
+    }
+  };
+
+  const headerContent = getHeaderContent();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -46,8 +99,18 @@ const Header: React.FC<HeaderProps> = () => {
 
   return (
     <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4 shadow-sm">
-      <div className="flex items-center justify-end">
-        {/* Right Section - Modern Design */}
+      <div className="flex items-center justify-between">
+        {/* Left side - Page Title */}
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            {headerContent.title}
+          </h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400 -mt-1">
+            {headerContent.subtitle}
+          </p>
+        </div>
+
+        {/* Right side - User controls */}
         <div className="flex items-center space-x-3">
           {/* Animated Theme Toggle */}
           <div className="relative">
