@@ -110,10 +110,7 @@ const Dashboard: React.FC = () => {
     <div className="space-y-6 w-full max-w-full">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Technical Support Dashboard
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
+        <p className="text-gray-600 dark:text-gray-400">
           Monitor and manage support tickets efficiently
         </p>
       </div>

@@ -96,4 +96,40 @@
   .hover\:scrollbar-thumb-violet-500:hover::-webkit-scrollbar-thumb {
     background: #a855f7;
   }
+
+  /* Animated pulsing border for modal */
+  .animate-pulse-border {
+    animation: pulse-border 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-border {
+    0%,
+    100% {
+      border-color: rgb(209 213 219); /* gray-300 */
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+    50% {
+      border-color: rgb(59 130 246); /* blue-500 */
+      box-shadow: 0 25px 50px -12px rgba(59, 130, 246, 0.25),
+        0 0 0 1px rgba(59, 130, 246, 0.1);
+    }
+  }
+
+  /* Dark mode pulsing border */
+  .dark .animate-pulse-border {
+    animation: pulse-border-dark 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-border-dark {
+    0%,
+    100% {
+      border-color: rgb(55 65 81); /* gray-700 */
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+    50% {
+      border-color: rgb(59 130 246); /* blue-500 */
+      box-shadow: 0 25px 50px -12px rgba(59, 130, 246, 0.3),
+        0 0 0 1px rgba(59, 130, 246, 0.2);
+    }
+  }
 }

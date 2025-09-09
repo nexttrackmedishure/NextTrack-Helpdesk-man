@@ -1280,9 +1280,6 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
 
         {/* Stats Cards Header */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Ticket Statistics
-          </h2>
           <button
             onClick={() => setIsDrawerOpen(true)}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
@@ -3237,7 +3234,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                         onChange={(e) =>
                           handleFormChange("ticketTitle", e.target.value)
                         }
-                        className="w-full px-3 py-1.5 text-sm font-medium bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        className="w-full px-3 py-1.5 text-sm font-medium bg-primary-50 dark:bg-dark-700 border border-primary-200 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white placeholder-primary-500 dark:placeholder-dark-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
                       />
                     </div>
 
@@ -3246,9 +3243,9 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                       {/* Left Column */}
                       <div className="space-y-1">
                         {/* Date */}
-                        <div className="bg-gray-50 dark:bg-gray-700/50 p-1.5 rounded-lg">
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
                           <div className="mb-1">
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
                               <Calendar className="w-4 h-4 inline mr-2" />
                               Request Date
                             </label>
@@ -3256,7 +3253,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                           <div className="relative max-w-sm">
                             <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
                               <svg
-                                className="w-4 h-4 text-gray-500 dark:text-gray-400"
+                                className="w-4 h-4 text-primary-500 dark:text-dark-400"
                                 aria-hidden="true"
                                 xmlns="http://www.w3.org/2000/svg"
                                 fill="currentColor"
@@ -3271,15 +3268,15 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                               onChange={(e) =>
                                 handleFormChange("date", e.target.value)
                               }
-                              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 py-1 px-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                              className="bg-primary-50 border border-primary-300 text-dark-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full ps-10 py-1 px-2 dark:bg-dark-700 dark:border-dark-600 dark:placeholder-dark-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                             />
                           </div>
                         </div>
 
                         {/* Requestor */}
-                        <div className="bg-gray-50 dark:bg-gray-700/50 p-1.5 rounded-lg">
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
                           <div className="mb-1">
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
                               <User className="w-4 h-4 inline mr-2" />
                               <span className="text-red-500">*</span> Requestor
                             </label>
@@ -3293,7 +3290,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                                   !isRequestorDropdownOpen
                                 )
                               }
-                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
                               type="button"
                             >
                               {newRequestForm.requestor || "Select Requestor"}
@@ -3318,10 +3315,10 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             {isRequestorDropdownOpen && (
                               <div
                                 id="dropdownRequestorRadio"
-                                className="absolute z-10 w-48 bg-white divide-y divide-gray-100 rounded-lg shadow-sm dark:bg-gray-700 dark:divide-gray-600 mt-1"
+                                className="absolute z-10 w-48 bg-white divide-y divide-primary-100 rounded-lg shadow-sm dark:bg-dark-700 dark:divide-dark-600 mt-1"
                               >
                                 <ul
-                                  className="p-3 space-y-3 text-sm text-gray-700 dark:text-gray-200"
+                                  className="p-3 space-y-3 text-sm text-dark-700 dark:text-dark-200"
                                   aria-labelledby="dropdownRequestorRadioButton"
                                 >
                                   {requestorOptions.map((requestor, index) => (
@@ -3343,11 +3340,11 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                                             );
                                             setIsRequestorDropdownOpen(false);
                                           }}
-                                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                          className="w-4 h-4 text-primary-600 bg-primary-100 border-primary-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-dark-700 dark:focus:ring-offset-dark-700 focus:ring-2 dark:bg-dark-600 dark:border-dark-500"
                                         />
                                         <label
                                           htmlFor={`requestor-radio-${index}`}
-                                          className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                          className="ms-2 text-sm font-medium text-dark-900 dark:text-dark-300 cursor-pointer"
                                         >
                                           {requestor}
                                         </label>
@@ -3361,9 +3358,9 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                         </div>
 
                         {/* Department */}
-                        <div className="bg-gray-50 dark:bg-gray-700/50 p-1.5 rounded-lg">
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
                           <div className="mb-1">
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
                               <Building className="w-4 h-4 inline mr-2" />
                               <span className="text-red-500">*</span> Department
                             </label>
@@ -3377,7 +3374,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                                   !isDepartmentDropdownOpen
                                 )
                               }
-                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
                               type="button"
                             >
                               {newRequestForm.department || "Select Department"}
@@ -3402,10 +3399,10 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             {isDepartmentDropdownOpen && (
                               <div
                                 id="dropdownDepartmentRadio"
-                                className="absolute z-10 w-48 bg-white divide-y divide-gray-100 rounded-lg shadow-sm dark:bg-gray-700 dark:divide-gray-600 mt-1"
+                                className="absolute z-10 w-48 bg-white divide-y divide-primary-100 rounded-lg shadow-sm dark:bg-dark-700 dark:divide-dark-600 mt-1"
                               >
                                 <ul
-                                  className="p-3 space-y-3 text-sm text-gray-700 dark:text-gray-200"
+                                  className="p-3 space-y-3 text-sm text-dark-700 dark:text-dark-200"
                                   aria-labelledby="dropdownDepartmentRadioButton"
                                 >
                                   {departmentOptions.map((dept, index) => (
@@ -3426,11 +3423,11 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                                             );
                                             setIsDepartmentDropdownOpen(false);
                                           }}
-                                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                          className="w-4 h-4 text-primary-600 bg-primary-100 border-primary-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-dark-700 dark:focus:ring-offset-dark-700 focus:ring-2 dark:bg-dark-600 dark:border-dark-500"
                                         />
                                         <label
                                           htmlFor={`department-radio-${index}`}
-                                          className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                          className="ms-2 text-sm font-medium text-dark-900 dark:text-dark-300 cursor-pointer"
                                         >
                                           {dept}
                                         </label>
@@ -3447,9 +3444,9 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                       {/* Right Column */}
                       <div className="space-y-1">
                         {/* Severity */}
-                        <div className="bg-gray-50 dark:bg-gray-700/50 p-1.5 rounded-lg">
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
                           <div className="mb-1">
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
                               <Flag className="w-4 h-4 inline mr-2" />
                               <span className="text-red-500">*</span> Severity
                               Level
@@ -3464,7 +3461,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                                   !isSeverityDropdownOpen
                                 )
                               }
-                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
                               type="button"
                             >
                               {newRequestForm.severity || "Select Severity"}
@@ -3489,15 +3486,15 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             {isSeverityDropdownOpen && (
                               <div
                                 id="dropdownRadioHelper"
-                                className="absolute z-10 bg-white divide-y divide-gray-100 rounded-lg shadow-sm w-full dark:bg-gray-700 dark:divide-gray-600 border border-gray-200 dark:border-gray-600 mt-1"
+                                className="absolute z-10 bg-white divide-y divide-primary-100 rounded-lg shadow-sm w-full dark:bg-dark-700 dark:divide-dark-600 border border-primary-200 dark:border-dark-600 mt-1"
                               >
                                 <ul
-                                  className="p-3 space-y-1 text-sm text-gray-700 dark:text-gray-200"
+                                  className="p-3 space-y-1 text-sm text-dark-700 dark:text-dark-200"
                                   aria-labelledby="dropdownRadioHelperButton"
                                 >
                                   {severityOptions.map((severity, index) => (
                                     <li key={severity.value}>
-                                      <div className="flex p-2 rounded-sm hover:bg-gray-100 dark:hover:bg-gray-600">
+                                      <div className="flex p-2 rounded-sm hover:bg-primary-100 dark:hover:bg-dark-600">
                                         <div className="flex items-center h-5">
                                           <input
                                             id={`helper-radio-${index}`}
@@ -3515,16 +3512,16 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                                               );
                                               setIsSeverityDropdownOpen(false);
                                             }}
-                                            className="w-4 h-4 text-gray-600 bg-gray-100 border-gray-300 focus:ring-gray-500 dark:focus:ring-gray-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                            className="w-4 h-4 text-primary-600 bg-primary-100 border-primary-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-dark-700 dark:focus:ring-offset-dark-700 focus:ring-2 dark:bg-dark-600 dark:border-dark-500"
                                           />
                                         </div>
                                         <div className="ms-2 text-sm">
                                           <label
                                             htmlFor={`helper-radio-${index}`}
-                                            className="font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                            className="font-medium text-dark-900 dark:text-dark-300 cursor-pointer"
                                           >
                                             <div>{severity.label}</div>
-                                            <p className="text-xs font-normal text-gray-500 dark:text-gray-300">
+                                            <p className="text-xs font-normal text-primary-500 dark:text-dark-300">
                                               {severity.description}
                                             </p>
                                           </label>
@@ -3539,9 +3536,9 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                         </div>
 
                         {/* Category */}
-                        <div className="bg-gray-50 dark:bg-gray-700/50 p-1.5 rounded-lg">
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
                           <div className="mb-1">
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
                               <Tag className="w-4 h-4 inline mr-2" />
                               <span className="text-red-500">*</span> Category
                             </label>
@@ -3555,7 +3552,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                                   !isCategoryDropdownOpen
                                 )
                               }
-                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
                               type="button"
                             >
                               {newRequestForm.category || "Select Category"}
@@ -3580,10 +3577,10 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             {isCategoryDropdownOpen && (
                               <div
                                 id="dropdownCategoryRadio"
-                                className="absolute z-10 w-48 bg-white divide-y divide-gray-100 rounded-lg shadow-sm dark:bg-gray-700 dark:divide-gray-600 mt-1"
+                                className="absolute z-10 w-48 bg-white divide-y divide-primary-100 rounded-lg shadow-sm dark:bg-dark-700 dark:divide-dark-600 mt-1"
                               >
                                 <ul
-                                  className="p-3 space-y-3 text-sm text-gray-700 dark:text-gray-200"
+                                  className="p-3 space-y-3 text-sm text-dark-700 dark:text-dark-200"
                                   aria-labelledby="dropdownCategoryRadioButton"
                                 >
                                   {categoryOptions.map((category, index) => (
@@ -3604,11 +3601,11 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                                             );
                                             setIsCategoryDropdownOpen(false);
                                           }}
-                                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                          className="w-4 h-4 text-primary-600 bg-primary-100 border-primary-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-dark-700 dark:focus:ring-offset-dark-700 focus:ring-2 dark:bg-dark-600 dark:border-dark-500"
                                         />
                                         <label
                                           htmlFor={`category-radio-${index}`}
-                                          className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                          className="ms-2 text-sm font-medium text-dark-900 dark:text-dark-300 cursor-pointer"
                                         >
                                           {category}
                                         </label>
@@ -3622,9 +3619,9 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                         </div>
 
                         {/* Assignee */}
-                        <div className="bg-gray-50 dark:bg-gray-700/50 p-1.5 rounded-lg">
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
                           <div className="mb-1">
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
                               <UserCheck className="w-4 h-4 inline mr-2" />
                               <span className="text-red-500">*</span> Assignee
                             </label>
@@ -3638,7 +3635,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                                   !isAssigneeDropdownOpen
                                 )
                               }
-                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
                               type="button"
                             >
                               {newRequestForm.assignee || "Select Assignee"}
@@ -3663,10 +3660,10 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             {isAssigneeDropdownOpen && (
                               <div
                                 id="dropdownAssigneeRadio"
-                                className="absolute z-10 w-48 bg-white divide-y divide-gray-100 rounded-lg shadow-sm dark:bg-gray-700 dark:divide-gray-600 mt-1"
+                                className="absolute z-10 w-48 bg-white divide-y divide-primary-100 rounded-lg shadow-sm dark:bg-dark-700 dark:divide-dark-600 mt-1"
                               >
                                 <ul
-                                  className="p-3 space-y-3 text-sm text-gray-700 dark:text-gray-200"
+                                  className="p-3 space-y-3 text-sm text-dark-700 dark:text-dark-200"
                                   aria-labelledby="dropdownAssigneeRadioButton"
                                 >
                                   {assigneeOptions.map((assignee, index) => (
@@ -3687,11 +3684,11 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                                             );
                                             setIsAssigneeDropdownOpen(false);
                                           }}
-                                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                          className="w-4 h-4 text-primary-600 bg-primary-100 border-primary-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-dark-700 dark:focus:ring-offset-dark-700 focus:ring-2 dark:bg-dark-600 dark:border-dark-500"
                                         />
                                         <label
                                           htmlFor={`assignee-radio-${index}`}
-                                          className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                          className="ms-2 text-sm font-medium text-dark-900 dark:text-dark-300 cursor-pointer"
                                         >
                                           {assignee}
                                         </label>
@@ -3705,9 +3702,9 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                         </div>
 
                         {/* Branch */}
-                        <div className="bg-gray-50 dark:bg-gray-700/50 p-1.5 rounded-lg">
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
                           <div className="mb-1">
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
                               <Building className="w-4 h-4 inline mr-2" />
                               <span className="text-red-500">*</span> Branch
                             </label>
@@ -3719,7 +3716,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                               onClick={() =>
                                 setIsBranchDropdownOpen(!isBranchDropdownOpen)
                               }
-                              className="w-full text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-gray-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-gray-200 dark:border-gray-600"
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
                               type="button"
                             >
                               {newRequestForm.branch || "Select Branch"}
@@ -4056,8 +4053,8 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
           >
             <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity overflow-hidden"></div>
             <div className="relative min-h-screen flex items-center justify-center p-4">
-              <div className="w-full max-w-md opacity-100 duration-500 ease-out transition-all">
-                <div className="w-full flex flex-col bg-white border border-gray-200 shadow-2xl rounded-xl pointer-events-auto dark:bg-gray-800 dark:border-gray-700">
+              <div className="w-full max-w-md opacity-100 duration-500 ease-out transition-all animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-4">
+                <div className="w-full flex flex-col bg-white border-2 border-gray-200 shadow-2xl rounded-xl pointer-events-auto dark:bg-gray-800 dark:border-gray-700 animate-pulse-border">
                   {/* Modal Header */}
                   <div className="flex justify-between items-center py-4 px-6 border-b border-gray-200 dark:border-gray-700">
                     <h3
