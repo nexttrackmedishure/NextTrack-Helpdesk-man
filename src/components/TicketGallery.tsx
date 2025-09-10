@@ -6,13 +6,10 @@ import {
   CheckCircle,
   MessageSquare,
   Calendar,
-  TrendingUp,
-  TrendingDown,
   Pause,
   AlertTriangle,
   X,
   Minus,
-  Eye,
   Flag,
   Save,
   User,
@@ -327,6 +324,114 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
       ...prev,
       [field]: value,
     }));
+  };
+
+  // Handle quick request templates
+  const handleQuickRequest = (templateType: string) => {
+    const templates = {
+      'IT Support': {
+        ticketTitle: 'IT Support Request',
+        category: 'Technical',
+        severity: 'Medium',
+        department: 'IT',
+        assignee: 'John Smith',
+        branch: 'Manila',
+        description: '<p>Please describe your IT support issue in detail...</p>'
+      },
+      'Network Issue': {
+        ticketTitle: 'Network Connectivity Problem',
+        category: 'Network',
+        severity: 'High',
+        department: 'IT',
+        assignee: 'Sarah Johnson',
+        branch: 'Jakarta',
+        description: '<p>Network connectivity issue details:</p><ul><li>Location affected</li><li>Time of occurrence</li><li>Error messages</li><li>Impact on operations</li></ul>'
+      },
+      'Account Access': {
+        ticketTitle: 'Account Access Request',
+        category: 'Access',
+        severity: 'Low',
+        department: 'HR',
+        assignee: 'Mike Wilson',
+        branch: 'Singapore',
+        description: '<p>Account access requirements:</p><ul><li>System/application needed</li><li>Access level required</li><li>Business justification</li><li>Duration of access</li></ul>'
+      },
+      'Equipment Request': {
+        ticketTitle: 'Equipment Procurement Request',
+        category: 'Procurement',
+        severity: 'Medium',
+        department: 'Operations',
+        assignee: 'Lisa Chen',
+        branch: 'Bali',
+        description: '<p>Equipment request details:</p><ul><li>Equipment type and specifications</li><li>Quantity needed</li><li>Budget approval</li><li>Delivery timeline</li></ul>'
+      },
+      'Password Reset': {
+        ticketTitle: 'Password Reset Request',
+        category: 'Access',
+        severity: 'Low',
+        department: 'IT',
+        assignee: 'John Smith',
+        branch: 'Manila',
+        description: '<p>Password reset for user account. Please provide:</p><ul><li>Username/email</li><li>System/application</li><li>Last successful login date</li></ul>'
+      },
+      'Software Installation': {
+        ticketTitle: 'Software Installation Request',
+        category: 'Technical',
+        severity: 'Medium',
+        department: 'IT',
+        assignee: 'Sarah Johnson',
+        branch: 'Jakarta',
+        description: '<p>Software installation requirements:</p><ul><li>Software name and version</li><li>Target machines</li><li>License information</li><li>Installation timeline</li></ul>'
+      },
+      'Email Issue': {
+        ticketTitle: 'Email System Problem',
+        category: 'Technical',
+        severity: 'Medium',
+        department: 'IT',
+        assignee: 'Mike Wilson',
+        branch: 'Singapore',
+        description: '<p>Email issue description:</p><ul><li>Problem type (send/receive/access)</li><li>Error messages</li><li>Affected users</li><li>Time of occurrence</li></ul>'
+      },
+      'Printer Problem': {
+        ticketTitle: 'Printer Malfunction',
+        category: 'Hardware',
+        severity: 'Low',
+        department: 'IT',
+        assignee: 'Lisa Chen',
+        branch: 'Bali',
+        description: '<p>Printer issue details:</p><ul><li>Printer model and location</li><li>Error messages</li><li>Print quality issues</li><li>Network connectivity</li></ul>'
+      },
+      'VPN Access': {
+        ticketTitle: 'VPN Access Request',
+        category: 'Access',
+        severity: 'Medium',
+        department: 'IT',
+        assignee: 'John Smith',
+        branch: 'Manila',
+        description: '<p>VPN access requirements:</p><ul><li>Business justification</li><li>Access duration</li><li>Remote work location</li><li>Manager approval</li></ul>'
+      },
+      'Data Recovery': {
+        ticketTitle: 'Data Recovery Request',
+        category: 'Technical',
+        severity: 'High',
+        department: 'IT',
+        assignee: 'Sarah Johnson',
+        branch: 'Jakarta',
+        description: '<p>Data recovery requirements:</p><ul><li>File/folder names</li><li>Last known good date</li><li>Storage location</li><li>Urgency level</li></ul>'
+      }
+    };
+
+    const template = templates[templateType as keyof typeof templates];
+    if (template) {
+      setNewRequestForm(prev => ({
+        ...prev,
+        ...template,
+        ticketNo: `TKT-${Date.now().toString().slice(-6)}`,
+        date: new Date().toISOString().split("T")[0],
+        requestor: prev.requestor || 'Current User'
+      }));
+      setIsNewRequestModalOpen(true);
+    }
   };
 
   const handleSubmitRequest = () => {
@@ -1213,6 +1318,43 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     setCurrentPage(1);
   }, [searchTerm, selectedStatus, selectedPriority, rowsPerPage]);
 
+  // Real-time metrics animation
+  useEffect(() => {
+    const animateCounter = (elementId: string, targetValue: number, duration: number = 2000) => {
+      const element = document.getElementById(elementId);
+      if (!element) return;
+
+      const increment = targetValue / (duration / 16); // 60fps
+      let currentValue = 0;
+
+      const timer = setInterval(() => {
+        currentValue += increment;
+        if (currentValue >= targetValue) {
+          currentValue = targetValue;
+          clearInterval(timer);
+        }
+        element.textContent = Math.floor(currentValue).toString();
+      }, 16);
+
+      return timer;
+    };
+
+    // Animate counters with realistic ticket data
+    const timers = [
+      animateCounter('open-count', 247),      // Open tickets
+      animateCounter('progress-count', 156),  // In Progress tickets
+      animateCounter('resolved-count', 298),  // Resolved tickets
+      animateCounter('closed-count', 189),    // Closed tickets
+    ];
+
+    // Cleanup timers on unmount
+    return () => {
+      timers.forEach(timer => {
+        if (timer) clearInterval(timer);
+      });
+    };
+  }, []);
+
   return (
     <>
       <style>
@@ -1259,14 +1401,6 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Ticket Gallery
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Manage and track all support tickets
-            </p>
-          </div>
           <div className="flex justify-end">
             <button
               onClick={() => setIsNewRequestModalOpen(true)}
@@ -1275,6 +1409,282 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
               <Plus className="w-4 h-4" />
               New Request
             </button>
+          </div>
+        </div>
+
+        {/* Real-time Metrics Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* Open Tickets */}
+          <div className="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm dark:shadow-none">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Open Tickets</p>
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400" id="open-count">0</p>
+              </div>
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-full">
+                <AlertCircle className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
+            </div>
+            <div className="mt-2 flex items-center text-sm">
+              <span className="text-green-600 dark:text-green-400 flex items-center">
+                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+                +12.5%
+              </span>
+              <span className="text-gray-500 dark:text-gray-400 ml-2">vs last month</span>
+            </div>
+          </div>
+
+          {/* In Progress Tickets */}
+          <div className="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm dark:shadow-none">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">In Progress</p>
+                <p className="text-2xl font-bold text-amber-600 dark:text-amber-400" id="progress-count">0</p>
+              </div>
+              <div className="p-3 bg-amber-100 dark:bg-amber-900/20 rounded-full">
+                <Clock className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+              </div>
+            </div>
+            <div className="mt-2 flex items-center text-sm">
+              <span className="text-green-600 dark:text-green-400 flex items-center">
+                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+                +8.2%
+              </span>
+              <span className="text-gray-500 dark:text-gray-400 ml-2">vs last month</span>
+            </div>
+          </div>
+
+          {/* Resolved Tickets */}
+          <div className="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm dark:shadow-none">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Resolved</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400" id="resolved-count">0</p>
+              </div>
+              <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-full">
+                <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+            <div className="mt-2 flex items-center text-sm">
+              <span className="text-green-600 dark:text-green-400 flex items-center">
+                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+                +15.3%
+              </span>
+              <span className="text-gray-500 dark:text-gray-400 ml-2">vs last month</span>
+            </div>
+          </div>
+
+          {/* Closed Tickets */}
+          <div className="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm dark:shadow-none">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Closed</p>
+                <p className="text-2xl font-bold text-gray-600 dark:text-gray-400" id="closed-count">0</p>
+              </div>
+              <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-full">
+                <X className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+              </div>
+            </div>
+            <div className="mt-2 flex items-center text-sm">
+              <span className="text-red-600 dark:text-red-400 flex items-center">
+                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M14.707 12.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                -2.1%
+              </span>
+              <span className="text-gray-500 dark:text-gray-400 ml-2">vs last month</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Access for New Ticket Request */}
+        <div className="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm dark:shadow-none mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Quick Access
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Create new tickets with pre-filled templates
+              </p>
+            </div>
+            <button
+              onClick={() => setIsNewRequestModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-200"
+            >
+              <Plus className="w-4 h-4" />
+              Custom Request
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* IT Support Template */}
+            <div 
+              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors duration-200"
+              onClick={() => handleQuickRequest('IT Support')}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                  <Building className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">IT Support</h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Hardware & Software</p>
+                </div>
+              </div>
+              <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                <div className="flex justify-between">
+                  <span>Category:</span>
+                  <span className="font-medium">Technical</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Severity:</span>
+                  <span className="font-medium text-amber-600">Medium</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Department:</span>
+                  <span className="font-medium">IT</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Network Issue Template */}
+            <div 
+              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors duration-200"
+              onClick={() => handleQuickRequest('Network Issue')}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+                  <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">Network Issue</h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Connectivity Problems</p>
+                </div>
+              </div>
+              <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                <div className="flex justify-between">
+                  <span>Category:</span>
+                  <span className="font-medium">Network</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Severity:</span>
+                  <span className="font-medium text-red-600">High</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Department:</span>
+                  <span className="font-medium">IT</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Account Access Template */}
+            <div 
+              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors duration-200"
+              onClick={() => handleQuickRequest('Account Access')}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                  <UserCheck className="w-5 h-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">Account Access</h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Login & Permissions</p>
+                </div>
+              </div>
+              <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                <div className="flex justify-between">
+                  <span>Category:</span>
+                  <span className="font-medium">Access</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Severity:</span>
+                  <span className="font-medium text-blue-600">Low</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Department:</span>
+                  <span className="font-medium">HR</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Equipment Request Template */}
+            <div 
+              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors duration-200"
+              onClick={() => handleQuickRequest('Equipment Request')}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                  <Tag className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">Equipment Request</h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Hardware & Supplies</p>
+                </div>
+              </div>
+              <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                <div className="flex justify-between">
+                  <span>Category:</span>
+                  <span className="font-medium">Procurement</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Severity:</span>
+                  <span className="font-medium text-amber-600">Medium</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Department:</span>
+                  <span className="font-medium">Operations</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Quick Actions */}
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleQuickRequest('Password Reset')}
+                className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors duration-200"
+              >
+                Password Reset
+              </button>
+              <button
+                onClick={() => handleQuickRequest('Software Installation')}
+                className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors duration-200"
+              >
+                Software Installation
+              </button>
+              <button
+                onClick={() => handleQuickRequest('Email Issue')}
+                className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors duration-200"
+              >
+                Email Issue
+              </button>
+              <button
+                onClick={() => handleQuickRequest('Printer Problem')}
+                className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors duration-200"
+              >
+                Printer Problem
+              </button>
+              <button
+                onClick={() => handleQuickRequest('VPN Access')}
+                className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors duration-200"
+              >
+                VPN Access
+              </button>
+              <button
+                onClick={() => handleQuickRequest('Data Recovery')}
+                className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors duration-200"
+              >
+                Data Recovery
+              </button>
+            </div>
           </div>
         </div>
 

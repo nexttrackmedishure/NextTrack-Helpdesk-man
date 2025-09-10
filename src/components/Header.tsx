@@ -4,7 +4,6 @@ import { AnimatedThemeToggler } from "./magicui/animated-theme-toggler";
 import { useAuth } from "../contexts/AuthContext";
 
 interface HeaderProps {
-  onMenuClick: () => void;
   activeTab: string; // Add activeTab prop
 }
 
