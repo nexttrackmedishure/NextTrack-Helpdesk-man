@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Bell, ChevronDown, LogOut, User, Settings, BarChart3, Download, RefreshCw, Filter } from "lucide-react";
+import { Bell, ChevronDown, LogOut, User, Settings } from "lucide-react";
 import { AnimatedThemeToggler } from "./magicui/animated-theme-toggler";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -11,9 +11,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ activeTab }) => {
   const { user, logout } = useAuth();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const [isDashboardMenuOpen, setIsDashboardMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const dashboardMenuRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = () => {
     logout();
@@ -29,7 +27,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab }) => {
       .slice(0, 2);
   };
 
-  // Close dropdowns when clicking outside
+  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -37,12 +35,6 @@ const Header: React.FC<HeaderProps> = ({ activeTab }) => {
         !dropdownRef.current.contains(event.target as Node)
       ) {
         setIsProfileDropdownOpen(false);
-      }
-      if (
-        dashboardMenuRef.current &&
-        !dashboardMenuRef.current.contains(event.target as Node)
-      ) {
-        setIsDashboardMenuOpen(false);
       }
     };
 
@@ -53,51 +45,24 @@ const Header: React.FC<HeaderProps> = ({ activeTab }) => {
   }, []);
 
   return (
-    <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        {/* Left Section - Dashboard Title with Sub Context Menu */}
-        {activeTab === "Dashboard" && (
-          <div className="flex flex-col space-y-2">
-            <h1 className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-              Dashboard
-            </h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Monitor and manage support tickets efficiently
-            </p>
-            <div className="relative" ref={dashboardMenuRef}>
-              <button
-                onClick={() => setIsDashboardMenuOpen(!isDashboardMenuOpen)}
-                className="flex items-center space-x-2 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200"
-                aria-label="Dashboard options"
-              >
-                <span>Options</span>
-                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isDashboardMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {/* Dashboard Sub Context Menu */}
-              {isDashboardMenuOpen && (
-                <div className="absolute left-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
-                  <button className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
-                    <BarChart3 className="w-4 h-4 mr-2" />
-                    View Analytics
-                  </button>
-                  <button className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export Data
-                  </button>
-                  <button className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Refresh Dashboard
-                  </button>
-                  <button className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
-                    <Filter className="w-4 h-4 mr-2" />
-                    Filter Options
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+    <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 h-20 flex items-center shadow-sm">
+      <div className="flex items-center justify-between w-full">
+        {/* Left Section - Tab Title */}
+        <div className="flex flex-col">
+          <h1 className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+            {activeTab}
+          </h1>
+          <p className="text-sm text-gray-700 dark:text-gray-400">
+            {activeTab === "Dashboard" && "Monitor and manage support tickets efficiently"}
+            {activeTab === "Tickets" && "View, manage, and track all support tickets"}
+            {activeTab === "Customers" && "Manage customer information and relationships"}
+            {activeTab === "Knowledge Base" && "Access and manage support documentation"}
+            {activeTab === "Analytics" && "View detailed reports and performance metrics"}
+            {activeTab === "Categories" && "Organize and manage ticket categories"}
+            {activeTab === "History" && "Review past activities and ticket history"}
+            {activeTab === "Settings" && "Configure system preferences and options"}
+          </p>
+        </div>
 
         {/* Right Section - Modern Design */}
         <div className="flex items-center space-x-3">
@@ -111,6 +76,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab }) => {
             <Bell className="w-5 h-5" />
             <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
           </button>
+
 
           {/* User Profile */}
           <div
