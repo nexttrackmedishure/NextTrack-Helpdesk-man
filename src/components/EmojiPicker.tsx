@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { emojiService } from '../services/emojiService.js';
-import { Search, X, Clock, Smile } from 'lucide-react';
+import { emojiService, EmojiData } from '../services/emojiService';
+import { X, Smile } from 'lucide-react';
 
 interface EmojiPickerProps {
   isOpen: boolean;
@@ -21,25 +21,15 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
   onEmojiSelect, 
   position = { top: 0, left: 0 } 
 }) => {
-  const [emojis, setEmojis] = useState<Emoji[]>([]);
-  const [filteredEmojis, setFilteredEmojis] = useState<Emoji[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('recent');
+  const [emojis, setEmojis] = useState<EmojiData[]>([]);
+  const [filteredEmojis, setFilteredEmojis] = useState<EmojiData[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('smileys-emotion');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
 
   const categories = [
-    { id: 'recent', name: 'Recent', icon: <Clock className="w-4 h-4" /> },
-    { id: 'smileys-emotion', name: 'Smileys', icon: <Smile className="w-4 h-4" /> },
-    { id: 'people-body', name: 'People', icon: <span>👥</span> },
-    { id: 'animals-nature', name: 'Animals', icon: <span>🐾</span> },
-    { id: 'food-drink', name: 'Food', icon: <span>🍕</span> },
-    { id: 'travel-places', name: 'Travel', icon: <span>✈️</span> },
-    { id: 'activities', name: 'Activities', icon: <span>⚽</span> },
-    { id: 'objects', name: 'Objects', icon: <span>📱</span> },
-    { id: 'symbols', name: 'Symbols', icon: <span>💯</span> },
-    { id: 'flags', name: 'Flags', icon: <span>🏳️</span> }
+    { id: 'smileys-emotion', name: 'Smileys', icon: <Smile className="w-4 h-4" /> }
   ];
 
   // Load emojis when component mounts or category changes
@@ -49,14 +39,6 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
     }
   }, [isOpen, selectedCategory]);
 
-  // Filter emojis based on search query
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      searchEmojis(searchQuery);
-    } else {
-      setFilteredEmojis(emojis);
-    }
-  }, [searchQuery, emojis]);
 
   // Close picker when clicking outside
   useEffect(() => {
@@ -80,24 +62,19 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
     setError(null);
 
     try {
-      let emojiData: Emoji[] = [];
-
-      if (selectedCategory === 'recent') {
-        emojiData = emojiService.getRecentEmojis();
-      } else {
-        // Try to get emojis from API, fallback to basic emojis if it fails
-        try {
-          const data = await emojiService.getEmojisByCategory(selectedCategory);
-          emojiData = Array.isArray(data) ? data : [];
-        } catch (apiError) {
-          console.log('API not available, using fallback emojis');
-          // Use fallback emojis when API fails
-          emojiData = emojiService.getFallbackEmojis();
-        }
+      // Try to get emojis from API, fallback to basic emojis if it fails
+      try {
+        const data = await emojiService.getEmojisByCategory(selectedCategory);
+        const emojiData = Array.isArray(data) ? data : [];
+        setEmojis(emojiData);
+        setFilteredEmojis(emojiData);
+      } catch (apiError) {
+        console.log('API not available, using fallback emojis');
+        // Use fallback emojis when API fails
+        const fallbackEmojis = emojiService.getFallbackEmojis();
+        setEmojis(fallbackEmojis);
+        setFilteredEmojis(fallbackEmojis);
       }
-
-      setEmojis(emojiData);
-      setFilteredEmojis(emojiData);
     } catch (err) {
       console.error('Error loading emojis:', err);
       // Use fallback emojis as last resort
@@ -109,20 +86,6 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
     }
   };
 
-  const searchEmojis = async (query: string) => {
-    try {
-      const results = await emojiService.searchEmojis(query);
-      setFilteredEmojis(results);
-    } catch (err) {
-      console.error('Error searching emojis:', err);
-      // Fallback to local search in current emojis
-      const localResults = emojis.filter(emoji => 
-        emoji.unicodeName.toLowerCase().includes(query.toLowerCase()) ||
-        emoji.character.includes(query)
-      );
-      setFilteredEmojis(localResults);
-    }
-  };
 
   const handleEmojiClick = (emoji: Emoji) => {
     emojiService.addToRecent(emoji);
@@ -130,10 +93,6 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
     onClose();
   };
 
-  const handleCategoryChange = (categoryId: string) => {
-    setSelectedCategory(categoryId);
-    setSearchQuery('');
-  };
 
   if (!isOpen) return null;
 
@@ -161,34 +120,18 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
           </button>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <input
-            type="text"
-            placeholder="Search emojis..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
       </div>
 
       {/* Categories */}
       <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto scrollbar-hide">
         {categories.map((category) => (
-          <button
+          <div
             key={category.id}
-            onClick={() => handleCategoryChange(category.id)}
-            className={`flex items-center gap-1 px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors ${
-              selectedCategory === category.id
-                ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border-b-2 border-blue-600 dark:border-blue-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'
-            }`}
+            className="flex items-center gap-1 px-3 py-2 text-xs font-medium whitespace-nowrap text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border-b-2 border-blue-600 dark:border-blue-400"
           >
             {category.icon}
             {category.name}
-          </button>
+          </div>
         ))}
       </div>
 
@@ -212,7 +155,7 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
         ) : filteredEmojis.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {searchQuery ? 'No emojis found' : 'No recent emojis'}
+              No emojis available
             </p>
           </div>
         ) : (

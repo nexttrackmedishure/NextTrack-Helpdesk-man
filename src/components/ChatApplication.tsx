@@ -25,7 +25,10 @@ import {
   FileText,
   Image,
   File,
-  X
+  X,
+  Menu,
+  ChevronLeft,
+  PanelLeftClose
 } from 'lucide-react';
 import VideoCall from './VideoCall';
 import EmojiPicker from './EmojiPicker';
@@ -199,6 +202,7 @@ const ChatApplication: React.FC = () => {
   const [devicePermissions, setDevicePermissions] = useState<{[key: string]: boolean}>({});
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [emojiPickerPosition, setEmojiPickerPosition] = useState({ top: 0, left: 0 });
+  const [isInboxOpen, setIsInboxOpen] = useState(true); // Inbox drawer toggle
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -322,8 +326,115 @@ const ChatApplication: React.FC = () => {
   };
 
   const handleMessageAction = (messageId: number, action: string) => {
-    console.log(`Action: ${action} on message ${messageId}`);
+    const message = messages.find(m => m.id === messageId);
+    if (!message) return;
+
+    switch (action) {
+      case 'reply':
+        handleReply(message);
+        break;
+      case 'forward':
+        handleForward(message);
+        break;
+      case 'copy':
+        handleCopy(message);
+        break;
+      case 'report':
+        handleReport(message);
+        break;
+      case 'delete':
+        handleDelete(messageId);
+        break;
+      default:
+        console.log(`Unknown action: ${action}`);
+    }
     setOpenDropdownId(null);
+  };
+
+  // Reply to a message
+  const handleReply = (message: Message) => {
+    const replyText = message.text ? `Replying to: "${message.text}"` : 'Replying to message';
+    setNewMessage(replyText + '\n\n');
+    // Focus on the message input
+    setTimeout(() => {
+      const textarea = document.querySelector('textarea[placeholder="Type a message..."]') as HTMLTextAreaElement;
+      if (textarea) {
+        textarea.focus();
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+      }
+    }, 100);
+  };
+
+  // Forward a message
+  const handleForward = (message: Message) => {
+    const forwardText = `Forwarded message: "${message.text}"`;
+    setNewMessage(forwardText + '\n\n');
+    // Focus on the message input
+    setTimeout(() => {
+      const textarea = document.querySelector('textarea[placeholder="Type a message..."]') as HTMLTextAreaElement;
+      if (textarea) {
+        textarea.focus();
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+      }
+    }, 100);
+  };
+
+  // Copy message text to clipboard
+  const handleCopy = async (message: Message) => {
+    try {
+      await navigator.clipboard.writeText(message.text);
+      // Show a brief success indicator
+      const button = document.querySelector(`[data-message-id="${message.id}"]`) as HTMLElement;
+      if (button) {
+        const originalText = button.textContent;
+        button.textContent = 'Copied!';
+        button.style.color = '#10b981';
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.style.color = '';
+        }, 1500);
+      }
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+      alert('Failed to copy message to clipboard');
+    }
+  };
+
+  // Report a message
+  const handleReport = (message: Message) => {
+    const reportReason = prompt(
+      `Report message: "${message.text}"\n\nPlease provide a reason for reporting this message:`,
+      'Inappropriate content'
+    );
+    
+    if (reportReason) {
+      // In a real app, this would send to a moderation system
+      console.log('Message reported:', {
+        messageId: message.id,
+        messageText: message.text,
+        reason: reportReason,
+        timestamp: new Date().toISOString()
+      });
+      alert('Message has been reported. Thank you for your feedback.');
+    }
+  };
+
+  // Delete a message
+  const handleDelete = (messageId: number) => {
+    const message = messages.find(m => m.id === messageId);
+    const messagePreview = message?.text ? 
+      (message.text.length > 50 ? message.text.substring(0, 50) + '...' : message.text) : 
+      'this message';
+    
+    if (confirm(`Are you sure you want to delete "${messagePreview}"?\n\nThis action cannot be undone.`)) {
+      setMessages(prevMessages => prevMessages.filter(m => m.id !== messageId));
+      // Show a brief success message
+      const originalTitle = document.title;
+      document.title = 'Message deleted ✓';
+      setTimeout(() => {
+        document.title = originalTitle;
+      }, 2000);
+    }
   };
 
   // Voice message functions
@@ -1388,6 +1499,11 @@ const ChatApplication: React.FC = () => {
     setNewMessage(prev => prev + emoji);
   };
 
+  // Inbox drawer toggle function
+  const toggleInbox = () => {
+    setIsInboxOpen(!isInboxOpen);
+  };
+
   // Type guards
   const isVoiceMessage = (message: Message): message is VoiceMessage => {
     return 'type' in message && message.type === 'voice';
@@ -1411,8 +1527,71 @@ const ChatApplication: React.FC = () => {
     return (
       <div
         key={message.id}
-        className={`flex items-start gap-2.5 ${isAgent ? 'justify-end' : 'justify-start'}`}
+        className={`flex items-center gap-2.5 ${isAgent ? 'justify-end' : 'justify-start'}`}
       >
+        {/* Three dots menu for agent messages - positioned on left side */}
+        {isAgent && (
+          <div className="relative">
+            <button
+              onClick={() => setOpenDropdownId(openDropdownId === message.id ? null : message.id)}
+              className="inline-flex items-center p-2 text-sm font-medium text-center rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-50 dark:focus:ring-gray-600 text-white bg-blue-500 hover:bg-blue-600"
+            >
+              <svg className="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 4 15">
+                <path d="M3.5 1.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 6.041a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 5.959a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"/>
+              </svg>
+            </button>
+
+            {/* Dropdown menu */}
+            {openDropdownId === message.id && (
+              <div className="absolute z-20 bg-white divide-y divide-gray-100 rounded-lg shadow-lg w-40 dark:bg-gray-700 dark:divide-gray-600 top-full left-0 mt-2">
+              <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
+                <li>
+                  <button
+                    onClick={() => handleMessageAction(message.id, 'reply')}
+                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                  >
+                    Reply
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => handleMessageAction(message.id, 'forward')}
+                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                  >
+                    Forward
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => handleMessageAction(message.id, 'copy')}
+                    data-message-id={message.id}
+                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                  >
+                    Copy
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => handleMessageAction(message.id, 'report')}
+                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                  >
+                    Report
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => handleMessageAction(message.id, 'delete')}
+                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                  >
+                    Delete
+                  </button>
+                </li>
+              </ul>
+            </div>
+          )}
+          </div>
+        )}
+
         {/* Avatar for customer messages */}
         {!isAgent && (
           <img
@@ -1771,90 +1950,104 @@ const ChatApplication: React.FC = () => {
           </div>
         )}
 
-        {/* Three dots menu for message actions */}
-        <button
-          onClick={() => setOpenDropdownId(openDropdownId === message.id ? null : message.id)}
-          className={`inline-flex self-center items-center p-2 text-sm font-medium text-center rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-50 dark:focus:ring-gray-600 ${
-            isAgent
-              ? 'text-white bg-blue-500 hover:bg-blue-600'
-              : 'text-gray-900 bg-white dark:text-white dark:bg-gray-900 dark:hover:bg-gray-800'
-          }`}
-        >
-          <svg className="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 4 15">
-            <path d="M3.5 1.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 6.041a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 5.959a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"/>
-          </svg>
-        </button>
+        {/* Three dots menu for customer messages - positioned on right side */}
+        {!isAgent && (
+          <div className="relative">
+            <button
+              onClick={() => setOpenDropdownId(openDropdownId === message.id ? null : message.id)}
+              className="inline-flex items-center p-2 text-sm font-medium text-center rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-50 dark:focus:ring-gray-600 text-gray-900 bg-white dark:text-white dark:bg-gray-900 dark:hover:bg-gray-800"
+            >
+              <svg className="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 4 15">
+                <path d="M3.5 1.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 6.041a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 5.959a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"/>
+              </svg>
+            </button>
 
-        {/* Dropdown menu */}
-        {openDropdownId === message.id && (
-          <div className="absolute z-10 bg-white divide-y divide-gray-100 rounded-lg shadow-sm w-40 dark:bg-gray-700 dark:divide-gray-600">
-            <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-              <li>
-                <button
-                  onClick={() => handleMessageAction(message.id, 'reply')}
-                  className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                >
-                  Reply
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => handleMessageAction(message.id, 'forward')}
-                  className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                >
-                  Forward
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => handleMessageAction(message.id, 'copy')}
-                  className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                >
-                  Copy
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => handleMessageAction(message.id, 'report')}
-                  className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                >
-                  Report
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => handleMessageAction(message.id, 'delete')}
-                  className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                >
-                  Delete
-                </button>
-              </li>
-            </ul>
+            {/* Dropdown menu */}
+            {openDropdownId === message.id && (
+              <div className="absolute z-20 bg-white divide-y divide-gray-100 rounded-lg shadow-lg w-40 dark:bg-gray-700 dark:divide-gray-600 top-full right-0 mt-2">
+              <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
+                <li>
+                  <button
+                    onClick={() => handleMessageAction(message.id, 'reply')}
+                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                  >
+                    Reply
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => handleMessageAction(message.id, 'forward')}
+                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                  >
+                    Forward
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => handleMessageAction(message.id, 'copy')}
+                    data-message-id={message.id}
+                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                  >
+                    Copy
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => handleMessageAction(message.id, 'report')}
+                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                  >
+                    Report
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => handleMessageAction(message.id, 'delete')}
+                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                  >
+                    Delete
+                  </button>
+                </li>
+              </ul>
+            </div>
+          )}
           </div>
         )}
+
       </div>
     );
   };
 
   return (
-    <div className="flex h-screen w-full bg-gray-50 dark:bg-gray-900 overflow-hidden">
+    <div className="flex h-full w-full bg-gray-50 dark:bg-gray-900 min-h-0">
       {/* Sidebar */}
-      <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
-        {/* Fixed Header */}
-        <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Inbox</h2>
-          <div className="mt-3 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search conversations..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+      <div className={`${isInboxOpen ? 'w-80' : 'w-0'} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden transition-all duration-300 ease-in-out`}>
+        {/* Inbox Header */}
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 shadow-sm flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Inbox</h2>
+            <button
+              onClick={toggleInbox}
+              className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              title="Hide Inbox"
+            >
+              <PanelLeftClose className="w-5 h-5" />
+            </button>
           </div>
+          {isInboxOpen && (
+            <div className="mt-3 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search conversations..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          )}
         </div>
 
         {/* Contact List */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide">
+        {isInboxOpen && (
+          <div className="flex-1 overflow-y-auto scrollbar-hide">
           {mockContacts.map((contact) => (
             <div
               key={contact.id}
@@ -1896,15 +2089,26 @@ const ChatApplication: React.FC = () => {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col relative overflow-hidden">
-        {/* Fixed Chat Header */}
-        <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+      <div className="flex-1 flex flex-col relative">
+        {/* Chat Header - Removed sticky positioning to work with main header */}
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 shadow-sm flex-shrink-0 min-h-[80px]">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
+              {/* Inbox Toggle Button (when inbox is closed) */}
+              {!isInboxOpen && (
+                <button
+                  onClick={toggleInbox}
+                  className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Show Inbox"
+                >
+                  <PanelLeftClose className="w-5 h-5 rotate-180" />
+                </button>
+              )}
               <img
                 src={selectedContact.avatar}
                 alt={selectedContact.name}
@@ -1990,7 +2194,7 @@ const ChatApplication: React.FC = () => {
         </div>
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide" style={{ height: 'calc(100vh - 200px)' }}>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
           {messages.map(renderMessage)}
           <div ref={messagesEndRef} />
         </div>
@@ -2293,7 +2497,7 @@ const ChatApplication: React.FC = () => {
       {/* Microphone Test Modal */}
       {isMicTestOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto scrollbar-hide">
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white">

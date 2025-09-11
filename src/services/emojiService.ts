@@ -1,8 +1,32 @@
 // Emoji API Service for chat application
+
+// Define types for emoji data
+export interface EmojiData {
+  character: string;
+  unicodeName: string;
+  slug: string;
+}
+
+export interface EmojiApiResponse {
+  status?: string;
+  message?: string;
+  [key: string]: any;
+}
+
+export interface ApiTestResult {
+  success: boolean;
+  message: string;
+  suggestion?: string;
+  emojiCount?: number;
+}
+
 const EMOJI_API_BASE_URL = 'https://emoji-api.com/emojis';
-const EMOJI_API_KEY = import.meta.env.VITE_EMOJI_API_KEY || 'YOUR_EMOJI_API_KEY_HERE';
+const EMOJI_API_KEY = (import.meta as any).env?.VITE_EMOJI_API_KEY || 'YOUR_EMOJI_API_KEY_HERE';
 
 export class EmojiService {
+  private cache: Map<string, any>;
+  private categories: string[];
+
   constructor() {
     this.cache = new Map();
     this.categories = [
@@ -19,7 +43,7 @@ export class EmojiService {
   }
 
   // Get all emojis from the API
-  async getAllEmojis() {
+  async getAllEmojis(): Promise<EmojiData[]> {
     try {
       if (this.cache.has('all-emojis')) {
         return this.cache.get('all-emojis');
@@ -31,15 +55,15 @@ export class EmojiService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: EmojiApiResponse = await response.json();
       
       if (data.status === 'error') {
-        throw new Error(data.message);
+        throw new Error(data.message || 'API error');
       }
 
       // Cache the results
       this.cache.set('all-emojis', data);
-      return data;
+      return data as EmojiData[];
     } catch (error) {
       console.error('Error fetching emojis:', error);
       // Return fallback emojis if API fails
@@ -48,7 +72,7 @@ export class EmojiService {
   }
 
   // Get emojis by category
-  async getEmojisByCategory(category) {
+  async getEmojisByCategory(category: string): Promise<EmojiData[]> {
     try {
       const cacheKey = `category-${category}`;
       if (this.cache.has(cacheKey)) {
@@ -67,14 +91,14 @@ export class EmojiService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: EmojiApiResponse = await response.json();
       
       if (data.status === 'error') {
-        throw new Error(data.message);
+        throw new Error(data.message || 'API error');
       }
 
       this.cache.set(cacheKey, data);
-      return data;
+      return data as EmojiData[];
     } catch (error) {
       console.error(`Error fetching emojis for category ${category}:`, error);
       // Return fallback emojis instead of empty array
@@ -83,7 +107,7 @@ export class EmojiService {
   }
 
   // Search emojis by name
-  async searchEmojis(query) {
+  async searchEmojis(query: string): Promise<EmojiData[]> {
     try {
       const allEmojis = await this.getAllEmojis();
       if (!allEmojis || !Array.isArray(allEmojis)) {
@@ -114,13 +138,13 @@ export class EmojiService {
   }
 
   // Get popular/recently used emojis
-  getRecentEmojis() {
+  getRecentEmojis(): EmojiData[] {
     const recent = localStorage.getItem('recent-emojis');
     return recent ? JSON.parse(recent) : [];
   }
 
   // Add emoji to recent list
-  addToRecent(emoji) {
+  addToRecent(emoji: EmojiData): void {
     try {
       const recent = this.getRecentEmojis();
       const existingIndex = recent.findIndex(e => e.unicodeName === emoji.unicodeName);
@@ -140,7 +164,7 @@ export class EmojiService {
   }
 
   // Get fallback emojis when API is not available
-  getFallbackEmojis() {
+  getFallbackEmojis(): EmojiData[] {
     return [
       { character: '😀', unicodeName: 'grinning face', slug: 'grinning-face' },
       { character: '😃', unicodeName: 'grinning face with big eyes', slug: 'grinning-face-big-eyes' },
@@ -206,15 +230,15 @@ export class EmojiService {
   }
 
   // Test API connection
-  async testConnection() {
+  async testConnection(): Promise<ApiTestResult> {
     try {
       const response = await fetch(`${EMOJI_API_BASE_URL}?access_key=${EMOJI_API_KEY}`);
-      const data = await response.json();
+      const data: EmojiApiResponse = await response.json();
       
       if (data.status === 'error') {
         return {
           success: false,
-          message: data.message,
+          message: data.message || 'API error',
           suggestion: 'Please check your API key at https://emoji-api.com/'
         };
       }
@@ -224,10 +248,10 @@ export class EmojiService {
         message: 'Emoji API connection successful',
         emojiCount: Array.isArray(data) ? data.length : 0
       };
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
-        message: error.message,
+        message: error.message || 'Unknown error',
         suggestion: 'Check your internet connection and API key'
       };
     }

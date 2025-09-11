@@ -29,9 +29,9 @@ function AuthenticatedApp() {
     document.title = `NexTrack | ${activeTab}`;
   }, [activeTab]);
 
-  // Prevent body scrolling when modal is open
+  // Prevent body scrolling when modal is open or when in Customers tab
   useEffect(() => {
-    if (isNewRequestModalOpen) {
+    if (isNewRequestModalOpen || activeTab === "Customers") {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "unset";
@@ -41,7 +41,7 @@ function AuthenticatedApp() {
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, [isNewRequestModalOpen]);
+  }, [isNewRequestModalOpen, activeTab]);
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-dark-900">
@@ -51,14 +51,16 @@ function AuthenticatedApp() {
         activeTab={activeTab}
         onTabChange={handleTabChange}
       />
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col min-w-0">
         {!isNewRequestModalOpen && <Header activeTab={activeTab} />}
         <main
-          className={`flex-1 overflow-x-hidden bg-gray-50 dark:bg-dark-900 p-4 md:p-6 ${
-            isNewRequestModalOpen ? "overflow-y-hidden" : "overflow-y-auto"
+          className={`flex-1 overflow-x-hidden bg-gray-50 dark:bg-dark-900 ${
+            activeTab === "Customers" ? "p-0" : "p-4 md:p-6"
+          } ${
+            isNewRequestModalOpen || activeTab === "Customers" ? "overflow-y-hidden" : "overflow-y-auto"
           }`}
         >
-          <div className="max-w-full">
+          <div className={activeTab === "Customers" ? "h-full" : "max-w-full"}>
             <Suspense
               fallback={
                 <div className="flex items-center justify-center h-64">
