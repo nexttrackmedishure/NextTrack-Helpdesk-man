@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Plus,
   Clock,
@@ -435,11 +435,8 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
   };
 
   const handleSubmitRequest = () => {
-    // Get description from Tiptap editor if available
-    let description = newRequestForm.description;
-    if ((window as any).tiptapEditor) {
-      description = (window as any).tiptapEditor.getHTML();
-    }
+    // Get description from rich text editor
+    const description = newRequestForm.description;
 
     // Validate required fields
     if (
@@ -464,11 +461,8 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
   };
 
   const handleConfirmSubmit = () => {
-    // Get description from Tiptap editor if available
-    let description = newRequestForm.description;
-    if ((window as any).tiptapEditor) {
-      description = (window as any).tiptapEditor.getHTML();
-    }
+    // Get description from rich text editor
+    const description = newRequestForm.description;
 
     // In a real application, this would submit to the backend
     const formData = {
@@ -504,9 +498,9 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     setIsSeverityDropdownOpen(false);
     setIsCreateAgainModalOpen(false);
 
-    // Clear Tiptap editor content
-    if ((window as any).tiptapEditor) {
-      (window as any).tiptapEditor.commands.clearContent();
+    // Clear rich text editor content
+    if (editorRef.current) {
+      editorRef.current.innerHTML = '';
     }
   };
 
@@ -521,223 +515,82 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     setIsValidationModalOpen(false);
   };
 
-  // Initialize Tiptap editor when modal opens
-  useEffect(() => {
-    if (isNewRequestModalOpen) {
-      const initializeTiptap = async () => {
-        try {
-          // Dynamically import Tiptap modules using string literals to avoid TypeScript errors
-          const coreModule = "https://esm.sh/@tiptap/core";
-          const starterKitModule = "https://esm.sh/@tiptap/starter-kit";
-          const placeholderModule =
-            "https://esm.sh/@tiptap/extension-placeholder";
+  // Advanced Rich Text Editor functionality
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [activeButtons, setActiveButtons] = useState<Set<string>>(new Set());
 
-          const { Editor, Node } = (await import(coreModule)) as any;
-          const StarterKit = (await import(starterKitModule)) as any;
-          const Placeholder = (await import(placeholderModule)) as any;
+  const fontList = [
+    "Arial",
+    "Verdana", 
+    "Times New Roman",
+    "Garamond",
+    "Georgia",
+    "Courier New",
+    "cursive",
+  ];
 
-          const CustomBlockquote = Node.create({
-            name: "customBlockquote",
-            group: "block",
-            content: "block+",
-            defining: true,
-            parseHTML() {
-              return [{ tag: "blockquote" }];
-            },
-            addOptions() {
-              return {
-                HTMLAttributes: {},
-              };
-            },
-            addNodeView() {
-              return ({ node: _node }: { node: any }) => {
-                const blockquote = document.createElement("blockquote");
+  const modifyText = (command: string, defaultUi: boolean, value?: string) => {
+    document.execCommand(command, defaultUi, value);
+    updateFormContent();
+  };
 
-                Object.entries(this.options.HTMLAttributes).forEach(
-                  ([key, value]) => {
-                    blockquote.setAttribute(key, value as string);
-                  }
-                );
-
-                const svg = document.createElementNS(
-                  "http://www.w3.org/2000/svg",
-                  "svg"
-                );
-                svg.setAttribute(
-                  "class",
-                  "absolute top-0 start-0 size-16 text-gray-100 dark:text-neutral-700"
-                );
-                svg.setAttribute("width", "16");
-                svg.setAttribute("height", "16");
-                svg.setAttribute("viewBox", "0 0 16 16");
-                svg.setAttribute("fill", "none");
-                svg.setAttribute("aria-hidden", "true");
-
-                const path = document.createElementNS(
-                  "http://www.w3.org/2000/svg",
-                  "path"
-                );
-                path.setAttribute(
-                  "d",
-                  "M7.39762 10.3C7.39762 11.0733 7.14888 11.7 6.6514 12.18C6.15392 12.6333 5.52552 12.86 4.76621 12.86C3.84979 12.86 3.09047 12.5533 2.48825 11.94C1.91222 11.3266 1.62421 10.4467 1.62421 9.29999C1.62421 8.07332 1.96459 6.87332 2.64535 5.69999C3.35231 4.49999 4.33418 3.55332 5.59098 2.85999L6.4943 4.25999C5.81354 4.73999 5.26369 5.27332 4.84476 5.85999C4.45201 6.44666 4.19017 7.12666 4.05926 7.89999C4.29491 7.79332 4.56983 7.73999 4.88403 7.73999C5.61716 7.73999 6.21938 7.97999 6.69067 8.45999C7.16197 8.93999 7.39762 9.55333 7.39762 10.3ZM14.6242 10.3C14.6242 11.0733 14.3755 11.7 13.878 12.18C13.3805 12.6333 12.7521 12.86 11.9928 12.86C11.0764 12.86 10.3171 12.5533 9.71484 11.94C9.13881 11.3266 8.85079 10.4467 8.85079 9.29999C8.85079 8.07332 9.19117 6.87332 9.87194 5.69999C10.5789 4.49999 11.5608 3.55332 12.8176 2.85999L13.7209 4.25999C13.0401 4.73999 12.4903 5.27332 12.0713 5.85999C11.6786 6.44666 11.4168 7.12666 11.2858 7.89999C11.5215 7.79332 11.7964 7.73999 12.1106 7.73999C12.8437 7.73999 13.446 7.97999 13.9173 8.45999C14.3886 8.93999 14.6242 9.55333 14.6242 10.3Z"
-                );
-                path.setAttribute("fill", "currentColor");
-                svg.appendChild(path);
-
-                blockquote.appendChild(svg);
-
-                const contentWrapper = document.createElement("div");
-                contentWrapper.classList.add("relative", "z-10", "italic");
-                blockquote.appendChild(contentWrapper);
-
-                return {
-                  dom: blockquote,
-                  contentDOM: contentWrapper,
-                };
-              };
-            },
-          });
-
-          const editor = new Editor({
-            element: document.querySelector(
-              "#hs-editor-tiptap-blockquote-alt [data-hs-editor-field]"
-            ),
-            editorProps: {
-              attributes: {
-                class: "relative min-h-20 p-2 scrollbar-hide",
-              },
-            },
-            extensions: [
-              StarterKit.default.configure({
-                blockquote: false,
-                history: false,
-                paragraph: {
-                  HTMLAttributes: {
-                    class: "text-sm text-gray-800 dark:text-neutral-200",
-                  },
-                },
-                bold: {
-                  HTMLAttributes: {
-                    class: "font-bold",
-                  },
-                },
-                bulletList: {
-                  HTMLAttributes: {
-                    class:
-                      "list-disc list-inside text-gray-800 dark:text-white",
-                  },
-                },
-                orderedList: {
-                  HTMLAttributes: {
-                    class:
-                      "list-decimal list-inside text-gray-800 dark:text-white",
-                  },
-                },
-                listItem: {
-                  HTMLAttributes: {
-                    class: "marker:text-sm",
-                  },
-                },
-                link: {
-                  HTMLAttributes: {
-                    class:
-                      "inline-flex items-center gap-x-1 text-blue-600 decoration-2 hover:underline focus:outline-hidden focus:underline font-medium dark:text-white",
-                  },
-                },
-                underline: true,
-              }),
-              Placeholder.default.configure({
-                placeholder: "Describe your issue in detail...",
-                emptyNodeClass: "before:text-gray-400",
-              }),
-              CustomBlockquote.configure({
-                HTMLAttributes: {
-                  class: "relative sm:[&>div>p]:text-xl pt-6 pb-4 pe-4 ps-8",
-                },
-              }),
-            ],
-          });
-
-          const actions = [
-            {
-              id: "#hs-editor-tiptap-blockquote-alt [data-hs-editor-bold]",
-              fn: () => editor.chain().focus().toggleBold().run(),
-            },
-            {
-              id: "#hs-editor-tiptap-blockquote-alt [data-hs-editor-italic]",
-              fn: () => editor.chain().focus().toggleItalic().run(),
-            },
-            {
-              id: "#hs-editor-tiptap-blockquote-alt [data-hs-editor-underline]",
-              fn: () => editor.chain().focus().toggleUnderline().run(),
-            },
-            {
-              id: "#hs-editor-tiptap-blockquote-alt [data-hs-editor-strike]",
-              fn: () => editor.chain().focus().toggleStrike().run(),
-            },
-            {
-              id: "#hs-editor-tiptap-blockquote-alt [data-hs-editor-link]",
-              fn: () => {
-                const url = window.prompt("URL");
-                editor
-                  .chain()
-                  .focus()
-                  .extendMarkRange("link")
-                  .setLink({ href: url })
-                  .run();
-              },
-            },
-            {
-              id: "#hs-editor-tiptap-blockquote-alt [data-hs-editor-ol]",
-              fn: () => editor.chain().focus().toggleOrderedList().run(),
-            },
-            {
-              id: "#hs-editor-tiptap-blockquote-alt [data-hs-editor-ul]",
-              fn: () => editor.chain().focus().toggleBulletList().run(),
-            },
-            {
-              id: "#hs-editor-tiptap-blockquote-alt [data-hs-editor-blockquote]",
-              fn: () =>
-                editor.chain().focus().toggleWrap("customBlockquote").run(),
-            },
-            {
-              id: "#hs-editor-tiptap-blockquote-alt [data-hs-editor-code]",
-              fn: () => editor.chain().focus().toggleCode().run(),
-            },
-          ];
-
-          actions.forEach(({ id, fn }) => {
-            const action = document.querySelector(id);
-
-            if (action === null) return;
-
-            action.addEventListener("click", (e) => {
-              e.preventDefault();
-              // Check if editor is mounted and has focus capability
-              if (editor && editor.view && !editor.isDestroyed) {
-                fn();
-              }
-            });
-          });
-
-          // Store editor reference for cleanup
-          (window as any).tiptapEditor = editor;
-        } catch (error) {
-          console.error("Failed to initialize Tiptap editor:", error);
-        }
-      };
-
-      // Small delay to ensure DOM is ready
-      setTimeout(initializeTiptap, 100);
+  const updateFormContent = () => {
+    if (editorRef.current) {
+      const content = editorRef.current.innerHTML;
+      handleFormChange("description", content);
     }
+  };
 
-    return () => {
-      // Cleanup editor when modal closes
-      if ((window as any).tiptapEditor) {
-        (window as any).tiptapEditor.destroy();
-        (window as any).tiptapEditor = null;
+  const handleFormatButton = (command: string) => {
+    modifyText(command, false);
+    updateActiveButtons();
+  };
+
+  const handleAdvancedOption = (command: string, value: string) => {
+    modifyText(command, false, value);
+    updateFormContent();
+  };
+
+  const handleCreateLink = () => {
+    const userLink = prompt("Enter a URL");
+    if (userLink) {
+      const link = /http/i.test(userLink) ? userLink : "http://" + userLink;
+      modifyText("createLink", false, link);
+    }
+  };
+
+  const updateActiveButtons = () => {
+    const newActiveButtons = new Set<string>();
+    
+    // Check which formatting is currently active
+    if (document.queryCommandState('bold')) newActiveButtons.add('bold');
+    if (document.queryCommandState('italic')) newActiveButtons.add('italic');
+    if (document.queryCommandState('underline')) newActiveButtons.add('underline');
+    if (document.queryCommandState('strikeThrough')) newActiveButtons.add('strikeThrough');
+    if (document.queryCommandState('subscript')) newActiveButtons.add('subscript');
+    if (document.queryCommandState('superscript')) newActiveButtons.add('superscript');
+    
+    setActiveButtons(newActiveButtons);
+  };
+
+  const handleAlignment = (alignment: string) => {
+    modifyText(alignment, false);
+    updateActiveButtons();
+  };
+
+  const handleEditorInput = () => {
+    updateFormContent();
+    updateActiveButtons();
+  };
+
+  // Initialize editor when modal opens
+  useEffect(() => {
+    if (isNewRequestModalOpen && editorRef.current) {
+      // Set initial content
+      if (newRequestForm.description) {
+        editorRef.current.innerHTML = newRequestForm.description;
       }
-    };
+    }
   }, [isNewRequestModalOpen]);
 
   // Location selection state
@@ -1372,16 +1225,83 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
             display: none;
           }
 
-          .tiptap ul p,
-          .tiptap ol p {
-            display: inline;
-          }
 
-          .tiptap p.is-editor-empty:first-child::before {
+          /* Rich Text Editor Styles */
+          [contenteditable]:empty:before {
             content: attr(data-placeholder);
-            float: left;
-            height: 0;
+            color: #9ca3af;
             pointer-events: none;
+          }
+          
+          [contenteditable]:focus:before {
+            content: none;
+          }
+          
+          /* Rich Text Editor Content Styles */
+          [contenteditable] {
+            line-height: 1.6;
+          }
+          
+          [contenteditable] h1 {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 1rem 0;
+          }
+          
+          [contenteditable] h2 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 0.8rem 0;
+          }
+          
+          [contenteditable] h3 {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin: 0.6rem 0;
+          }
+          
+          [contenteditable] h4 {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin: 0.5rem 0;
+          }
+          
+          [contenteditable] h5 {
+            font-size: 1rem;
+            font-weight: bold;
+            margin: 0.4rem 0;
+          }
+          
+          [contenteditable] h6 {
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin: 0.3rem 0;
+          }
+          
+          [contenteditable] ul, [contenteditable] ol {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+          }
+          
+          [contenteditable] li {
+            margin: 0.2rem 0;
+          }
+          
+          [contenteditable] blockquote {
+            border-left: 4px solid #e5e7eb;
+            padding-left: 1rem;
+            margin: 1rem 0;
+            font-style: italic;
+            color: #6b7280;
+          }
+          
+          [contenteditable] a {
+            color: #3b82f6;
+            text-decoration: underline;
+          }
+          
+          [contenteditable] a:hover {
+            color: #1d4ed8;
           }
 
           /* Shimmer Button Styles */
@@ -3861,220 +3781,254 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                         <span className="text-red-500 text-sm">*</span>
                       </div>
 
-                      {/* Enhanced Tiptap Rich Text Editor */}
+                      {/* Advanced Rich Text Editor */}
                       <div className="bg-white border-2 border-gray-200 rounded-xl overflow-hidden dark:bg-gray-800 dark:border-gray-600 shadow-sm hover:shadow-md transition-shadow duration-200">
-                        <div id="hs-editor-tiptap-blockquote-alt">
-                          <div className="sticky top-0 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 flex align-middle gap-x-1 border-b border-gray-200 dark:border-gray-600 p-1.5">
-                            <button
-                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                              type="button"
-                              data-hs-editor-bold=""
-                            >
-                              <svg
-                                className="shrink-0 size-4"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M14 12a4 4 0 0 0 0-8H6v8"></path>
-                                <path d="M15 20a4 4 0 0 0 0-8H6v8Z"></path>
-                              </svg>
-                            </button>
-                            <button
-                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                              type="button"
-                              data-hs-editor-italic=""
-                            >
-                              <svg
-                                className="shrink-0 size-4"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <line x1="19" x2="10" y1="4" y2="4"></line>
-                                <line x1="14" x2="5" y1="20" y2="20"></line>
-                                <line x1="15" x2="9" y1="4" y2="20"></line>
-                              </svg>
-                            </button>
-                            <button
-                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                              type="button"
-                              data-hs-editor-underline=""
-                            >
-                              <svg
-                                className="shrink-0 size-4"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M6 4v6a6 6 0 0 0 12 0V4"></path>
-                                <line x1="4" x2="20" y1="20" y2="20"></line>
-                              </svg>
-                            </button>
-                            <button
-                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                              type="button"
-                              data-hs-editor-strike=""
-                            >
-                              <svg
-                                className="shrink-0 size-4"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M16 4H9a3 3 0 0 0-2.83 4"></path>
-                                <path d="M14 12a4 4 0 0 1 0 8H6"></path>
-                                <line x1="4" x2="20" y1="12" y2="12"></line>
-                              </svg>
-                            </button>
-                            <button
-                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                              type="button"
-                              data-hs-editor-link=""
-                            >
-                              <svg
-                                className="shrink-0 size-4"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                              </svg>
-                            </button>
-                            <button
-                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                              type="button"
-                              data-hs-editor-ol=""
-                            >
-                              <svg
-                                className="shrink-0 size-4"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <line x1="10" x2="21" y1="6" y2="6"></line>
-                                <line x1="10" x2="21" y1="12" y2="12"></line>
-                                <line x1="10" x2="21" y1="18" y2="18"></line>
-                                <path d="M4 6h1v4"></path>
-                                <path d="M4 10h2"></path>
-                                <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path>
-                              </svg>
-                            </button>
-                            <button
-                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                              type="button"
-                              data-hs-editor-ul=""
-                            >
-                              <svg
-                                className="shrink-0 size-4"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <line x1="8" x2="21" y1="6" y2="6"></line>
-                                <line x1="8" x2="21" y1="12" y2="12"></line>
-                                <line x1="8" x2="21" y1="18" y2="18"></line>
-                                <line x1="3" x2="3.01" y1="6" y2="6"></line>
-                                <line x1="3" x2="3.01" y1="12" y2="12"></line>
-                                <line x1="3" x2="3.01" y1="18" y2="18"></line>
-                              </svg>
-                            </button>
-                            <button
-                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                              type="button"
-                              data-hs-editor-blockquote=""
-                            >
-                              <svg
-                                className="shrink-0 size-4"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M17 6H3"></path>
-                                <path d="M21 12H8"></path>
-                                <path d="M21 18H8"></path>
-                                <path d="M3 12v6"></path>
-                              </svg>
-                            </button>
-                            <button
-                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                              type="button"
-                              data-hs-editor-code=""
-                            >
-                              <svg
-                                className="shrink-0 size-4"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="m18 16 4-4-4-4"></path>
-                                <path d="m6 8-4 4 4 4"></path>
-                                <path d="m14.5 4-5 16"></path>
-                              </svg>
-                            </button>
-                          </div>
+                        {/* Toolbar */}
+                        <div className="sticky top-0 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-600 p-3">
+                          {/* Text Format */}
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton('bold')}
+                            className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                              activeButtons.has('bold') 
+                                ? 'bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white' 
+                                : 'bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600'
+                            }`}
+                            title="Bold"
+                          >
+                            <i className="fa-solid fa-bold text-xs"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton('italic')}
+                            className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                              activeButtons.has('italic') 
+                                ? 'bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white' 
+                                : 'bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600'
+                            }`}
+                            title="Italic"
+                          >
+                            <i className="fa-solid fa-italic text-xs"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton('underline')}
+                            className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                              activeButtons.has('underline') 
+                                ? 'bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white' 
+                                : 'bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600'
+                            }`}
+                            title="Underline"
+                          >
+                            <i className="fa-solid fa-underline text-xs"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton('strikeThrough')}
+                            className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                              activeButtons.has('strikeThrough') 
+                                ? 'bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white' 
+                                : 'bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600'
+                            }`}
+                            title="Strikethrough"
+                          >
+                            <i className="fa-solid fa-strikethrough text-xs"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton('superscript')}
+                            className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                              activeButtons.has('superscript') 
+                                ? 'bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white' 
+                                : 'bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600'
+                            }`}
+                            title="Superscript"
+                          >
+                            <i className="fa-solid fa-superscript text-xs"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton('subscript')}
+                            className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                              activeButtons.has('subscript') 
+                                ? 'bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white' 
+                                : 'bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600'
+                            }`}
+                            title="Subscript"
+                          >
+                            <i className="fa-solid fa-subscript text-xs"></i>
+                          </button>
 
-                          <div
-                            className="overflow-auto p-4 bg-gray-800 scrollbar-thin scrollbar-thumb-violet-600 scrollbar-track-violet-800 hover:scrollbar-thumb-violet-500 text-gray-300"
-                            style={{ height: "205px" }}
-                            data-hs-editor-field=""
-                          ></div>
+                          {/* Lists */}
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton('insertOrderedList')}
+                            className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            title="Numbered List"
+                          >
+                            <i className="fa-solid fa-list-ol text-xs"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton('insertUnorderedList')}
+                            className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            title="Bullet List"
+                          >
+                            <i className="fa-solid fa-list text-xs"></i>
+                          </button>
+
+                          {/* Undo/Redo */}
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton('undo')}
+                            className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            title="Undo"
+                          >
+                            <i className="fa-solid fa-rotate-left text-xs"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton('redo')}
+                            className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            title="Redo"
+                          >
+                            <i className="fa-solid fa-rotate-right text-xs"></i>
+                          </button>
+
+                          {/* Link */}
+                          <button
+                            type="button"
+                            onClick={handleCreateLink}
+                            className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            title="Create Link"
+                          >
+                            <i className="fa fa-link text-xs"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton('unlink')}
+                            className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            title="Remove Link"
+                          >
+                            <i className="fa fa-unlink text-xs"></i>
+                          </button>
+
+                          {/* Alignment */}
+                          <button
+                            type="button"
+                            onClick={() => handleAlignment('justifyLeft')}
+                            className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            title="Align Left"
+                          >
+                            <i className="fa-solid fa-align-left text-xs"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAlignment('justifyCenter')}
+                            className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            title="Align Center"
+                          >
+                            <i className="fa-solid fa-align-center text-xs"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAlignment('justifyRight')}
+                            className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            title="Align Right"
+                          >
+                            <i className="fa-solid fa-align-right text-xs"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAlignment('justifyFull')}
+                            className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            title="Justify"
+                          >
+                            <i className="fa-solid fa-align-justify text-xs"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton('indent')}
+                            className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            title="Indent"
+                          >
+                            <i className="fa-solid fa-indent text-xs"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton('outdent')}
+                            className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            title="Outdent"
+                          >
+                            <i className="fa-solid fa-outdent text-xs"></i>
+                          </button>
+
+                          {/* Headings */}
+                          <select
+                            onChange={(e) => handleAdvancedOption('formatBlock', e.target.value)}
+                            className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                            title="Heading"
+                          >
+                            <option value="div">Normal</option>
+                            <option value="H1">H1</option>
+                            <option value="H2">H2</option>
+                            <option value="H3">H3</option>
+                            <option value="H4">H4</option>
+                            <option value="H5">H5</option>
+                            <option value="H6">H6</option>
+                          </select>
+
+                          {/* Font */}
+                          <select
+                            onChange={(e) => handleAdvancedOption('fontName', e.target.value)}
+                            className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                            title="Font Family"
+                          >
+                            {fontList.map((font) => (
+                              <option key={font} value={font}>
+                                {font}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            onChange={(e) => handleAdvancedOption('fontSize', e.target.value)}
+                            className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                            title="Font Size"
+                            defaultValue="3"
+                          >
+                            {[1, 2, 3, 4, 5, 6, 7].map((size) => (
+                              <option key={size} value={size}>
+                                {size}
+                              </option>
+                            ))}
+                          </select>
+
+                          {/* Colors */}
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="color"
+                              onChange={(e) => handleAdvancedOption('foreColor', e.target.value)}
+                              className="w-7 h-7 border-none cursor-pointer rounded"
+                              title="Font Color"
+                            />
+                            <input
+                              type="color"
+                              onChange={(e) => handleAdvancedOption('backColor', e.target.value)}
+                              className="w-7 h-7 border-none cursor-pointer rounded"
+                              title="Highlight Color"
+                            />
+                          </div>
                         </div>
+                        
+                        {/* Editor Content */}
+                        <div
+                          ref={editorRef}
+                          contentEditable
+                          onInput={handleEditorInput}
+                          className="w-full min-h-32 p-4 text-sm text-gray-900 dark:text-white border-0 focus:ring-0 focus:outline-none"
+                          style={{ minHeight: '200px' }}
+                          data-placeholder="Describe your request in detail..."
+                        />
                       </div>
                     </div>
                   </div>

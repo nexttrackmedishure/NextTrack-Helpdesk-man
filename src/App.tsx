@@ -8,6 +8,7 @@ import Login from "./components/Login";
 // Lazy load components for better performance
 const Dashboard = lazy(() => import("./components/Dashboard"));
 const TicketGallery = lazy(() => import("./components/TicketGallery"));
+const ChatApplication = lazy(() => import("./components/ChatApplication"));
 
 // Authenticated App Component
 function AuthenticatedApp() {
@@ -72,6 +73,7 @@ function AuthenticatedApp() {
                   setIsNewRequestModalOpen={setIsNewRequestModalOpen}
                 />
               )}
+              {activeTab === "Customers" && <ChatApplication />}
             </Suspense>
           </div>
         </main>
