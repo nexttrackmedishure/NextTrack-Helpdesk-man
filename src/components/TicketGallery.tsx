@@ -1322,13 +1322,6 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex justify-end">
-            <button
-              onClick={() => setIsNewRequestModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-200"
-            >
-              <Plus className="w-4 h-4" />
-              New Request
-            </button>
           </div>
         </div>
 

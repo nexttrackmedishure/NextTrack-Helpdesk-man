@@ -28,6 +28,7 @@ import {
   X
 } from 'lucide-react';
 import VideoCall from './VideoCall';
+import EmojiPicker from './EmojiPicker';
 
 // Type definitions
 interface BaseMessage {
@@ -188,6 +189,16 @@ const ChatApplication: React.FC = () => {
   const [micTestRecordedAudioUrl, setMicTestRecordedAudioUrl] = useState<string | null>(null);
   const [isMicTestPlaying, setIsMicTestPlaying] = useState(false);
   const [micTestRecordingTime, setMicTestRecordingTime] = useState(0);
+  const [isRealTimeMonitoring, setIsRealTimeMonitoring] = useState(false);
+  const [realTimeAudioContext, setRealTimeAudioContext] = useState<AudioContext | null>(null);
+  const [realTimeGainNode, setRealTimeGainNode] = useState<GainNode | null>(null);
+  const [availableMicrophones, setAvailableMicrophones] = useState<MediaDeviceInfo[]>([]);
+  const [selectedMicrophone, setSelectedMicrophone] = useState<string>('');
+  const [isMicMuted, setIsMicMuted] = useState(false);
+  const [allowedDevices, setAllowedDevices] = useState<Set<string>>(new Set());
+  const [devicePermissions, setDevicePermissions] = useState<{[key: string]: boolean}>({});
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [emojiPickerPosition, setEmojiPickerPosition] = useState({ top: 0, left: 0 });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -247,8 +258,33 @@ const ChatApplication: React.FC = () => {
       if (micTestRecordedAudioUrl) {
         URL.revokeObjectURL(micTestRecordedAudioUrl);
       }
+      // Cleanup real-time monitoring
+      if (realTimeAudioContext) {
+        realTimeAudioContext.close();
+      }
+      if (realTimeGainNode) {
+        realTimeGainNode.disconnect();
+      }
     };
   }, [audioUrl, previewUrls, cameraStream, micStream]);
+
+  // Load device permissions on component mount
+  useEffect(() => {
+    loadDevicePermissions();
+  }, []);
+
+  // Restart monitoring when micStream changes
+  useEffect(() => {
+    if (micStream && isMicTestOpen) {
+      // Small delay to ensure stream is fully active
+      const timer = setTimeout(() => {
+        console.log('Stream changed, restarting monitoring...');
+        restartAudioMonitoring(micStream);
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [micStream, isMicTestOpen]);
 
   // Handle voice call ringtone
   useEffect(() => {
@@ -631,16 +667,32 @@ const ChatApplication: React.FC = () => {
         return;
       }
 
-      // Show permission request notification
-      const permissionGranted = confirm(
-        '📷 Camera Permission Required\n\n' +
-        'This application needs access to your camera to test video input.\n\n' +
-        'Click "OK" to allow camera access, then click "Allow" in the browser permission dialog.\n\n' +
-        'If you accidentally deny permission, you can:\n' +
-        '• Click the lock icon in your browser\'s address bar\n' +
-        '• Select "Allow" for camera access\n' +
-        '• Refresh the page and try again'
-      );
+      // Load existing device permissions
+      loadDevicePermissions();
+
+      // Get available devices first to check if we have any allowed cameras
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cameras = devices.filter(device => device.kind === 'videoinput');
+      
+      // Check if we have any previously allowed cameras
+      const hasAllowedCameras = cameras.some(camera => isDeviceAllowed(camera.deviceId));
+      
+      let permissionGranted = true;
+      
+      // Only show confirmation dialog if no cameras are previously allowed
+      if (!hasAllowedCameras) {
+        permissionGranted = confirm(
+          '📷 Camera Permission Required\n\n' +
+          'This application needs access to your camera to test video input.\n\n' +
+          'Click "OK" to allow camera access, then click "Allow" in the browser permission dialog.\n\n' +
+          'If you accidentally deny permission, you can:\n' +
+          '• Click the lock icon in your browser\'s address bar\n' +
+          '• Select "Allow" for camera access\n' +
+          '• Refresh the page and try again'
+        );
+      } else {
+        console.log('Using previously allowed camera device');
+      }
 
       if (!permissionGranted) {
         setIsCameraLoading(false);
@@ -656,6 +708,15 @@ const ChatApplication: React.FC = () => {
         },
         audio: false
       });
+
+      // Save permission for the default camera
+      const videoTracks = stream.getVideoTracks();
+      if (videoTracks.length > 0) {
+        const deviceId = videoTracks[0].getSettings().deviceId;
+        if (deviceId) {
+          saveDevicePermissions(deviceId, true);
+        }
+      }
 
       console.log('Camera access granted, setting up stream...');
       setCameraStream(stream);
@@ -764,16 +825,32 @@ const ChatApplication: React.FC = () => {
         return;
       }
 
-      // Show permission request notification
-      const permissionGranted = confirm(
-        '🎤 Microphone Permission Required\n\n' +
-        'This application needs access to your microphone to test audio input.\n\n' +
-        'Click "OK" to allow microphone access, then click "Allow" in the browser permission dialog.\n\n' +
-        'If you accidentally deny permission, you can:\n' +
-        '• Click the lock icon in your browser\'s address bar\n' +
-        '• Select "Allow" for microphone access\n' +
-        '• Refresh the page and try again'
-      );
+      // Load existing device permissions
+      loadDevicePermissions();
+
+      // Get available devices first to check if we have any allowed devices
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const microphones = devices.filter(device => device.kind === 'audioinput');
+      
+      // Check if we have any previously allowed microphones
+      const hasAllowedDevices = microphones.some(mic => isDeviceAllowed(mic.deviceId));
+      
+      let permissionGranted = true;
+      
+      // Only show confirmation dialog if no devices are previously allowed
+      if (!hasAllowedDevices) {
+        permissionGranted = confirm(
+          '🎤 Microphone Permission Required\n\n' +
+          'This application needs access to your microphone to test audio input.\n\n' +
+          'Click "OK" to allow microphone access, then click "Allow" in the browser permission dialog.\n\n' +
+          'If you accidentally deny permission, you can:\n' +
+          '• Click the lock icon in your browser\'s address bar\n' +
+          '• Select "Allow" for microphone access\n' +
+          '• Refresh the page and try again'
+        );
+      } else {
+        console.log('Using previously allowed microphone device');
+      }
 
       if (!permissionGranted) {
         setIsMicLoading(false);
@@ -785,32 +862,47 @@ const ChatApplication: React.FC = () => {
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true
+          autoGainControl: true,
+          sampleRate: 44100,
+          channelCount: 1
         }
       });
 
+      // Save permission for the default microphone
+      const audioTracks = stream.getAudioTracks();
+      if (audioTracks.length > 0) {
+        const deviceId = audioTracks[0].getSettings().deviceId;
+        if (deviceId) {
+          saveDevicePermissions(deviceId, true);
+        }
+      }
+
       console.log('Microphone access granted, setting up audio monitoring...');
+      console.log('Microphone stream obtained:', stream);
+      console.log('Audio tracks:', stream.getAudioTracks().map(track => ({
+        enabled: track.enabled,
+        readyState: track.readyState,
+        label: track.label,
+        settings: track.getSettings()
+      })));
+
       setMicStream(stream);
       setIsMicTestOpen(true);
       setIsMicLoading(false);
 
-      // Set up audio context for mic level monitoring
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const analyser = audioContext.createAnalyser();
-      const microphone = audioContext.createMediaStreamSource(stream);
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      // Get available microphones
+      await getAvailableMicrophones();
 
-      microphone.connect(analyser);
-      analyser.fftSize = 256;
-
-      // Monitor mic level
-      const updateMicLevel = () => {
-        analyser.getByteFrequencyData(dataArray);
-        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-        setMicLevel(average);
-        micLevelIntervalRef.current = requestAnimationFrame(updateMicLevel);
-      };
-      updateMicLevel();
+      // Set up audio monitoring
+      restartAudioMonitoring(stream);
+      
+      console.log('Microphone test initialized successfully');
+      console.log('Stream active:', stream.active);
+      console.log('Audio tracks:', stream.getAudioTracks().map(track => ({
+        enabled: track.enabled,
+        readyState: track.readyState,
+        label: track.label
+      })));
 
       console.log('Microphone test setup complete');
 
@@ -876,6 +968,8 @@ const ChatApplication: React.FC = () => {
     if (micTestRecordedAudioUrl) {
       URL.revokeObjectURL(micTestRecordedAudioUrl);
     }
+    // Stop real-time monitoring
+    stopRealTimeMonitoring();
     setMicLevel(0);
     setIsMicTestRecording(false);
     setMicTestRecordedAudio(null);
@@ -887,34 +981,96 @@ const ChatApplication: React.FC = () => {
 
   // Mic test recording functions
   const startMicTestRecording = () => {
-    if (!micStream) return;
+    if (!micStream) {
+      alert('No microphone stream available. Please ensure your microphone is working.');
+      return;
+    }
 
     try {
-      const mediaRecorder = new MediaRecorder(micStream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
+      // Check if MediaRecorder is supported
+      if (!window.MediaRecorder) {
+        alert('MediaRecorder is not supported in your browser. Please use a modern browser.');
+        return;
+      }
 
+      // Check if the stream is active
+      if (micStream.getAudioTracks().length === 0) {
+        alert('No audio tracks available. Please check your microphone connection.');
+        return;
+      }
+
+      // Check if any audio track is enabled
+      const audioTracks = micStream.getAudioTracks();
+      const enabledTracks = audioTracks.filter(track => track.enabled && track.readyState === 'live');
+      
+      if (enabledTracks.length === 0) {
+        alert('No active audio tracks found. Please check your microphone permissions.');
+        return;
+      }
+
+      // Ensure the stream is still active
+      if (micStream.active === false) {
+        alert('Microphone stream is not active. Please try refreshing the microphone test.');
+        return;
+      }
+
+      console.log('Starting recording with stream:', micStream);
+      console.log('Audio tracks:', audioTracks.map(track => ({
+        enabled: track.enabled,
+        readyState: track.readyState,
+        label: track.label
+      })));
+
+      // Try different MIME types for better compatibility
+      let mimeType = 'audio/webm;codecs=opus';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/webm';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'audio/mp4';
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = ''; // Let browser choose
+          }
+        }
+      }
+
+      console.log('Using MIME type:', mimeType || 'browser default');
+
+      const mediaRecorder = new MediaRecorder(micStream, mimeType ? { mimeType } : undefined);
       micTestMediaRecorderRef.current = mediaRecorder;
       const chunks: BlobPart[] = [];
 
       mediaRecorder.ondataavailable = (event) => {
+        console.log('Data available:', event.data.size, 'bytes');
         if (event.data.size > 0) {
           chunks.push(event.data);
         }
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
+        console.log('Recording stopped, creating blob from', chunks.length, 'chunks');
+        const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
+        console.log('Created blob:', blob.size, 'bytes, type:', blob.type);
         setMicTestRecordedAudio(blob);
         setMicTestRecordedAudioUrl(URL.createObjectURL(blob));
       };
 
       mediaRecorder.onerror = (event) => {
         console.error('MediaRecorder error:', event);
-        alert('Error recording audio. Please try again.');
+        const errorMessage = (event as any).error?.message || 'Unknown error';
+        alert(`Error recording audio: ${errorMessage}\n\nPlease try:\n• Refreshing the microphone test\n• Checking your microphone permissions\n• Using a different browser`);
         setIsMicTestRecording(false);
+        
+        // Clean up the failed recorder
+        if (micTestMediaRecorderRef.current) {
+          micTestMediaRecorderRef.current = null;
+        }
       };
 
+      mediaRecorder.onstart = () => {
+        console.log('Recording started successfully');
+      };
+
+      // Start recording with a small time slice for better responsiveness
       mediaRecorder.start(100);
       setIsMicTestRecording(true);
       setMicTestRecordingTime(0);
@@ -926,7 +1082,11 @@ const ChatApplication: React.FC = () => {
 
     } catch (error) {
       console.error('Error starting recording:', error);
-      alert('Error starting recording. Please try again.');
+      if (error instanceof Error) {
+        alert('Error starting recording: ' + error.message);
+      } else {
+        alert('Error starting recording. Please try again.');
+      }
       setIsMicTestRecording(false);
     }
   };
@@ -987,6 +1147,245 @@ const ChatApplication: React.FC = () => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Real-time monitoring functions
+  const startRealTimeMonitoring = async () => {
+    if (!micStream) return;
+
+    try {
+      // Create audio context for real-time monitoring
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const source = audioContext.createMediaStreamSource(micStream);
+      const gainNode = audioContext.createGain();
+      const destination = audioContext.destination;
+
+      // Set up audio routing for real-time monitoring
+      source.connect(gainNode);
+      gainNode.connect(destination);
+
+      // Set initial volume (you can adjust this)
+      gainNode.gain.value = 0.3; // 30% volume to prevent feedback
+
+      setRealTimeAudioContext(audioContext);
+      setRealTimeGainNode(gainNode);
+      setIsRealTimeMonitoring(true);
+
+      console.log('Real-time monitoring started');
+
+    } catch (error) {
+      console.error('Error starting real-time monitoring:', error);
+      alert('Error starting real-time monitoring. Please try again.');
+    }
+  };
+
+  const stopRealTimeMonitoring = () => {
+    if (realTimeAudioContext) {
+      realTimeAudioContext.close();
+      setRealTimeAudioContext(null);
+    }
+    if (realTimeGainNode) {
+      realTimeGainNode.disconnect();
+      setRealTimeGainNode(null);
+    }
+    setIsRealTimeMonitoring(false);
+    console.log('Real-time monitoring stopped');
+  };
+
+  const adjustRealTimeVolume = (volume: number) => {
+    if (realTimeGainNode) {
+      realTimeGainNode.gain.value = volume;
+    }
+  };
+
+  // Load device permissions from localStorage
+  const loadDevicePermissions = () => {
+    try {
+      const saved = localStorage.getItem('devicePermissions');
+      if (saved) {
+        const permissions = JSON.parse(saved);
+        setDevicePermissions(permissions);
+        setAllowedDevices(new Set(Object.keys(permissions).filter(deviceId => permissions[deviceId])));
+      }
+    } catch (error) {
+      console.error('Error loading device permissions:', error);
+    }
+  };
+
+  // Save device permissions to localStorage
+  const saveDevicePermissions = (deviceId: string, allowed: boolean) => {
+    try {
+      const newPermissions = { ...devicePermissions, [deviceId]: allowed };
+      setDevicePermissions(newPermissions);
+      localStorage.setItem('devicePermissions', JSON.stringify(newPermissions));
+      
+      if (allowed) {
+        setAllowedDevices(prev => new Set([...prev, deviceId]));
+      } else {
+        setAllowedDevices(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(deviceId);
+          return newSet;
+        });
+      }
+    } catch (error) {
+      console.error('Error saving device permissions:', error);
+    }
+  };
+
+  // Check if device is already allowed
+  const isDeviceAllowed = (deviceId: string) => {
+    return allowedDevices.has(deviceId) || devicePermissions[deviceId] === true;
+  };
+
+  // Restart audio monitoring for a given stream
+  const restartAudioMonitoring = (stream: MediaStream, deviceId?: string) => {
+    try {
+      // Stop existing monitoring
+      if (micLevelIntervalRef.current) {
+        cancelAnimationFrame(micLevelIntervalRef.current);
+        micLevelIntervalRef.current = null;
+      }
+
+      // Reset mic level
+      setMicLevel(0);
+
+      // Create new audio context and analyser
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const analyser = audioContext.createAnalyser();
+      const microphone = audioContext.createMediaStreamSource(stream);
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      // Configure analyser
+      microphone.connect(analyser);
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.8;
+
+      // Start monitoring loop
+      const updateMicLevel = () => {
+        analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        setMicLevel(average);
+        micLevelIntervalRef.current = requestAnimationFrame(updateMicLevel);
+      };
+      
+      // Start monitoring immediately
+      updateMicLevel();
+      
+      console.log('Audio monitoring restarted', deviceId ? `for device: ${deviceId}` : '');
+      console.log('Stream active:', stream.active);
+      console.log('Audio tracks:', stream.getAudioTracks().map(track => ({
+        enabled: track.enabled,
+        readyState: track.readyState,
+        label: track.label
+      })));
+
+    } catch (error) {
+      console.error('Error restarting audio monitoring:', error);
+    }
+  };
+
+  // Get available microphones
+  const getAvailableMicrophones = async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const microphones = devices.filter(device => device.kind === 'audioinput');
+      setAvailableMicrophones(microphones);
+      
+      if (microphones.length > 0 && !selectedMicrophone) {
+        setSelectedMicrophone(microphones[0].deviceId);
+      }
+    } catch (error) {
+      console.error('Error getting microphones:', error);
+    }
+  };
+
+  // Switch microphone
+  const switchMicrophone = async (deviceId: string) => {
+    try {
+      // Check if this device is already allowed
+      const isAllowed = isDeviceAllowed(deviceId);
+      
+      // If device is not allowed, ask for permission
+      if (!isAllowed) {
+        const permissionGranted = confirm(
+          '🎤 New Microphone Device Detected\n\n' +
+          'A new microphone device has been detected and needs permission to access.\n\n' +
+          'Click "OK" to allow access to this microphone, then click "Allow" in the browser permission dialog.\n\n' +
+          'This permission will be remembered for future use.'
+        );
+        
+        if (!permissionGranted) {
+          return;
+        }
+      }
+
+      // Stop current stream
+      if (micStream) {
+        micStream.getTracks().forEach(track => track.stop());
+      }
+      
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          deviceId: { exact: deviceId },
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 44100,
+          channelCount: 1
+        }
+      });
+
+      // Save permission for the new microphone
+      saveDevicePermissions(deviceId, true);
+
+      setMicStream(newStream);
+      setSelectedMicrophone(deviceId);
+      
+      // Restart audio monitoring with new stream
+      restartAudioMonitoring(newStream, deviceId);
+
+    } catch (error) {
+      console.error('Error switching microphone:', error);
+      alert('Error switching microphone. Please try again.');
+    }
+  };
+
+  // Toggle microphone mute
+  const toggleMicrophoneMute = () => {
+    if (micStream) {
+      const audioTracks = micStream.getAudioTracks();
+      audioTracks.forEach(track => {
+        track.enabled = !track.enabled;
+      });
+      const isMuted = !audioTracks[0]?.enabled;
+      setIsMicMuted(isMuted);
+      
+      // If unmuting, restart monitoring to ensure it's working
+      if (!isMuted) {
+        setTimeout(() => {
+          restartAudioMonitoring(micStream);
+        }, 100);
+      }
+    }
+  };
+
+  // Emoji picker functions
+  const openEmojiPicker = (event: React.MouseEvent) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setEmojiPickerPosition({
+      top: rect.top,
+      left: rect.left
+    });
+    setIsEmojiPickerOpen(true);
+  };
+
+  const closeEmojiPicker = () => {
+    setIsEmojiPickerOpen(false);
+  };
+
+  const handleEmojiSelect = (emoji: string) => {
+    setNewMessage(prev => prev + emoji);
   };
 
   // Type guards
@@ -1438,11 +1837,11 @@ const ChatApplication: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen w-full bg-gray-50 dark:bg-gray-900 overflow-hidden">
       {/* Sidebar */}
-      <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-        {/* Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
+        {/* Fixed Header */}
+        <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 shadow-sm">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Inbox</h2>
           <div className="mt-3 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -1455,7 +1854,7 @@ const ChatApplication: React.FC = () => {
         </div>
 
         {/* Contact List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
           {mockContacts.map((contact) => (
             <div
               key={contact.id}
@@ -1501,9 +1900,9 @@ const ChatApplication: React.FC = () => {
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Chat Header */}
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
+      <div className="flex-1 flex flex-col relative overflow-hidden">
+        {/* Fixed Chat Header */}
+        <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <img
@@ -1591,14 +1990,14 @@ const ChatApplication: React.FC = () => {
         </div>
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide" style={{ height: 'calc(100vh - 200px)' }}>
           {messages.map(renderMessage)}
           <div ref={messagesEndRef} />
         </div>
 
         {/* Recording Status */}
         {isRecording && (
-          <div className="bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-800 p-4">
+          <div className="sticky bottom-16 z-20 bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-800 p-4 shadow-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
@@ -1625,8 +2024,16 @@ const ChatApplication: React.FC = () => {
         )}
 
         {/* Message Input */}
-        <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
+        <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 shadow-lg">
           <div className="flex items-end space-x-2">
+            {/* Emoji Button - Moved to the left */}
+            <button
+              onClick={openEmojiPicker}
+              className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-500 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors flex-shrink-0"
+            >
+              <Smile className="w-5 h-5" />
+            </button>
+
             <div className="flex-1 relative">
               <textarea
                 value={newMessage}
@@ -1641,13 +2048,6 @@ const ChatApplication: React.FC = () => {
 
             {/* Action Buttons */}
             <div className="flex items-center space-x-2">
-              {/* Emoji Button */}
-              <button
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-500 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
-              >
-                <Smile className="w-5 h-5" />
-              </button>
 
               {/* Attachment Button */}
               <div className="relative">
@@ -1892,15 +2292,16 @@ const ChatApplication: React.FC = () => {
 
       {/* Microphone Test Modal */}
       {isMicTestOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Microphone Test
               </h3>
               <button
                 onClick={closeMicTest}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1908,35 +2309,35 @@ const ChatApplication: React.FC = () => {
               </button>
             </div>
             
-            <div className="mb-4">
+            {/* Content */}
+            <div className="p-6">
               {isMicLoading ? (
-                <div className="w-full h-64 bg-gray-200 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center">
-                  <div className="text-center">
-                    <div className="w-12 h-12 border-4 border-gray-300 border-t-green-500 rounded-full animate-spin mx-auto mb-4"></div>
-                    <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                      Requesting Microphone Access
-                    </h4>
-                    <p className="text-gray-500 dark:text-gray-400 mb-4">
-                      Please allow microphone access in your browser
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 border-4 border-gray-300 border-t-green-500 rounded-full animate-spin mx-auto mb-6"></div>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-3">
+                    Requesting Microphone Access
+                  </h4>
+                  <p className="text-gray-500 dark:text-gray-400 mb-6">
+                    Please allow microphone access in your browser
+                  </p>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      <strong>💡 Tip:</strong> If you don't see a permission dialog, check your browser's address bar for a microphone icon and click "Allow".
                     </p>
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 max-w-sm">
-                      <p className="text-sm text-blue-800 dark:text-blue-200">
-                        <strong>💡 Tip:</strong> If you don't see a permission dialog, check your browser's address bar for a microphone icon and click "Allow".
-                      </p>
-                    </div>
                   </div>
                 </div>
               ) : micStream ? (
-                <div className="w-full h-64 bg-gray-200 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center">
-                  <div className="text-center mb-6">
-                    <div className={`w-20 h-20 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-4 transition-all duration-300 ${
+                <div className="space-y-6">
+                  {/* Microphone Status */}
+                  <div className="text-center">
+                    <div className={`w-24 h-24 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-4 transition-all duration-300 ${
                       micLevel > 0 ? 'scale-110 shadow-lg shadow-green-500/30' : 'scale-100'
                     }`}>
-                      <Mic className={`w-10 h-10 text-green-600 dark:text-green-400 transition-all duration-200 ${
+                      <Mic className={`w-12 h-12 text-green-600 dark:text-green-400 transition-all duration-200 ${
                         micLevel > 0 ? 'animate-pulse' : ''
                       }`} />
                     </div>
-                    <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    <h4 className="text-xl font-medium text-gray-900 dark:text-white mb-2">
                       Microphone Active
                     </h4>
                     <p className="text-gray-500 dark:text-gray-400">
@@ -1944,66 +2345,119 @@ const ChatApplication: React.FC = () => {
                     </p>
                   </div>
                   
-                  {/* Audio Level Indicator */}
-                  <div className="w-full max-w-xs mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-500 dark:text-gray-400">Audio Level</span>
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {Math.round(micLevel)}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full dark:bg-gray-700 overflow-hidden shadow-inner">
-                      <div 
-                        className={`text-xs font-medium text-center p-0.5 leading-none rounded-full transition-all duration-300 ease-out transform shadow-sm ${
-                          micLevel > 50 ? 'bg-red-500 text-red-100 animate-pulse shadow-red-500/50' : 
-                          micLevel > 25 ? 'bg-yellow-500 text-yellow-100 shadow-yellow-500/50' : 'bg-blue-600 text-blue-100 shadow-blue-500/50'
-                        } ${micLevel > 0 ? 'scale-105' : 'scale-100'}`}
-                        style={{ 
-                          width: `${Math.min(micLevel * 2, 100)}%`,
-                          transition: 'width 0.3s ease-out, background-color 0.3s ease-out, transform 0.2s ease-out, box-shadow 0.3s ease-out',
-                          boxShadow: micLevel > 0 ? `0 0 8px ${micLevel > 50 ? 'rgba(239, 68, 68, 0.5)' : micLevel > 25 ? 'rgba(245, 158, 11, 0.5)' : 'rgba(37, 99, 235, 0.5)'}` : 'none'
-                        }}
-                      >
-                        {Math.round(micLevel)}%
+                  {/* Microphone Settings Card */}
+                  <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-4 shadow-sm">
+                    {/* Microphone Icon and Mute Button */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <button
+                          onClick={toggleMicrophoneMute}
+                          className={`p-2 rounded-full transition-all duration-200 ${
+                            isMicMuted 
+                              ? 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400' 
+                              : 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                          }`}
+                          title={isMicMuted ? "Unmute Microphone" : "Mute Microphone"}
+                        >
+                          {isMicMuted ? (
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                            </svg>
+                          ) : (
+                            <Mic className="w-6 h-6" />
+                          )}
+                        </button>
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">
+                            {isMicMuted ? 'Microphone Muted' : 'Microphone Active'}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {Math.round(micLevel)}% input level
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-1">
-                      <span>0%</span>
-                      <span>50%</span>
-                      <span>100%</span>
+
+                    {/* Animated Audio Level Bar */}
+                    <div className="mb-4">
+                      <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2 overflow-hidden">
+                        <div 
+                          className={`h-2 rounded-full transition-all duration-150 ease-out ${
+                            micLevel > 70 ? 'bg-red-500 animate-pulse' : 
+                            micLevel > 40 ? 'bg-yellow-500' : 
+                            micLevel > 10 ? 'bg-green-500' : 'bg-blue-500'
+                          }`}
+                          style={{ 
+                            width: `${Math.min(micLevel * 1.5, 100)}%`,
+                            transition: 'width 0.15s ease-out, background-color 0.3s ease-out',
+                            boxShadow: micLevel > 0 ? `0 0 6px ${micLevel > 70 ? 'rgba(239, 68, 68, 0.4)' : micLevel > 40 ? 'rgba(245, 158, 11, 0.4)' : micLevel > 10 ? 'rgba(34, 197, 94, 0.4)' : 'rgba(37, 99, 235, 0.4)'}` : 'none'
+                          }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-1">
+                        <span>Silent</span>
+                        <span>Low</span>
+                        <span>Medium</span>
+                        <span>High</span>
+                      </div>
+                    </div>
+
+                    {/* Microphone Selection Dropdown */}
+                    <div className="relative">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Select Microphone
+                      </label>
+                      <select
+                        value={selectedMicrophone}
+                        onChange={(e) => switchMicrophone(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        {availableMicrophones.map((mic) => (
+                          <option key={mic.deviceId} value={mic.deviceId}>
+                            {mic.label || `Microphone ${mic.deviceId.slice(0, 8)}`}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 
+
                   {/* Recording Controls */}
-                  <div className="w-full max-w-xs">
-                    <div className="flex items-center justify-center space-x-4 mb-4">
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                    <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4 text-center">
+                      Test Recording & Playback
+                    </h5>
+                    <div className="flex items-center justify-center space-x-6 mb-4">
                       {!isMicTestRecording ? (
                         <button
                           onClick={startMicTestRecording}
-                          className="flex items-center justify-center w-12 h-12 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors shadow-lg"
+                          className="flex flex-col items-center justify-center w-16 h-16 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors shadow-lg group"
                           title="Start Recording"
                         >
-                          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
                             <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
                           </svg>
+                          <span className="text-xs mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Record</span>
                         </button>
                       ) : (
                         <button
                           onClick={stopMicTestRecording}
-                          className="flex items-center justify-center w-12 h-12 bg-gray-500 hover:bg-gray-600 text-white rounded-full transition-colors shadow-lg animate-pulse"
+                          className="flex flex-col items-center justify-center w-16 h-16 bg-gray-500 hover:bg-gray-600 text-white rounded-full transition-colors shadow-lg animate-pulse group"
                           title="Stop Recording"
                         >
-                          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M6 6h12v12H6z"/>
                           </svg>
+                          <span className="text-xs mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Stop</span>
                         </button>
                       )}
                       
                       {micTestRecordedAudioUrl && (
                         <button
                           onClick={playRecordedAudio}
-                          className={`flex items-center justify-center w-12 h-12 rounded-full transition-colors shadow-lg ${
+                          className={`flex flex-col items-center justify-center w-16 h-16 rounded-full transition-colors shadow-lg group ${
                             isMicTestPlaying 
                               ? 'bg-blue-500 hover:bg-blue-600 text-white' 
                               : 'bg-green-500 hover:bg-green-600 text-white'
@@ -2011,79 +2465,102 @@ const ChatApplication: React.FC = () => {
                           title={isMicTestPlaying ? "Stop Playback" : "Play Recording"}
                         >
                           {isMicTestPlaying ? (
-                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
                               <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
                             </svg>
                           ) : (
-                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
                               <path d="M8 5v14l11-7z"/>
                             </svg>
                           )}
+                          <span className="text-xs mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {isMicTestPlaying ? 'Stop' : 'Play'}
+                          </span>
                         </button>
                       )}
                     </div>
 
                     {/* Recording Status */}
                     {isMicTestRecording && (
-                      <div className="text-center">
+                      <div className="text-center bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
                         <div className="flex items-center justify-center space-x-2 mb-2">
                           <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
                           <span className="text-sm font-medium text-red-600 dark:text-red-400">
                             Recording: {formatRecordingTime(micTestRecordingTime)}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="text-xs text-red-500 dark:text-red-400">
                           Click the stop button to finish recording
                         </p>
                       </div>
                     )}
 
                     {micTestRecordedAudioUrl && !isMicTestRecording && (
-                      <div className="text-center">
-                        <p className="text-sm text-green-600 dark:text-green-400 mb-2">
+                      <div className="text-center bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                        <p className="text-sm text-green-600 dark:text-green-400 mb-1">
                           ✅ Recording saved! Click play to hear your voice
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          You can now test your microphone quality through headphones
+                        <p className="text-xs text-green-500 dark:text-green-400">
+                          Test your microphone quality through headphones
+                        </p>
+                      </div>
+                    )}
+
+                    {!micTestRecordedAudioUrl && !isMicTestRecording && micStream && (
+                      <div className="text-center bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-3">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                          💡 Click the record button to test your microphone
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-500">
+                          You can also use real-time monitoring to hear your voice live
                         </p>
                       </div>
                     )}
                   </div>
                 </div>
               ) : (
-                <div className="w-full h-64 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="w-12 h-12 border-4 border-gray-300 border-t-green-500 rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-500 dark:text-gray-400">Loading microphone...</p>
-                  </div>
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 border-4 border-gray-300 border-t-green-500 rounded-full animate-spin mx-auto mb-6"></div>
+                  <p className="text-gray-500 dark:text-gray-400">Loading microphone...</p>
                 </div>
               )}
             </div>
             
-            <div className="flex space-x-3">
-              <button
-                onClick={closeMicTest}
-                className="flex-1 px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => {
-                  closeMicTest();
-                  setIsVoiceCallOpen(true);
-                }}
-                className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
-              >
-                Start Voice Call
-              </button>
+            {/* Footer */}
+            <div className="border-t border-gray-200 dark:border-gray-700 p-6">
+              <div className="flex space-x-3 mb-4">
+                <button
+                  onClick={closeMicTest}
+                  className="flex-1 px-4 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors font-medium"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    closeMicTest();
+                    setIsVoiceCallOpen(true);
+                  }}
+                  className="flex-1 px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors font-medium"
+                >
+                  Start Voice Call
+                </button>
+              </div>
+              
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                Your microphone is working! You can now make voice calls and record voice messages.
+              </p>
             </div>
-            
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 text-center">
-              Your microphone is working! You can now make voice calls and record voice messages.
-            </p>
           </div>
         </div>
       )}
+
+      {/* Emoji Picker */}
+      <EmojiPicker
+        isOpen={isEmojiPickerOpen}
+        onClose={closeEmojiPicker}
+        onEmojiSelect={handleEmojiSelect}
+        position={emojiPickerPosition}
+      />
     </div>
   );
 };
