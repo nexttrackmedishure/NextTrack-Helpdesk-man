@@ -9,6 +9,7 @@ import Login from "./components/Login";
 const Dashboard = lazy(() => import("./components/Dashboard"));
 const TicketGallery = lazy(() => import("./components/TicketGallery"));
 const ChatApplication = lazy(() => import("./components/ChatApplication"));
+const ITSupportDemo = lazy(() => import("./components/ITSupportDemo"));
 
 // Authenticated App Component
 function AuthenticatedApp() {
@@ -76,6 +77,7 @@ function AuthenticatedApp() {
                 />
               )}
               {activeTab === "Customers" && <ChatApplication />}
+              {activeTab === "IT Support Demo" && <ITSupportDemo />}
             </Suspense>
           </div>
         </main>

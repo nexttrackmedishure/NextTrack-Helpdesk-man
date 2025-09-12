@@ -18,6 +18,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import ReactApexChart from "react-apexcharts";
+import ITSupportTicketForm from "./ITSupportTicketForm";
 
 // Declare Leaflet types
 declare global {
@@ -42,6 +43,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [isCreateAgainModalOpen, setIsCreateAgainModalOpen] = useState(false);
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
+  const [isITSupportFormOpen, setIsITSupportFormOpen] = useState(false);
 
   // Form state for new request
   const [newRequestForm, setNewRequestForm] = useState({
@@ -1440,7 +1442,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
             {/* IT Support Template */}
             <div 
               className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors duration-200"
-              onClick={() => handleQuickRequest('IT Support')}
+              onClick={() => setIsITSupportFormOpen(true)}
             >
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
@@ -4004,12 +4006,6 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                               className="w-7 h-7 border-none cursor-pointer rounded"
                               title="Font Color"
                             />
-                            <input
-                              type="color"
-                              onChange={(e) => handleAdvancedOption('backColor', e.target.value)}
-                              className="w-7 h-7 border-none cursor-pointer rounded"
-                              title="Highlight Color"
-                            />
                           </div>
                         </div>
                         
@@ -4396,6 +4392,17 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
             </div>
           </div>
         )}
+
+        {/* IT Support Ticket Form */}
+        <ITSupportTicketForm
+          isOpen={isITSupportFormOpen}
+          onClose={() => setIsITSupportFormOpen(false)}
+          onSubmit={(ticketData) => {
+            console.log('IT Support ticket submitted:', ticketData);
+            // Here you would typically send the data to your backend
+            alert('IT Support ticket submitted successfully!');
+          }}
+        />
       </div>
     </>
   );

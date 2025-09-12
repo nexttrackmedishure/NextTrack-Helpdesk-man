@@ -17,6 +17,103 @@
     @apply transition-all duration-300 ease-in-out;
   }
 
+  /* Emoji Picker Styles */
+  .emoji-picker-wrapper {
+    @apply bg-white dark:bg-gray-800;
+    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Android Emoji', 'EmojiSymbols', 'EmojiOne Mozilla', 'Twemoji Mozilla', 'Segoe UI Symbol', sans-serif;
+  }
+
+  /* Ensure proper emoji rendering */
+  .emoji-picker-wrapper .epr-emoji {
+    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Android Emoji', 'EmojiSymbols', 'EmojiOne Mozilla', 'Twemoji Mozilla', 'Segoe UI Symbol', sans-serif;
+    font-size: 1.5em;
+    line-height: 1;
+  }
+
+  /* Dark theme support for emoji-picker-react */
+  .dark .emoji-picker-wrapper .epr-emoji-category-label {
+    @apply text-gray-300;
+  }
+
+  .dark .emoji-picker-wrapper .epr-search-container input {
+    @apply bg-gray-700 text-white border-gray-600;
+  }
+
+  .dark .emoji-picker-wrapper .epr-emoji-category-label {
+    @apply text-gray-300;
+  }
+
+  .dark .emoji-picker-wrapper .epr-preview {
+    @apply bg-gray-700 text-white;
+  }
+
+  /* Fix for rectangular emoji placeholders */
+  .emoji-picker-wrapper .epr-emoji-img {
+    width: 24px;
+    height: 24px;
+    display: inline-block;
+  }
+
+  /* Rich Text Editor Text Direction Fix */
+  .rich-text-editor {
+    direction: ltr !important;
+    text-align: left !important;
+    unicode-bidi: normal !important;
+    writing-mode: horizontal-tb !important;
+    text-rendering: optimizeLegibility !important;
+    -webkit-text-stroke: 0 !important;
+  }
+
+  .rich-text-editor * {
+    direction: ltr !important;
+    unicode-bidi: normal !important;
+    text-align: left !important;
+  }
+
+  .rich-text-editor p,
+  .rich-text-editor div,
+  .rich-text-editor span {
+    direction: ltr !important;
+    unicode-bidi: normal !important;
+    text-align: left !important;
+    display: inline !important;
+  }
+
+  /* Fix for contentEditable cursor behavior */
+  .rich-text-editor[contenteditable="true"] {
+    direction: ltr !important;
+    unicode-bidi: normal !important;
+    text-align: left !important;
+  }
+
+  .rich-text-editor[contenteditable="true"] * {
+    direction: ltr !important;
+    unicode-bidi: normal !important;
+    text-align: left !important;
+  }
+
+  /* Ensure emoji picker uses proper font fallbacks */
+  .emoji-picker-wrapper * {
+    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Android Emoji', 'EmojiSymbols', 'EmojiOne Mozilla', 'Twemoji Mozilla', 'Segoe UI Symbol', sans-serif !important;
+  }
+
+  /* Fix for missing emoji images */
+  .emoji-picker-wrapper .epr-emoji-img[src=""],
+  .emoji-picker-wrapper .epr-emoji-img:not([src]) {
+    display: none;
+  }
+
+  /* Fallback for emoji text when images fail to load */
+  .emoji-picker-wrapper .epr-emoji {
+    font-size: 1.5em !important;
+    line-height: 1 !important;
+    min-width: 24px;
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   /* World Map Styles */
   .world-map path {
     fill: #b9b9b9; /* Light mode default color */
