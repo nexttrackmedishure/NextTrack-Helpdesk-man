@@ -59,8 +59,6 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     description: "",
   });
 
-  // State for severity dropdown
-  const [isSeverityDropdownOpen, setIsSeverityDropdownOpen] = useState(false);
 
   // State for new radio dropdowns
   const [isDepartmentDropdownOpen, setIsDepartmentDropdownOpen] =
@@ -70,13 +68,34 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
   const [isAssigneeDropdownOpen, setIsAssigneeDropdownOpen] = useState(false);
   const [isBranchDropdownOpen, setIsBranchDropdownOpen] = useState(false);
 
+  // State for limiting dropdown options
+  const [showAllCategories, setShowAllCategories] = useState(false);
+  const [showAllDepartments, setShowAllDepartments] = useState(false);
+  const [showAllRequestors, setShowAllRequestors] = useState(false);
+  const [showAllAssignees, setShowAllAssignees] = useState(false);
+
+  // State for toolbar visibility
+  const [showAllToolbarOptions, setShowAllToolbarOptions] = useState(false);
+
+  // State for new searchable dropdowns
+  const [isRequestorSearchOpen, setIsRequestorSearchOpen] = useState(false);
+  const [isDepartmentSearchOpen, setIsDepartmentSearchOpen] = useState(false);
+  const [isCategorySearchOpen, setIsCategorySearchOpen] = useState(false);
+  const [isAssigneeSearchOpen, setIsAssigneeSearchOpen] = useState(false);
+  const [isBranchSearchOpen, setIsBranchSearchOpen] = useState(false);
+
+  // Search terms for each dropdown
+  const [requestorSearchTerm, setRequestorSearchTerm] = useState("");
+  const [departmentSearchTerm, setDepartmentSearchTerm] = useState("");
+  const [categorySearchTerm, setCategorySearchTerm] = useState("");
+  const [assigneeSearchTerm, setAssigneeSearchTerm] = useState("");
+  const [branchSearchTerm, setBranchSearchTerm] = useState("");
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
       if (
-        !target.closest("#dropdownRadioHelper") &&
-        !target.closest("#dropdownRadioHelperButton") &&
         !target.closest("#dropdownDepartmentRadio") &&
         !target.closest("#dropdownDepartmentRadioButton") &&
         !target.closest("#dropdownRequestorRadio") &&
@@ -86,24 +105,42 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
         !target.closest("#dropdownAssigneeRadio") &&
         !target.closest("#dropdownAssigneeRadioButton") &&
         !target.closest("#dropdownBranchRadio") &&
-        !target.closest("#dropdownBranchRadioButton")
+        !target.closest("#dropdownBranchRadioButton") &&
+        !target.closest("#dropdownRequestorSearch") &&
+        !target.closest("#dropdownRequestorSearchButton") &&
+        !target.closest("#dropdownDepartmentSearch") &&
+        !target.closest("#dropdownDepartmentSearchButton") &&
+        !target.closest("#dropdownCategorySearch") &&
+        !target.closest("#dropdownCategorySearchButton") &&
+        !target.closest("#dropdownAssigneeSearch") &&
+        !target.closest("#dropdownAssigneeSearchButton") &&
+        !target.closest("#dropdownBranchSearch") &&
+        !target.closest("#dropdownBranchSearchButton")
       ) {
-        setIsSeverityDropdownOpen(false);
         setIsDepartmentDropdownOpen(false);
         setIsRequestorDropdownOpen(false);
         setIsCategoryDropdownOpen(false);
         setIsAssigneeDropdownOpen(false);
         setIsBranchDropdownOpen(false);
+        setIsRequestorSearchOpen(false);
+        setIsDepartmentSearchOpen(false);
+        setIsCategorySearchOpen(false);
+        setIsAssigneeSearchOpen(false);
+        setIsBranchSearchOpen(false);
       }
     };
 
     if (
-      isSeverityDropdownOpen ||
       isDepartmentDropdownOpen ||
       isRequestorDropdownOpen ||
       isCategoryDropdownOpen ||
       isAssigneeDropdownOpen ||
-      isBranchDropdownOpen
+      isBranchDropdownOpen ||
+      isRequestorSearchOpen ||
+      isDepartmentSearchOpen ||
+      isCategorySearchOpen ||
+      isAssigneeSearchOpen ||
+      isBranchSearchOpen
     ) {
       document.addEventListener("mousedown", handleClickOutside);
     }
@@ -112,12 +149,16 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [
-    isSeverityDropdownOpen,
     isDepartmentDropdownOpen,
     isRequestorDropdownOpen,
     isCategoryDropdownOpen,
     isAssigneeDropdownOpen,
     isBranchDropdownOpen,
+    isRequestorSearchOpen,
+    isDepartmentSearchOpen,
+    isCategorySearchOpen,
+    isAssigneeSearchOpen,
+    isBranchSearchOpen,
   ]);
 
   // Department options (sorted A to Z)
@@ -497,7 +538,6 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     setIsCategoryDropdownOpen(false);
     setIsAssigneeDropdownOpen(false);
     setIsBranchDropdownOpen(false);
-    setIsSeverityDropdownOpen(false);
     setIsCreateAgainModalOpen(false);
 
     // Clear rich text editor content
@@ -3132,25 +3172,13 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                           <MessageSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                          <h3
+                          <h1
                             id="hs-vertically-centered-modal-label"
                             className="font-bold text-gray-800 dark:text-white"
+                            style={{fontSize: '18pt'}}
                           >
-                            Create New Request
-                          </h3>
-                          <div className="flex items-center gap-3 mt-0.5">
-                            <span className="font-mono text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-                              {newRequestForm.ticketNo}
-                            </span>
-                            {newRequestForm.severity && (
-                              <div className="flex items-center gap-1">
-                                <Flag className="w-3 h-3 text-red-500" />
-                                <span className="text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
-                                  {newRequestForm.severity}
-                                </span>
-                              </div>
-                            )}
-                          </div>
+                            Request Details
+                          </h1>
                         </div>
                       </div>
                     </div>
@@ -3181,6 +3209,37 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
 
                   {/* Modal Content */}
                   <div className="p-3 overflow-y-auto max-h-[85vh] scrollbar-thin scrollbar-thumb-violet-600 scrollbar-track-violet-900 hover:scrollbar-thumb-violet-500">
+                    {/* Ticket Number */}
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 flex items-center justify-center">
+                          <svg
+                            className="w-4 h-4 text-primary-600 dark:text-primary-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                          </svg>
+                        </div>
+                        <label className="text-sm font-semibold text-gray-900 dark:text-white">
+                          Ticket Number
+                        </label>
+                      </div>
+                      <span className="font-mono text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                        {newRequestForm.ticketNo}
+                      </span>
+                      {newRequestForm.severity && (
+                        <div className="flex items-center gap-1">
+                          <Flag className="w-3 h-3 text-red-500" />
+                          <span className="text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
+                            {newRequestForm.severity}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Ticket Title Section */}
                     <div className="mb-3">
                       <div className="flex items-center gap-2 mb-1.5">
@@ -3217,9 +3276,9 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                     </div>
 
                     {/* Form Fields Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-1 mb-3">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
                       {/* Left Column */}
-                      <div className="space-y-1">
+                      <div className="space-y-3">
                         {/* Date */}
                         <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
                           <div className="mb-1">
@@ -3228,7 +3287,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                               Request Date
                             </label>
                           </div>
-                          <div className="relative max-w-sm">
+                          <div className="relative">
                             <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
                               <svg
                                 className="w-4 h-4 text-primary-500 dark:text-dark-400"
@@ -3246,7 +3305,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                               onChange={(e) =>
                                 handleFormChange("date", e.target.value)
                               }
-                              className="bg-primary-50 border border-primary-300 text-dark-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full ps-10 py-1 px-2 dark:bg-dark-700 dark:border-dark-600 dark:placeholder-dark-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                              className="bg-primary-50 border border-primary-300 text-dark-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full ps-10 py-1 px-2 dark:bg-dark-700 dark:border-dark-600 dark:placeholder-dark-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 h-10"
                             />
                           </div>
                         </div>
@@ -3261,19 +3320,23 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                           </div>
                           <div className="relative">
                             <button
-                              id="dropdownRequestorRadioButton"
-                              data-dropdown-toggle="dropdownRequestorRadio"
+                              id="dropdownRequestorSearchButton"
+                              data-dropdown-toggle="dropdownRequestorSearch"
+                              data-dropdown-placement="bottom"
                               onClick={() => {
                                 // Close all other dropdowns
                                 setIsDepartmentDropdownOpen(false);
-                                setIsSeverityDropdownOpen(false);
                                 setIsCategoryDropdownOpen(false);
                                 setIsAssigneeDropdownOpen(false);
                                 setIsBranchDropdownOpen(false);
+                                setIsDepartmentSearchOpen(false);
+                                setIsCategorySearchOpen(false);
+                                setIsAssigneeSearchOpen(false);
+                                setIsBranchSearchOpen(false);
                                 // Toggle current dropdown
-                                setIsRequestorDropdownOpen(!isRequestorDropdownOpen);
+                                setIsRequestorSearchOpen(!isRequestorSearchOpen);
                               }}
-                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-2 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
                               type="button"
                             >
                               {newRequestForm.requestor || "Select Requestor"}
@@ -3295,40 +3358,50 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             </button>
 
                             {/* Dropdown menu */}
-                            {isRequestorDropdownOpen && (
+                            {isRequestorSearchOpen && (
                               <div
-                                id="dropdownRequestorRadio"
-                                className="absolute z-10 w-48 bg-white divide-y divide-primary-100 rounded-lg shadow-sm dark:bg-dark-700 dark:divide-dark-600 mt-1"
+                                id="dropdownRequestorSearch"
+                                className="absolute z-10 bg-white rounded-lg shadow-lg w-full min-w-80 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
                               >
-                                <ul
-                                  className="p-3 space-y-3 text-sm text-dark-700 dark:text-dark-200"
-                                  aria-labelledby="dropdownRequestorRadioButton"
-                                >
-                                  {requestorOptions.map((requestor, index) => (
-                                    <li key={requestor}>
-                                      <div className="flex items-center">
+                                <div className="p-4">
+                                  <label htmlFor="input-group-search-requestor" className="sr-only">Search</label>
+                                  <div className="relative">
+                                    <div className="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+                                      <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
+                                      </svg>
+                                    </div>
                                         <input
-                                          id={`requestor-radio-${index}`}
+                                      type="text"
+                                      id="input-group-search-requestor"
+                                      className="block w-full p-3 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                      placeholder="Search requestor"
+                                      value={requestorSearchTerm}
+                                      onChange={(e) => setRequestorSearchTerm(e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                <ul className="max-h-64 px-4 pb-4 overflow-y-auto text-sm text-gray-700 dark:text-gray-200" aria-labelledby="dropdownRequestorSearchButton">
+                                  {requestorOptions
+                                    .filter(requestor => 
+                                      requestor.toLowerCase().includes(requestorSearchTerm.toLowerCase())
+                                    )
+                                    .map((requestor, index) => (
+                                    <li key={requestor} className="mb-1">
+                                      <div className="flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                                        <input
+                                          id={`checkbox-requestor-${index}`}
                                           type="radio"
-                                          value={requestor}
                                           name="requestor-radio"
-                                          checked={
-                                            newRequestForm.requestor ===
-                                            requestor
-                                          }
+                                          value={requestor}
+                                          checked={newRequestForm.requestor === requestor}
                                           onChange={(e) => {
-                                            handleFormChange(
-                                              "requestor",
-                                              e.target.value
-                                            );
-                                            setIsRequestorDropdownOpen(false);
+                                            handleFormChange("requestor", e.target.value);
+                                            setIsRequestorSearchOpen(false);
                                           }}
-                                          className="w-4 h-4 text-primary-600 bg-primary-100 border-primary-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-dark-700 dark:focus:ring-offset-dark-700 focus:ring-2 dark:bg-dark-600 dark:border-dark-500"
+                                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
                                         />
-                                        <label
-                                          htmlFor={`requestor-radio-${index}`}
-                                          className="ms-2 text-sm font-medium text-dark-900 dark:text-dark-300 cursor-pointer"
-                                        >
+                                        <label htmlFor={`checkbox-requestor-${index}`} className="w-full py-2 ms-3 text-sm font-medium text-gray-900 rounded-sm dark:text-gray-300 cursor-pointer">
                                           {requestor}
                                         </label>
                                       </div>
@@ -3350,19 +3423,23 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                           </div>
                           <div className="relative">
                             <button
-                              id="dropdownDepartmentRadioButton"
-                              data-dropdown-toggle="dropdownDepartmentRadio"
+                              id="dropdownDepartmentSearchButton"
+                              data-dropdown-toggle="dropdownDepartmentSearch"
+                              data-dropdown-placement="bottom"
                               onClick={() => {
                                 // Close all other dropdowns
                                 setIsRequestorDropdownOpen(false);
-                                setIsSeverityDropdownOpen(false);
                                 setIsCategoryDropdownOpen(false);
                                 setIsAssigneeDropdownOpen(false);
                                 setIsBranchDropdownOpen(false);
+                                setIsRequestorSearchOpen(false);
+                                setIsCategorySearchOpen(false);
+                                setIsAssigneeSearchOpen(false);
+                                setIsBranchSearchOpen(false);
                                 // Toggle current dropdown
-                                setIsDepartmentDropdownOpen(!isDepartmentDropdownOpen);
+                                setIsDepartmentSearchOpen(!isDepartmentSearchOpen);
                               }}
-                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-2 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
                               type="button"
                             >
                               {newRequestForm.department || "Select Department"}
@@ -3384,39 +3461,50 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             </button>
 
                             {/* Dropdown menu */}
-                            {isDepartmentDropdownOpen && (
+                            {isDepartmentSearchOpen && (
                               <div
-                                id="dropdownDepartmentRadio"
-                                className="absolute z-10 w-48 bg-white divide-y divide-primary-100 rounded-lg shadow-sm dark:bg-dark-700 dark:divide-dark-600 mt-1"
+                                id="dropdownDepartmentSearch"
+                                className="absolute z-10 bg-white rounded-lg shadow-lg w-full min-w-80 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
                               >
-                                <ul
-                                  className="p-3 space-y-3 text-sm text-dark-700 dark:text-dark-200"
-                                  aria-labelledby="dropdownDepartmentRadioButton"
-                                >
-                                  {departmentOptions.map((dept, index) => (
-                                    <li key={dept}>
-                                      <div className="flex items-center">
+                                <div className="p-4">
+                                  <label htmlFor="input-group-search-department" className="sr-only">Search</label>
+                                  <div className="relative">
+                                    <div className="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+                                      <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
+                                      </svg>
+                                    </div>
                                         <input
-                                          id={`department-radio-${index}`}
+                                      type="text"
+                                      id="input-group-search-department"
+                                      className="block w-full p-3 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                      placeholder="Search department"
+                                      value={departmentSearchTerm}
+                                      onChange={(e) => setDepartmentSearchTerm(e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                <ul className="max-h-64 px-4 pb-4 overflow-y-auto text-sm text-gray-700 dark:text-gray-200" aria-labelledby="dropdownDepartmentSearchButton">
+                                  {departmentOptions
+                                    .filter(dept => 
+                                      dept.toLowerCase().includes(departmentSearchTerm.toLowerCase())
+                                    )
+                                    .map((dept, index) => (
+                                    <li key={dept} className="mb-1">
+                                      <div className="flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                                        <input
+                                          id={`checkbox-department-${index}`}
                                           type="radio"
-                                          value={dept}
                                           name="department-radio"
-                                          checked={
-                                            newRequestForm.department === dept
-                                          }
+                                          value={dept}
+                                          checked={newRequestForm.department === dept}
                                           onChange={(e) => {
-                                            handleFormChange(
-                                              "department",
-                                              e.target.value
-                                            );
-                                            setIsDepartmentDropdownOpen(false);
+                                            handleFormChange("department", e.target.value);
+                                            setIsDepartmentSearchOpen(false);
                                           }}
-                                          className="w-4 h-4 text-primary-600 bg-primary-100 border-primary-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-dark-700 dark:focus:ring-offset-dark-700 focus:ring-2 dark:bg-dark-600 dark:border-dark-500"
+                                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
                                         />
-                                        <label
-                                          htmlFor={`department-radio-${index}`}
-                                          className="ms-2 text-sm font-medium text-dark-900 dark:text-dark-300 cursor-pointer"
-                                        >
+                                        <label htmlFor={`checkbox-department-${index}`} className="w-full py-2 ms-3 text-sm font-medium text-gray-900 rounded-sm dark:text-gray-300 cursor-pointer">
                                           {dept}
                                         </label>
                                       </div>
@@ -3425,284 +3513,8 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                                 </ul>
                               </div>
                             )}
-                          </div>
                         </div>
                       </div>
-
-                      {/* Right Column */}
-                      <div className="space-y-1">
-                        {/* Severity */}
-                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
-                          <div className="mb-1">
-                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
-                              <Flag className="w-4 h-4 inline mr-2" />
-                              <span className="text-red-500">*</span> Severity
-                              Level
-                            </label>
-                          </div>
-                          <div className="relative">
-                            <button
-                              id="dropdownRadioHelperButton"
-                              data-dropdown-toggle="dropdownRadioHelper"
-                              onClick={() => {
-                                // Close all other dropdowns
-                                setIsRequestorDropdownOpen(false);
-                                setIsDepartmentDropdownOpen(false);
-                                setIsCategoryDropdownOpen(false);
-                                setIsAssigneeDropdownOpen(false);
-                                setIsBranchDropdownOpen(false);
-                                // Toggle current dropdown
-                                setIsSeverityDropdownOpen(!isSeverityDropdownOpen);
-                              }}
-                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
-                              type="button"
-                            >
-                              {newRequestForm.severity || "Select Severity"}
-                              <svg
-                                className="w-2.5 h-2.5 ms-3"
-                                aria-hidden="true"
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 10 6"
-                              >
-                                <path
-                                  stroke="currentColor"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="2"
-                                  d="m1 1 4 4 4-4"
-                                />
-                              </svg>
-                            </button>
-
-                            {/* Dropdown menu */}
-                            {isSeverityDropdownOpen && (
-                              <div
-                                id="dropdownRadioHelper"
-                                className="absolute z-10 bg-white divide-y divide-primary-100 rounded-lg shadow-sm w-full dark:bg-dark-700 dark:divide-dark-600 border border-primary-200 dark:border-dark-600 mt-1"
-                              >
-                                <ul
-                                  className="p-3 space-y-1 text-sm text-dark-700 dark:text-dark-200"
-                                  aria-labelledby="dropdownRadioHelperButton"
-                                >
-                                  {severityOptions.map((severity, index) => (
-                                    <li key={severity.value}>
-                                      <div className="flex p-2 rounded-sm hover:bg-primary-100 dark:hover:bg-dark-600">
-                                        <div className="flex items-center h-5">
-                                          <input
-                                            id={`helper-radio-${index}`}
-                                            name="helper-radio"
-                                            type="radio"
-                                            value={severity.value}
-                                            checked={
-                                              newRequestForm.severity ===
-                                              severity.value
-                                            }
-                                            onChange={(e) => {
-                                              handleFormChange(
-                                                "severity",
-                                                e.target.value
-                                              );
-                                              setIsSeverityDropdownOpen(false);
-                                            }}
-                                            className="w-4 h-4 text-primary-600 bg-primary-100 border-primary-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-dark-700 dark:focus:ring-offset-dark-700 focus:ring-2 dark:bg-dark-600 dark:border-dark-500"
-                                          />
-                                        </div>
-                                        <div className="ms-2 text-sm">
-                                          <label
-                                            htmlFor={`helper-radio-${index}`}
-                                            className="font-medium text-dark-900 dark:text-dark-300 cursor-pointer"
-                                          >
-                                            <div>{severity.label}</div>
-                                            <p className="text-xs font-normal text-primary-500 dark:text-dark-300">
-                                              {severity.description}
-                                            </p>
-                                          </label>
-                                        </div>
-                                      </div>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Category */}
-                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
-                          <div className="mb-1">
-                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
-                              <Tag className="w-4 h-4 inline mr-2" />
-                              <span className="text-red-500">*</span> Category
-                            </label>
-                          </div>
-                          <div className="relative">
-                            <button
-                              id="dropdownCategoryRadioButton"
-                              data-dropdown-toggle="dropdownCategoryRadio"
-                              onClick={() => {
-                                // Close all other dropdowns
-                                setIsRequestorDropdownOpen(false);
-                                setIsDepartmentDropdownOpen(false);
-                                setIsSeverityDropdownOpen(false);
-                                setIsAssigneeDropdownOpen(false);
-                                setIsBranchDropdownOpen(false);
-                                // Toggle current dropdown
-                                setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
-                              }}
-                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
-                              type="button"
-                            >
-                              {newRequestForm.category || "Select Category"}
-                              <svg
-                                className="w-2.5 h-2.5 ms-3"
-                                aria-hidden="true"
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 10 6"
-                              >
-                                <path
-                                  stroke="currentColor"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="2"
-                                  d="m1 1 4 4 4-4"
-                                />
-                              </svg>
-                            </button>
-
-                            {/* Dropdown menu */}
-                            {isCategoryDropdownOpen && (
-                              <div
-                                id="dropdownCategoryRadio"
-                                className="absolute z-10 w-48 bg-white divide-y divide-primary-100 rounded-lg shadow-sm dark:bg-dark-700 dark:divide-dark-600 mt-1"
-                              >
-                                <ul
-                                  className="p-3 space-y-3 text-sm text-dark-700 dark:text-dark-200"
-                                  aria-labelledby="dropdownCategoryRadioButton"
-                                >
-                                  {categoryOptions.map((category, index) => (
-                                    <li key={category}>
-                                      <div className="flex items-center">
-                                        <input
-                                          id={`category-radio-${index}`}
-                                          type="radio"
-                                          value={category}
-                                          name="category-radio"
-                                          checked={
-                                            newRequestForm.category === category
-                                          }
-                                          onChange={(e) => {
-                                            handleFormChange(
-                                              "category",
-                                              e.target.value
-                                            );
-                                            setIsCategoryDropdownOpen(false);
-                                          }}
-                                          className="w-4 h-4 text-primary-600 bg-primary-100 border-primary-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-dark-700 dark:focus:ring-offset-dark-700 focus:ring-2 dark:bg-dark-600 dark:border-dark-500"
-                                        />
-                                        <label
-                                          htmlFor={`category-radio-${index}`}
-                                          className="ms-2 text-sm font-medium text-dark-900 dark:text-dark-300 cursor-pointer"
-                                        >
-                                          {category}
-                                        </label>
-                                      </div>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Assignee */}
-                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
-                          <div className="mb-1">
-                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
-                              <UserCheck className="w-4 h-4 inline mr-2" />
-                              <span className="text-red-500">*</span> Assignee
-                            </label>
-                          </div>
-                          <div className="relative">
-                            <button
-                              id="dropdownAssigneeRadioButton"
-                              data-dropdown-toggle="dropdownAssigneeRadio"
-                              onClick={() => {
-                                // Close all other dropdowns
-                                setIsRequestorDropdownOpen(false);
-                                setIsDepartmentDropdownOpen(false);
-                                setIsSeverityDropdownOpen(false);
-                                setIsCategoryDropdownOpen(false);
-                                setIsBranchDropdownOpen(false);
-                                // Toggle current dropdown
-                                setIsAssigneeDropdownOpen(!isAssigneeDropdownOpen);
-                              }}
-                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
-                              type="button"
-                            >
-                              {newRequestForm.assignee || "Select Assignee"}
-                              <svg
-                                className="w-2.5 h-2.5 ms-3"
-                                aria-hidden="true"
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 10 6"
-                              >
-                                <path
-                                  stroke="currentColor"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="2"
-                                  d="m1 1 4 4 4-4"
-                                />
-                              </svg>
-                            </button>
-
-                            {/* Dropdown menu */}
-                            {isAssigneeDropdownOpen && (
-                              <div
-                                id="dropdownAssigneeRadio"
-                                className="absolute z-10 w-48 bg-white divide-y divide-primary-100 rounded-lg shadow-sm dark:bg-dark-700 dark:divide-dark-600 mt-1"
-                              >
-                                <ul
-                                  className="p-3 space-y-3 text-sm text-dark-700 dark:text-dark-200"
-                                  aria-labelledby="dropdownAssigneeRadioButton"
-                                >
-                                  {assigneeOptions.map((assignee, index) => (
-                                    <li key={assignee}>
-                                      <div className="flex items-center">
-                                        <input
-                                          id={`assignee-radio-${index}`}
-                                          type="radio"
-                                          value={assignee}
-                                          name="assignee-radio"
-                                          checked={
-                                            newRequestForm.assignee === assignee
-                                          }
-                                          onChange={(e) => {
-                                            handleFormChange(
-                                              "assignee",
-                                              e.target.value
-                                            );
-                                            setIsAssigneeDropdownOpen(false);
-                                          }}
-                                          className="w-4 h-4 text-primary-600 bg-primary-100 border-primary-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-dark-700 dark:focus:ring-offset-dark-700 focus:ring-2 dark:bg-dark-600 dark:border-dark-500"
-                                        />
-                                        <label
-                                          htmlFor={`assignee-radio-${index}`}
-                                          className="ms-2 text-sm font-medium text-dark-900 dark:text-dark-300 cursor-pointer"
-                                        >
-                                          {assignee}
-                                        </label>
-                                      </div>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
-                        </div>
 
                         {/* Branch */}
                         <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
@@ -3714,19 +3526,23 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                           </div>
                           <div className="relative">
                             <button
-                              id="dropdownBranchRadioButton"
-                              data-dropdown-toggle="dropdownBranchRadio"
+                              id="dropdownBranchSearchButton"
+                              data-dropdown-toggle="dropdownBranchSearch"
+                              data-dropdown-placement="bottom"
                               onClick={() => {
                                 // Close all other dropdowns
                                 setIsRequestorDropdownOpen(false);
                                 setIsDepartmentDropdownOpen(false);
-                                setIsSeverityDropdownOpen(false);
                                 setIsCategoryDropdownOpen(false);
                                 setIsAssigneeDropdownOpen(false);
+                                setIsRequestorSearchOpen(false);
+                                setIsDepartmentSearchOpen(false);
+                                setIsCategorySearchOpen(false);
+                                setIsAssigneeSearchOpen(false);
                                 // Toggle current dropdown
-                                setIsBranchDropdownOpen(!isBranchDropdownOpen);
+                                setIsBranchSearchOpen(!isBranchSearchOpen);
                               }}
-                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-2 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
                               type="button"
                             >
                               {newRequestForm.branch || "Select Branch"}
@@ -3748,43 +3564,52 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             </button>
 
                             {/* Dropdown menu */}
-                            {isBranchDropdownOpen && (
+                            {isBranchSearchOpen && (
                               <div
-                                id="dropdownBranchRadio"
-                                className="absolute z-10 w-48 bg-white divide-y divide-gray-100 rounded-lg shadow-sm dark:bg-gray-700 dark:divide-gray-600 border border-gray-200 dark:border-gray-600 mt-1"
+                                id="dropdownBranchSearch"
+                                className="absolute z-10 bg-white rounded-lg shadow-lg w-full min-w-80 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
                               >
-                                <ul
-                                  className="p-3 space-y-1 text-sm text-gray-700 dark:text-gray-200"
-                                  aria-labelledby="dropdownBranchRadioButton"
-                                >
-                                  {branchOptions.map((branch, index) => (
-                                    <li key={branch}>
-                                      <div className="flex items-center">
+                                <div className="p-4">
+                                  <label htmlFor="input-group-search-branch" className="sr-only">Search</label>
+                                  <div className="relative">
+                                    <div className="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+                                      <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
+                                      </svg>
+                                    </div>
+                                          <input
+                                      type="text"
+                                      id="input-group-search-branch"
+                                      className="block w-full p-3 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                      placeholder="Search branch"
+                                      value={branchSearchTerm}
+                                      onChange={(e) => setBranchSearchTerm(e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                <ul className="max-h-64 px-4 pb-4 overflow-y-auto text-sm text-gray-700 dark:text-gray-200" aria-labelledby="dropdownBranchSearchButton">
+                                  {branchOptions
+                                    .filter(branch => 
+                                      branch.toLowerCase().includes(branchSearchTerm.toLowerCase())
+                                    )
+                                    .map((branch, index) => (
+                                    <li key={branch} className="mb-1">
+                                      <div className="flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
                                         <input
-                                          id={`branch-radio-${index}`}
-                                          type="radio"
-                                          value={branch}
+                                          id={`checkbox-branch-${index}`}
+                                            type="radio"
                                           name="branch-radio"
-                                          checked={
-                                            newRequestForm.branch === branch
-                                          }
-                                          onChange={(e) => {
-                                            handleFormChange(
-                                              "branch",
-                                              e.target.value
-                                            );
-                                            setIsBranchDropdownOpen(false);
+                                          value={branch}
+                                          checked={newRequestForm.branch === branch}
+                                            onChange={(e) => {
+                                            handleFormChange("branch", e.target.value);
+                                            setIsBranchSearchOpen(false);
                                           }}
-                                          className="w-4 h-4 text-gray-600 bg-gray-100 border-gray-300 focus:ring-gray-500 dark:focus:ring-gray-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
                                         />
-                                        <div className="ms-2 text-sm">
-                                          <label
-                                            htmlFor={`branch-radio-${index}`}
-                                            className="font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
-                                          >
-                                            {branch}
+                                        <label htmlFor={`checkbox-branch-${index}`} className="w-full py-2 ms-3 text-sm font-medium text-gray-900 rounded-sm dark:text-gray-300 cursor-pointer">
+                                          {branch}
                                           </label>
-                                        </div>
                                       </div>
                                     </li>
                                   ))}
@@ -3793,6 +3618,303 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             )}
                           </div>
                         </div>
+
+                        {/* Assignee */}
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <UserCheck className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Assignee
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              id="dropdownAssigneeSearchButton"
+                              data-dropdown-toggle="dropdownAssigneeSearch"
+                              data-dropdown-placement="bottom"
+                              onClick={() => {
+                                // Close all other dropdowns
+                                setIsRequestorDropdownOpen(false);
+                                setIsDepartmentDropdownOpen(false);
+                                setIsCategoryDropdownOpen(false);
+                                setIsBranchDropdownOpen(false);
+                                setIsRequestorSearchOpen(false);
+                                setIsDepartmentSearchOpen(false);
+                                setIsCategorySearchOpen(false);
+                                setIsBranchSearchOpen(false);
+                                // Toggle current dropdown
+                                setIsAssigneeSearchOpen(!isAssigneeSearchOpen);
+                              }}
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-2 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
+                              type="button"
+                            >
+                              {newRequestForm.assignee || "Select Assignee"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+
+                            {/* Dropdown menu */}
+                            {isAssigneeSearchOpen && (
+                              <div
+                                id="dropdownAssigneeSearch"
+                                className="absolute z-10 bg-white rounded-lg shadow-lg w-full min-w-80 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
+                              >
+                                <div className="p-4">
+                                  <label htmlFor="input-group-search-assignee" className="sr-only">Search</label>
+                                  <div className="relative">
+                                    <div className="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+                                      <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
+                                      </svg>
+                                    </div>
+                                        <input
+                                      type="text"
+                                      id="input-group-search-assignee"
+                                      className="block w-full p-3 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                      placeholder="Search assignee"
+                                      value={assigneeSearchTerm}
+                                      onChange={(e) => setAssigneeSearchTerm(e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                <ul className="max-h-64 px-4 pb-4 overflow-y-auto text-sm text-gray-700 dark:text-gray-200" aria-labelledby="dropdownAssigneeSearchButton">
+                                  {assigneeOptions
+                                    .filter(assignee => 
+                                      assignee.toLowerCase().includes(assigneeSearchTerm.toLowerCase())
+                                    )
+                                    .map((assignee, index) => (
+                                    <li key={assignee} className="mb-1">
+                                      <div className="flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                                        <input
+                                          id={`checkbox-assignee-${index}`}
+                                          type="radio"
+                                          name="assignee-radio"
+                                          value={assignee}
+                                          checked={newRequestForm.assignee === assignee}
+                                          onChange={(e) => {
+                                            handleFormChange("assignee", e.target.value);
+                                            setIsAssigneeSearchOpen(false);
+                                          }}
+                                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                        />
+                                        <label htmlFor={`checkbox-assignee-${index}`} className="w-full py-2 ms-3 text-sm font-medium text-gray-900 rounded-sm dark:text-gray-300 cursor-pointer">
+                                          {assignee}
+                                        </label>
+                                      </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                          </div>
+                        </div>
+
+                      {/* Right Column */}
+                      <div className="space-y-3">
+                        {/* Category */}
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <Tag className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Category
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              id="dropdownCategorySearchButton"
+                              data-dropdown-toggle="dropdownCategorySearch"
+                              data-dropdown-placement="bottom"
+                              onClick={() => {
+                                // Close all other dropdowns
+                                setIsRequestorDropdownOpen(false);
+                                setIsDepartmentDropdownOpen(false);
+                                setIsAssigneeDropdownOpen(false);
+                                setIsBranchDropdownOpen(false);
+                                setIsRequestorSearchOpen(false);
+                                setIsDepartmentSearchOpen(false);
+                                setIsAssigneeSearchOpen(false);
+                                setIsBranchSearchOpen(false);
+                                // Toggle current dropdown
+                                setIsCategorySearchOpen(!isCategorySearchOpen);
+                              }}
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
+                              type="button"
+                            >
+                              {newRequestForm.category || "Select Category"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+
+                            {/* Dropdown menu */}
+                            {isCategorySearchOpen && (
+                              <div
+                                id="dropdownCategorySearch"
+                                className="absolute z-10 bg-white rounded-lg shadow-lg w-full min-w-80 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
+                              >
+                                <div className="p-4">
+                                  <label htmlFor="input-group-search-category" className="sr-only">Search</label>
+                                  <div className="relative">
+                                    <div className="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+                                      <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
+                                      </svg>
+                                    </div>
+                                        <input
+                                      type="text"
+                                      id="input-group-search-category"
+                                      className="block w-full p-3 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                      placeholder="Search category"
+                                      value={categorySearchTerm}
+                                      onChange={(e) => setCategorySearchTerm(e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                <ul className="max-h-64 px-4 pb-4 overflow-y-auto text-sm text-gray-700 dark:text-gray-200" aria-labelledby="dropdownCategorySearchButton">
+                                  {categoryOptions
+                                    .filter(category => 
+                                      category.toLowerCase().includes(categorySearchTerm.toLowerCase())
+                                    )
+                                    .map((category, index) => (
+                                    <li key={category} className="mb-1">
+                                      <div className="flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                                        <input
+                                          id={`checkbox-category-${index}`}
+                                          type="radio"
+                                          name="category-radio"
+                                          value={category}
+                                          checked={newRequestForm.category === category}
+                                          onChange={(e) => {
+                                            handleFormChange("category", e.target.value);
+                                            setIsCategorySearchOpen(false);
+                                          }}
+                                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                        />
+                                        <label htmlFor={`checkbox-category-${index}`} className="w-full py-2 ms-3 text-sm font-medium text-gray-900 rounded-sm dark:text-gray-300 cursor-pointer">
+                                          {category}
+                                        </label>
+                                      </div>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Urgency Level */}
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-3 rounded-lg flex flex-col" style={{height: '340px'}}>
+                          <div className="mb-4">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <Clock className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Urgency Level
+                            </label>
+                          </div>
+                          <div className="space-y-4 flex-1 flex flex-col justify-between">
+                            <div className="flex items-center">
+                              <input
+                                id="urgency-low"
+                                name="urgency"
+                                type="radio"
+                                value="Low"
+                                checked={newRequestForm.severity === "Low"}
+                                onChange={(e) => handleFormChange("severity", e.target.value)}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label htmlFor="urgency-low" className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                <div className="font-semibold">Low</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">Can wait 1-2 business days</div>
+                              </label>
+                            </div>
+                                      <div className="flex items-center">
+                                        <input
+                                id="urgency-medium"
+                                name="urgency"
+                                          type="radio"
+                                value="Medium"
+                                checked={newRequestForm.severity === "Medium"}
+                                onChange={(e) => handleFormChange("severity", e.target.value)}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label htmlFor="urgency-medium" className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                <div className="font-semibold">Medium</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">Needs attention within 24 hours</div>
+                                          </label>
+                                        </div>
+                            <div className="flex items-center">
+                              <input
+                                id="urgency-high"
+                                name="urgency"
+                                type="radio"
+                                value="High"
+                                checked={newRequestForm.severity === "High"}
+                                onChange={(e) => handleFormChange("severity", e.target.value)}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label htmlFor="urgency-high" className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                <div className="font-semibold">High</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">Needs immediate attention</div>
+                              </label>
+                                      </div>
+                            <div className="flex items-center">
+                              <input
+                                id="urgency-urgent"
+                                name="urgency"
+                                type="radio"
+                                value="Urgent"
+                                checked={newRequestForm.severity === "Urgent"}
+                                onChange={(e) => handleFormChange("severity", e.target.value)}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label htmlFor="urgency-urgent" className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                <div className="font-semibold">Urgent</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">Business critical - immediate response required</div>
+                              </label>
+                              </div>
+                            <div className="flex items-center">
+                              <input
+                                id="urgency-critical"
+                                name="urgency"
+                                type="radio"
+                                value="Critical"
+                                checked={newRequestForm.severity === "Critical"}
+                                onChange={(e) => handleFormChange("severity", e.target.value)}
+                                className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500 dark:focus:ring-red-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label htmlFor="urgency-critical" className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                <div className="font-semibold text-red-600 dark:text-red-400">Critical</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">System down or major security breach - escalate immediately</div>
+                              </label>
+                          </div>
+                        </div>
+                        </div>
+
                       </div>
                     </div>
 
@@ -3812,7 +3934,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                       <div className="bg-white border-2 border-gray-200 rounded-xl overflow-hidden dark:bg-gray-800 dark:border-gray-600 shadow-sm hover:shadow-md transition-shadow duration-200">
                         {/* Toolbar */}
                         <div className="sticky top-0 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-600 p-3">
-                          {/* Text Format */}
+                          {/* Essential Text Format - Always Visible */}
                           <button
                             type="button"
                             onClick={() => handleFormatButton('bold')}
@@ -3849,6 +3971,20 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                           >
                             <i className="fa-solid fa-underline text-xs"></i>
                           </button>
+
+                          {/* View All Button */}
+                          <button
+                            type="button"
+                            onClick={() => setShowAllToolbarOptions(!showAllToolbarOptions)}
+                            className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-500"
+                            title={showAllToolbarOptions ? "Hide Advanced Options" : "Show All Options"}
+                          >
+                            <i className={`fa-solid ${showAllToolbarOptions ? 'fa-eye-slash' : 'fa-eye'} text-xs`}></i>
+                          </button>
+
+                          {/* Advanced Options - Hidden by Default */}
+                          {showAllToolbarOptions && (
+                            <>
                           <button
                             type="button"
                             onClick={() => handleFormatButton('strikeThrough')}
@@ -4039,6 +4175,8 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                               title="Font Color"
                             />
                           </div>
+                            </>
+                          )}
                         </div>
                         
                         {/* Editor Content */}
