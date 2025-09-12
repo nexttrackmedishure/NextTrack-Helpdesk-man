@@ -16,6 +16,7 @@ import {
   Building,
   Tag,
   UserCheck,
+  MapPin,
 } from "lucide-react";
 import ReactApexChart from "react-apexcharts";
 import ITSupportTicketForm from "./ITSupportTicketForm";
@@ -44,6 +45,10 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
   const [isCreateAgainModalOpen, setIsCreateAgainModalOpen] = useState(false);
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [isITSupportFormOpen, setIsITSupportFormOpen] = useState(false);
+
+  // Edit modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedTicketForEdit, setSelectedTicketForEdit] = useState<any>(null);
 
   // Form state for new request
   const [newRequestForm, setNewRequestForm] = useState({
@@ -352,13 +357,14 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     }
   };
 
-  // Function to handle ticket updates (resets the time)
+  // Function to handle ticket updates
   const handleTicketUpdate = (ticketId: string) => {
-    // In a real application, this would update the ticket in the database
-    // For demo purposes, we'll just show an alert
-    alert(
-      `Ticket ${ticketId} has been updated. The "Created" time will reset to show the update time.`
-    );
+    // Find the ticket data
+    const ticket = tickets.find(t => t.id === ticketId);
+    if (ticket) {
+      setSelectedTicketForEdit(ticket);
+      setIsEditModalOpen(true);
+    }
   };
 
   // Form handlers for new request
@@ -367,6 +373,20 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
       ...prev,
       [field]: value,
     }));
+  };
+
+  // Handle edit form submission
+  const handleEditFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // In a real application, you would call your database service here
+    // For now, we'll just show a success message and close the modal
+    console.log('Updated ticket data:', selectedTicketForEdit);
+    alert(`Ticket ${selectedTicketForEdit?.id} has been updated successfully!`);
+    
+    // Close the edit modal
+    setIsEditModalOpen(false);
+    setSelectedTicketForEdit(null);
   };
 
   // Handle quick request templates
@@ -4557,6 +4577,746 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Ticket Modal */}
+        {isEditModalOpen && selectedTicketForEdit && (
+          <div
+            className="fixed inset-0 z-50 overflow-x-hidden overflow-y-auto scrollbar-hide"
+            role="dialog"
+            tabIndex={-1}
+            aria-labelledby="hs-vertically-centered-modal-label"
+            aria-modal="true"
+          >
+            <div className="flex items-center justify-center min-h-screen px-4 py-8">
+              <div className="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm"></div>
+              <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                {/* Modal Header */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                      <svg
+                        className="w-4 h-4 text-green-600 dark:text-green-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <h1
+                        id="hs-vertically-centered-modal-label"
+                        className="font-bold text-gray-800 dark:text-white"
+                        style={{fontSize: '18pt'}}
+                      >
+                        Edit Ticket
+                      </h1>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none focus:bg-gray-200 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:text-neutral-400 dark:focus:bg-neutral-600"
+                    aria-label="Close"
+                    onClick={() => {
+                      setIsEditModalOpen(false);
+                      setSelectedTicketForEdit(null);
+                    }}
+                  >
+                    <span className="sr-only">Close</span>
+                    <svg
+                      className="shrink-0 size-4"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M18 6 6 18"></path>
+                      <path d="m6 6 12 12"></path>
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Modal Content */}
+                <div className="p-3 overflow-y-auto max-h-[85vh] scrollbar-thin scrollbar-thumb-violet-600 scrollbar-track-violet-900 hover:scrollbar-thumb-violet-500">
+                  {/* Ticket Number */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 flex items-center justify-center">
+                        <svg
+                          className="w-4 h-4 text-primary-600 dark:text-primary-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                      </div>
+                      <label className="text-sm font-semibold text-gray-900 dark:text-white">
+                        Ticket Number
+                      </label>
+                    </div>
+                    <span className="font-mono text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                      {selectedTicketForEdit.id}
+                    </span>
+                    {selectedTicketForEdit.severity && (
+                      <div className="flex items-center gap-1">
+                        <Flag className="w-3 h-3 text-red-500" />
+                        <span className="text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
+                          {selectedTicketForEdit.severity}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleEditFormSubmit}>
+                    {/* Ticket Title Section */}
+                    <div className="mb-3">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="p-1 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400"
+                          >
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                          </svg>
+                        </div>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                          Request Title
+                        </h3>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Enter a clear, descriptive title for your request..."
+                        defaultValue={selectedTicketForEdit.title}
+                        className="w-full px-3 py-1.5 text-sm font-medium bg-primary-50 dark:bg-dark-700 border border-primary-200 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white placeholder-primary-500 dark:placeholder-dark-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
+                      />
+                    </div>
+
+                    {/* Form Fields Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
+                      {/* Left Column */}
+                      <div className="space-y-3">
+                        {/* Request Date */}
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <Calendar className="w-4 h-4 inline mr-2" />
+                              Request Date
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                              <svg
+                                className="w-4 h-4 text-primary-500 dark:text-dark-400"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z" />
+                              </svg>
+                            </div>
+                            <input
+                              type="date"
+                              defaultValue={selectedTicketForEdit.date}
+                              className="bg-primary-50 border border-primary-300 text-dark-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full ps-10 py-1 px-2 dark:bg-dark-700 dark:border-dark-600 dark:placeholder-dark-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 h-10"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Requestor */}
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <User className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Requestor
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              type="button"
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
+                            >
+                              {selectedTicketForEdit.requestor || "Select Requestor"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Department */}
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <Building className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Department
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              type="button"
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
+                            >
+                              {selectedTicketForEdit.department || "Select Department"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Branch */}
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <MapPin className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Branch
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              type="button"
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
+                            >
+                              {selectedTicketForEdit.branch || "Select Branch"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Assignee */}
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <UserCheck className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Assignee
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              type="button"
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
+                            >
+                              {selectedTicketForEdit.assignee || "Select Assignee"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Column */}
+                      <div className="space-y-3">
+                        {/* Category */}
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <Tag className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Category
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              type="button"
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
+                            >
+                              {selectedTicketForEdit.category || "Select Category"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Urgency Level */}
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-3 rounded-lg flex flex-col" style={{height: '340px'}}>
+                          <div className="mb-4">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <Clock className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Urgency Level
+                            </label>
+                          </div>
+                          <div className="space-y-4 flex-1 flex flex-col justify-between">
+                            <div className="flex items-center">
+                              <input
+                                id="edit-urgency-low"
+                                name="edit-urgency"
+                                type="radio"
+                                value="Low"
+                                defaultChecked={selectedTicketForEdit.severity === "Low"}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label htmlFor="edit-urgency-low" className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                <div className="font-semibold">Low</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">Can wait 1-2 business days</div>
+                              </label>
+                            </div>
+                            <div className="flex items-center">
+                              <input
+                                id="edit-urgency-medium"
+                                name="edit-urgency"
+                                type="radio"
+                                value="Medium"
+                                defaultChecked={selectedTicketForEdit.severity === "Medium"}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label htmlFor="edit-urgency-medium" className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                <div className="font-semibold">Medium</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">Needs attention within 24 hours</div>
+                              </label>
+                            </div>
+                            <div className="flex items-center">
+                              <input
+                                id="edit-urgency-high"
+                                name="edit-urgency"
+                                type="radio"
+                                value="High"
+                                defaultChecked={selectedTicketForEdit.severity === "High"}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label htmlFor="edit-urgency-high" className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                <div className="font-semibold">High</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">Needs immediate attention</div>
+                              </label>
+                            </div>
+                            <div className="flex items-center">
+                              <input
+                                id="edit-urgency-urgent"
+                                name="edit-urgency"
+                                type="radio"
+                                value="Urgent"
+                                defaultChecked={selectedTicketForEdit.severity === "Urgent"}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label htmlFor="edit-urgency-urgent" className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                <div className="font-semibold">Urgent</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">Business critical - immediate response required</div>
+                              </label>
+                            </div>
+                            <div className="flex items-center">
+                              <input
+                                id="edit-urgency-critical"
+                                name="edit-urgency"
+                                type="radio"
+                                value="Critical"
+                                defaultChecked={selectedTicketForEdit.severity === "Critical"}
+                                className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500 dark:focus:ring-red-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label htmlFor="edit-urgency-critical" className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                <div className="font-semibold text-red-600 dark:text-red-400">Critical</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">System down or major security breach - escalate immediately</div>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Request Description */}
+                    <div className="mb-3">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="p-1 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400"
+                          >
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14,2 14,8 20,8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10,9 9,9 8,9"></polyline>
+                          </svg>
+                        </div>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                          <span className="text-red-500">*</span> Request Description
+                        </h3>
+                      </div>
+                      <div className="border border-primary-200 dark:border-dark-600 rounded-lg overflow-hidden">
+                        {/* Rich Text Editor Toolbar */}
+                        <div className="sticky top-0 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-600 p-3">
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton('bold')}
+                            className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                              activeButtons.has('bold') 
+                                ? 'bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white' 
+                                : 'bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600'
+                            }`}
+                            title="Bold"
+                          >
+                            <i className="fa-solid fa-bold text-xs"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton('italic')}
+                            className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                              activeButtons.has('italic') 
+                                ? 'bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white' 
+                                : 'bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600'
+                            }`}
+                            title="Italic"
+                          >
+                            <i className="fa-solid fa-italic text-xs"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton('underline')}
+                            className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                              activeButtons.has('underline') 
+                                ? 'bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white' 
+                                : 'bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600'
+                            }`}
+                            title="Underline"
+                          >
+                            <i className="fa-solid fa-underline text-xs"></i>
+                          </button>
+                          
+                          <button
+                            type="button"
+                            onClick={() => setShowAllToolbarOptions(!showAllToolbarOptions)}
+                            className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            title="View All"
+                          >
+                            <i className="fa-solid fa-eye text-xs"></i>
+                          </button>
+
+                          {showAllToolbarOptions && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton('strikeThrough')}
+                                className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                  activeButtons.has('strikeThrough') 
+                                    ? 'bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white' 
+                                    : 'bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600'
+                                }`}
+                                title="Strikethrough"
+                              >
+                                <i className="fa-solid fa-strikethrough text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton('superscript')}
+                                className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                  activeButtons.has('superscript') 
+                                    ? 'bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white' 
+                                    : 'bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600'
+                                }`}
+                                title="Superscript"
+                              >
+                                <i className="fa-solid fa-superscript text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton('subscript')}
+                                className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                  activeButtons.has('subscript') 
+                                    ? 'bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white' 
+                                    : 'bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600'
+                                }`}
+                                title="Subscript"
+                              >
+                                <i className="fa-solid fa-subscript text-xs"></i>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton('insertOrderedList')}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Numbered List"
+                              >
+                                <i className="fa-solid fa-list-ol text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton('insertUnorderedList')}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Bullet List"
+                              >
+                                <i className="fa-solid fa-list text-xs"></i>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton('undo')}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Undo"
+                              >
+                                <i className="fa-solid fa-rotate-left text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton('redo')}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Redo"
+                              >
+                                <i className="fa-solid fa-rotate-right text-xs"></i>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={handleCreateLink}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Create Link"
+                              >
+                                <i className="fa fa-link text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton('unlink')}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Remove Link"
+                              >
+                                <i className="fa fa-unlink text-xs"></i>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleAlignment('justifyLeft')}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Align Left"
+                              >
+                                <i className="fa-solid fa-align-left text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleAlignment('justifyCenter')}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Align Center"
+                              >
+                                <i className="fa-solid fa-align-center text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleAlignment('justifyRight')}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Align Right"
+                              >
+                                <i className="fa-solid fa-align-right text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleAlignment('justifyFull')}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Justify"
+                              >
+                                <i className="fa-solid fa-align-justify text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton('indent')}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Indent"
+                              >
+                                <i className="fa-solid fa-indent text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton('outdent')}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Outdent"
+                              >
+                                <i className="fa-solid fa-outdent text-xs"></i>
+                              </button>
+
+                              <select
+                                onChange={(e) => handleAdvancedOption('formatBlock', e.target.value)}
+                                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                title="Heading"
+                              >
+                                <option value="div">Normal</option>
+                                <option value="H1">H1</option>
+                                <option value="H2">H2</option>
+                                <option value="H3">H3</option>
+                                <option value="H4">H4</option>
+                                <option value="H5">H5</option>
+                                <option value="H6">H6</option>
+                              </select>
+
+                              <select
+                                onChange={(e) => handleAdvancedOption('fontName', e.target.value)}
+                                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                title="Font Family"
+                              >
+                                {fontList.map((font) => (
+                                  <option key={font} value={font}>
+                                    {font}
+                                  </option>
+                                ))}
+                              </select>
+                              <select
+                                onChange={(e) => handleAdvancedOption('fontSize', e.target.value)}
+                                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                title="Font Size"
+                                defaultValue="3"
+                              >
+                                {[1, 2, 3, 4, 5, 6, 7].map((size) => (
+                                  <option key={size} value={size}>
+                                    {size}
+                                  </option>
+                                ))}
+                              </select>
+
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="color"
+                                  onChange={(e) => handleAdvancedOption('foreColor', e.target.value)}
+                                  className="w-7 h-7 border-none cursor-pointer rounded"
+                                  title="Font Color"
+                                />
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Rich Text Editor Content */}
+                        <div
+                          ref={editorRef}
+                          contentEditable
+                          onInput={handleEditorInput}
+                          className="min-h-[200px] p-4 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none"
+                          style={{ minHeight: '200px' }}
+                          dangerouslySetInnerHTML={{ __html: selectedTicketForEdit.description || '<p>Describe your request in detail...</p>' }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        <span className="text-red-500">*</span> Required fields
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEditModalOpen(false);
+                            setSelectedTicketForEdit(null);
+                          }}
+                          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors duration-200"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded-lg transition-colors duration-200 flex items-center gap-2"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                          Update Ticket
+                        </button>
+                      </div>
+                    </div>
+                  </form>
                 </div>
               </div>
             </div>
