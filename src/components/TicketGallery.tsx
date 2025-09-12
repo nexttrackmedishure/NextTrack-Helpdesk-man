@@ -4594,7 +4594,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
           >
             <div className="flex items-center justify-center min-h-screen px-4 py-8">
               <div className="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm"></div>
-              <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+              <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[98vh] overflow-hidden">
                 {/* Modal Header */}
                 <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
                   <div className="flex items-center gap-2">
@@ -4653,7 +4653,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                 </div>
 
                 {/* Modal Content */}
-                <div className="p-3 overflow-y-auto max-h-[85vh] scrollbar-thin scrollbar-thumb-violet-600 scrollbar-track-violet-900 hover:scrollbar-thumb-violet-500">
+                <div className="p-3 overflow-y-auto max-h-[93vh] scrollbar-thin scrollbar-thumb-violet-600 scrollbar-track-violet-900 hover:scrollbar-thumb-violet-500">
                   {/* Ticket Number */}
                   <div className="flex items-center gap-3 mb-4">
                     <div className="flex items-center gap-2">
@@ -4998,6 +4998,490 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                               </label>
                             </div>
                           </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* IT Support Section */}
+                    <div className="mb-3">
+                      {/* Visual Separator */}
+                      <div className="border-t-2 border-orange-200 dark:border-orange-600 my-4"></div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="p-1 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400"
+                          >
+                            <path d="M9 12l2 2 4-4"></path>
+                            <path d="M21 12c.552 0 1-.448 1-1V5c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v6c0 .552.448 1 1 1h18z"></path>
+                            <path d="M3 12v6c0 .552.448 1 1 1h16c.552 0 1-.448 1-1v-6H3z"></path>
+                          </svg>
+                        </div>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                          IT Support
+                        </h3>
+                      </div>
+
+                      {/* IT Support Fields Grid */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
+                        {/* Left Column */}
+                        <div className="space-y-3">
+                          {/* Due Date */}
+                          <div className="bg-orange-50 dark:bg-orange-900/20 p-1.5 rounded-lg">
+                            <div className="mb-1">
+                              <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                                <Calendar className="w-4 h-4 inline mr-2" />
+                                Due Date
+                              </label>
+                            </div>
+                            <div className="relative">
+                              <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                                <svg
+                                  className="w-4 h-4 text-orange-500 dark:text-orange-400"
+                                  aria-hidden="true"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z" />
+                                </svg>
+                              </div>
+                              <input
+                                type="date"
+                                defaultValue={selectedTicketForEdit.dueDate || ""}
+                                className="bg-orange-50 border border-orange-300 text-dark-900 text-sm rounded-lg focus:ring-orange-500 focus:border-orange-500 block w-full ps-10 py-1 px-2 dark:bg-orange-900/20 dark:border-orange-600 dark:placeholder-dark-400 dark:text-white dark:focus:ring-orange-500 dark:focus:border-orange-500 h-10"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Escalate */}
+                          <div className="bg-orange-50 dark:bg-orange-900/20 p-1.5 rounded-lg">
+                            <div className="mb-1">
+                              <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                                <AlertTriangle className="w-4 h-4 inline mr-2" />
+                                Escalate
+                              </label>
+                            </div>
+                            <div className="relative">
+                              <button
+                                type="button"
+                                className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-orange-900/30 hover:bg-orange-50 dark:hover:bg-orange-900/40 focus:ring-4 focus:outline-none focus:ring-orange-200 dark:focus:ring-orange-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-orange-300 dark:border-orange-600 h-10"
+                              >
+                                {selectedTicketForEdit.escalate || "Level 2 support"}
+                                <svg
+                                  className="w-2.5 h-2.5 ms-3"
+                                  aria-hidden="true"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="none"
+                                  viewBox="0 0 10 6"
+                                >
+                                  <path
+                                    stroke="currentColor"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="m1 1 4 4 4-4"
+                                  />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right Column */}
+                        <div className="space-y-3">
+                          {/* Ticket Status */}
+                          <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg flex flex-col" style={{height: '340px'}}>
+                            <div className="mb-4">
+                              <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                                <Flag className="w-4 h-4 inline mr-2" />
+                                <span className="text-red-500">*</span> Ticket Status
+                              </label>
+                            </div>
+                            <div className="space-y-4 flex-1 flex flex-col justify-between">
+                              <div className="flex items-center">
+                                <input
+                                  id="edit-status-closed"
+                                  name="edit-status"
+                                  type="radio"
+                                  value="Closed"
+                                  defaultChecked={selectedTicketForEdit.status === "Closed"}
+                                  className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 focus:ring-green-500 dark:focus:ring-green-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <label htmlFor="edit-status-closed" className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                  <div className="font-semibold text-green-600 dark:text-green-400">Closed</div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">Ticket has been resolved and closed</div>
+                                </label>
+                              </div>
+                              <div className="flex items-center">
+                                <input
+                                  id="edit-status-pending"
+                                  name="edit-status"
+                                  type="radio"
+                                  value="Pending"
+                                  defaultChecked={selectedTicketForEdit.status === "Pending"}
+                                  className="w-4 h-4 text-yellow-600 bg-gray-100 border-gray-300 focus:ring-yellow-500 dark:focus:ring-yellow-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <label htmlFor="edit-status-pending" className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                  <div className="font-semibold text-yellow-600 dark:text-yellow-400">Pending</div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">Waiting for response or action</div>
+                                </label>
+                              </div>
+                              <div className="flex items-center">
+                                <input
+                                  id="edit-status-resolved"
+                                  name="edit-status"
+                                  type="radio"
+                                  value="Resolved"
+                                  defaultChecked={selectedTicketForEdit.status === "Resolved"}
+                                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <label htmlFor="edit-status-resolved" className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                  <div className="font-semibold text-blue-600 dark:text-blue-400">Resolved</div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">Issue has been fixed and verified</div>
+                                </label>
+                              </div>
+                              <div className="flex items-center">
+                                <input
+                                  id="edit-status-on-hold"
+                                  name="edit-status"
+                                  type="radio"
+                                  value="On Hold"
+                                  defaultChecked={selectedTicketForEdit.status === "On Hold"}
+                                  className="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 focus:ring-orange-500 dark:focus:ring-orange-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <label htmlFor="edit-status-on-hold" className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                  <div className="font-semibold text-orange-600 dark:text-orange-400">On Hold</div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">Temporarily paused due to external factors</div>
+                                </label>
+                              </div>
+                              <div className="flex items-center">
+                                <input
+                                  id="edit-status-in-progress"
+                                  name="edit-status"
+                                  type="radio"
+                                  value="In Progress"
+                                  defaultChecked={selectedTicketForEdit.status === "In Progress"}
+                                  className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 focus:ring-purple-500 dark:focus:ring-purple-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <label htmlFor="edit-status-in-progress" className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                  <div className="font-semibold text-purple-600 dark:text-purple-400">In Progress</div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">Currently being worked on</div>
+                                </label>
+                              </div>
+                              <div className="flex items-center">
+                                <input
+                                  id="edit-status-escalate"
+                                  name="edit-status"
+                                  type="radio"
+                                  value="Escalate"
+                                  defaultChecked={selectedTicketForEdit.status === "Escalate"}
+                                  className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500 dark:focus:ring-red-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <label htmlFor="edit-status-escalate" className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                  <div className="font-semibold text-red-600 dark:text-red-400">Escalate</div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">Requires higher level support</div>
+                                </label>
+                              </div>
+                              <div className="flex items-center">
+                                <input
+                                  id="edit-status-cancelled"
+                                  name="edit-status"
+                                  type="radio"
+                                  value="Cancelled"
+                                  defaultChecked={selectedTicketForEdit.status === "Cancelled"}
+                                  className="w-4 h-4 text-gray-600 bg-gray-100 border-gray-300 focus:ring-gray-500 dark:focus:ring-gray-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <label htmlFor="edit-status-cancelled" className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer">
+                                  <div className="font-semibold text-gray-600 dark:text-gray-400">Cancelled</div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">Request has been cancelled</div>
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Job Resolution */}
+                      <div className="mb-3">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <div className="p-1 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400"
+                            >
+                              <path d="M9 12l2 2 4-4"></path>
+                              <path d="M21 12c.552 0 1-.448 1-1V5c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v6c0 .552.448 1 1 1h18z"></path>
+                              <path d="M3 12v6c0 .552.448 1 1 1h16c.552 0 1-.448 1-1v-6H3z"></path>
+                            </svg>
+                          </div>
+                          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                            <span className="text-red-500">*</span> Job Resolution
+                          </h3>
+                        </div>
+                        <div className="border border-orange-200 dark:border-orange-600 rounded-lg overflow-hidden">
+                          {/* Rich Text Editor Toolbar */}
+                          <div className="sticky top-0 bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-700 dark:to-orange-800 flex flex-wrap items-center gap-2 border-b border-orange-200 dark:border-orange-600 p-3">
+                            <button
+                              type="button"
+                              onClick={() => handleFormatButton('bold')}
+                              className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                activeButtons.has('bold') 
+                                  ? 'bg-orange-200 text-orange-800 dark:bg-orange-600 dark:text-white' 
+                                  : 'bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600'
+                              }`}
+                              title="Bold"
+                            >
+                              <i className="fa-solid fa-bold text-xs"></i>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleFormatButton('italic')}
+                              className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                activeButtons.has('italic') 
+                                  ? 'bg-orange-200 text-orange-800 dark:bg-orange-600 dark:text-white' 
+                                  : 'bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600'
+                              }`}
+                              title="Italic"
+                            >
+                              <i className="fa-solid fa-italic text-xs"></i>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleFormatButton('underline')}
+                              className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                activeButtons.has('underline') 
+                                  ? 'bg-orange-200 text-orange-800 dark:bg-orange-600 dark:text-white' 
+                                  : 'bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600'
+                              }`}
+                              title="Underline"
+                            >
+                              <i className="fa-solid fa-underline text-xs"></i>
+                            </button>
+                            
+                            <button
+                              type="button"
+                              onClick={() => setShowAllToolbarOptions(!showAllToolbarOptions)}
+                              className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                              title="View All"
+                            >
+                              <i className="fa-solid fa-eye text-xs"></i>
+                            </button>
+
+                            {showAllToolbarOptions && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleFormatButton('strikeThrough')}
+                                  className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                    activeButtons.has('strikeThrough') 
+                                      ? 'bg-orange-200 text-orange-800 dark:bg-orange-600 dark:text-white' 
+                                      : 'bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600'
+                                  }`}
+                                  title="Strikethrough"
+                                >
+                                  <i className="fa-solid fa-strikethrough text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleFormatButton('superscript')}
+                                  className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                    activeButtons.has('superscript') 
+                                      ? 'bg-orange-200 text-orange-800 dark:bg-orange-600 dark:text-white' 
+                                      : 'bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600'
+                                  }`}
+                                  title="Superscript"
+                                >
+                                  <i className="fa-solid fa-superscript text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleFormatButton('subscript')}
+                                  className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                    activeButtons.has('subscript') 
+                                      ? 'bg-orange-200 text-orange-800 dark:bg-orange-600 dark:text-white' 
+                                      : 'bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600'
+                                  }`}
+                                  title="Subscript"
+                                >
+                                  <i className="fa-solid fa-subscript text-xs"></i>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleFormatButton('insertOrderedList')}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Numbered List"
+                                >
+                                  <i className="fa-solid fa-list-ol text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleFormatButton('insertUnorderedList')}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Bullet List"
+                                >
+                                  <i className="fa-solid fa-list text-xs"></i>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleFormatButton('undo')}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Undo"
+                                >
+                                  <i className="fa-solid fa-rotate-left text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleFormatButton('redo')}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Redo"
+                                >
+                                  <i className="fa-solid fa-rotate-right text-xs"></i>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={handleCreateLink}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Create Link"
+                                >
+                                  <i className="fa fa-link text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleFormatButton('unlink')}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Remove Link"
+                                >
+                                  <i className="fa fa-unlink text-xs"></i>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleAlignment('justifyLeft')}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Align Left"
+                                >
+                                  <i className="fa-solid fa-align-left text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAlignment('justifyCenter')}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Align Center"
+                                >
+                                  <i className="fa-solid fa-align-center text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAlignment('justifyRight')}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Align Right"
+                                >
+                                  <i className="fa-solid fa-align-right text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAlignment('justifyFull')}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Justify"
+                                >
+                                  <i className="fa-solid fa-align-justify text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleFormatButton('indent')}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Indent"
+                                >
+                                  <i className="fa-solid fa-indent text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleFormatButton('outdent')}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Outdent"
+                                >
+                                  <i className="fa-solid fa-outdent text-xs"></i>
+                                </button>
+
+                                <select
+                                  onChange={(e) => handleAdvancedOption('formatBlock', e.target.value)}
+                                  className="px-2 py-1 text-xs border border-orange-300 dark:border-orange-600 rounded bg-white dark:bg-orange-700 text-gray-800 dark:text-white"
+                                  title="Heading"
+                                >
+                                  <option value="div">Normal</option>
+                                  <option value="H1">H1</option>
+                                  <option value="H2">H2</option>
+                                  <option value="H3">H3</option>
+                                  <option value="H4">H4</option>
+                                  <option value="H5">H5</option>
+                                  <option value="H6">H6</option>
+                                </select>
+
+                                <select
+                                  onChange={(e) => handleAdvancedOption('fontName', e.target.value)}
+                                  className="px-2 py-1 text-xs border border-orange-300 dark:border-orange-600 rounded bg-white dark:bg-orange-700 text-gray-800 dark:text-white"
+                                  title="Font Family"
+                                >
+                                  {fontList.map((font) => (
+                                    <option key={font} value={font}>
+                                      {font}
+                                    </option>
+                                  ))}
+                                </select>
+                                <select
+                                  onChange={(e) => handleAdvancedOption('fontSize', e.target.value)}
+                                  className="px-2 py-1 text-xs border border-orange-300 dark:border-orange-600 rounded bg-white dark:bg-orange-700 text-gray-800 dark:text-white"
+                                  title="Font Size"
+                                  defaultValue="3"
+                                >
+                                  {[1, 2, 3, 4, 5, 6, 7].map((size) => (
+                                    <option key={size} value={size}>
+                                      {size}
+                                    </option>
+                                  ))}
+                                </select>
+
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="color"
+                                    onChange={(e) => handleAdvancedOption('foreColor', e.target.value)}
+                                    className="w-7 h-7 border-none cursor-pointer rounded"
+                                    title="Font Color"
+                                  />
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Rich Text Editor Content */}
+                          <div
+                            ref={editorRef}
+                            contentEditable
+                            onInput={handleEditorInput}
+                            className="min-h-[200px] p-4 text-sm text-gray-900 dark:text-white bg-white dark:bg-orange-900/20 focus:outline-none"
+                            style={{ minHeight: '200px' }}
+                            dangerouslySetInnerHTML={{ __html: selectedTicketForEdit.jobResolution || '<p>Describe the job resolution in detail...</p>' }}
+                          />
                         </div>
                       </div>
                     </div>
