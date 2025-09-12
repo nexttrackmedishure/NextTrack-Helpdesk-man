@@ -3263,11 +3263,16 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             <button
                               id="dropdownRequestorRadioButton"
                               data-dropdown-toggle="dropdownRequestorRadio"
-                              onClick={() =>
-                                setIsRequestorDropdownOpen(
-                                  !isRequestorDropdownOpen
-                                )
-                              }
+                              onClick={() => {
+                                // Close all other dropdowns
+                                setIsDepartmentDropdownOpen(false);
+                                setIsSeverityDropdownOpen(false);
+                                setIsCategoryDropdownOpen(false);
+                                setIsAssigneeDropdownOpen(false);
+                                setIsBranchDropdownOpen(false);
+                                // Toggle current dropdown
+                                setIsRequestorDropdownOpen(!isRequestorDropdownOpen);
+                              }}
                               className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
                               type="button"
                             >
@@ -3347,11 +3352,16 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             <button
                               id="dropdownDepartmentRadioButton"
                               data-dropdown-toggle="dropdownDepartmentRadio"
-                              onClick={() =>
-                                setIsDepartmentDropdownOpen(
-                                  !isDepartmentDropdownOpen
-                                )
-                              }
+                              onClick={() => {
+                                // Close all other dropdowns
+                                setIsRequestorDropdownOpen(false);
+                                setIsSeverityDropdownOpen(false);
+                                setIsCategoryDropdownOpen(false);
+                                setIsAssigneeDropdownOpen(false);
+                                setIsBranchDropdownOpen(false);
+                                // Toggle current dropdown
+                                setIsDepartmentDropdownOpen(!isDepartmentDropdownOpen);
+                              }}
                               className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
                               type="button"
                             >
@@ -3434,11 +3444,16 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             <button
                               id="dropdownRadioHelperButton"
                               data-dropdown-toggle="dropdownRadioHelper"
-                              onClick={() =>
-                                setIsSeverityDropdownOpen(
-                                  !isSeverityDropdownOpen
-                                )
-                              }
+                              onClick={() => {
+                                // Close all other dropdowns
+                                setIsRequestorDropdownOpen(false);
+                                setIsDepartmentDropdownOpen(false);
+                                setIsCategoryDropdownOpen(false);
+                                setIsAssigneeDropdownOpen(false);
+                                setIsBranchDropdownOpen(false);
+                                // Toggle current dropdown
+                                setIsSeverityDropdownOpen(!isSeverityDropdownOpen);
+                              }}
                               className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
                               type="button"
                             >
@@ -3525,11 +3540,16 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             <button
                               id="dropdownCategoryRadioButton"
                               data-dropdown-toggle="dropdownCategoryRadio"
-                              onClick={() =>
-                                setIsCategoryDropdownOpen(
-                                  !isCategoryDropdownOpen
-                                )
-                              }
+                              onClick={() => {
+                                // Close all other dropdowns
+                                setIsRequestorDropdownOpen(false);
+                                setIsDepartmentDropdownOpen(false);
+                                setIsSeverityDropdownOpen(false);
+                                setIsAssigneeDropdownOpen(false);
+                                setIsBranchDropdownOpen(false);
+                                // Toggle current dropdown
+                                setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
+                              }}
                               className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
                               type="button"
                             >
@@ -3608,11 +3628,16 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             <button
                               id="dropdownAssigneeRadioButton"
                               data-dropdown-toggle="dropdownAssigneeRadio"
-                              onClick={() =>
-                                setIsAssigneeDropdownOpen(
-                                  !isAssigneeDropdownOpen
-                                )
-                              }
+                              onClick={() => {
+                                // Close all other dropdowns
+                                setIsRequestorDropdownOpen(false);
+                                setIsDepartmentDropdownOpen(false);
+                                setIsSeverityDropdownOpen(false);
+                                setIsCategoryDropdownOpen(false);
+                                setIsBranchDropdownOpen(false);
+                                // Toggle current dropdown
+                                setIsAssigneeDropdownOpen(!isAssigneeDropdownOpen);
+                              }}
                               className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
                               type="button"
                             >
@@ -3691,9 +3716,16 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             <button
                               id="dropdownBranchRadioButton"
                               data-dropdown-toggle="dropdownBranchRadio"
-                              onClick={() =>
-                                setIsBranchDropdownOpen(!isBranchDropdownOpen)
-                              }
+                              onClick={() => {
+                                // Close all other dropdowns
+                                setIsRequestorDropdownOpen(false);
+                                setIsDepartmentDropdownOpen(false);
+                                setIsSeverityDropdownOpen(false);
+                                setIsCategoryDropdownOpen(false);
+                                setIsAssigneeDropdownOpen(false);
+                                // Toggle current dropdown
+                                setIsBranchDropdownOpen(!isBranchDropdownOpen);
+                              }}
                               className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
                               type="button"
                             >
