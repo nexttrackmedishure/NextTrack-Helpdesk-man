@@ -14,11 +14,28 @@ export default defineConfig({
     extensions: [".mjs", ".js", ".ts", ".jsx", ".tsx", ".json"],
   },
   optimizeDeps: {
-    include: ["react", "react-dom", "lucide-react"],
+    include: [
+      "react", 
+      "react-dom", 
+      "lucide-react",
+      "apexcharts",
+      "react-apexcharts",
+      "chart.js",
+      "react-chartjs-2",
+      "recharts"
+    ],
   },
   build: {
     // Increase chunk size warning limit
     chunkSizeWarningLimit: 1000,
+    // Disable source maps for faster builds
+    sourcemap: false,
+    // Use esbuild for faster minification
+    minify: "esbuild",
+    // Target modern browsers for smaller bundles
+    target: "esnext",
+    // Optimize for production
+    cssCodeSplit: true,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -36,9 +53,5 @@ export default defineConfig({
         },
       },
     },
-    // Enable source maps for production debugging (optional)
-    sourcemap: false,
-    // Use default minification (esbuild is faster)
-    minify: "esbuild",
   },
 });

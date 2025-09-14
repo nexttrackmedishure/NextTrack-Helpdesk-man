@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Plus,
   Clock,
@@ -6,21 +6,26 @@ import {
   CheckCircle,
   MessageSquare,
   Calendar,
-  TrendingUp,
-  TrendingDown,
   Pause,
   AlertTriangle,
   X,
   Minus,
-  Eye,
   Flag,
   Save,
   User,
   Building,
   Tag,
   UserCheck,
+  MapPin,
 } from "lucide-react";
 import ReactApexChart from "react-apexcharts";
+import ITSupportTicketForm from "./ITSupportTicketForm";
+import UnifiedTicketModal from "./UnifiedTicketModal";
+import {
+  sendTicketNotificationEmail,
+  getAssigneeEmail,
+  generateTicketEmailTemplate,
+} from "../services/emailService";
 
 // Declare Leaflet types
 declare global {
@@ -30,14 +35,10 @@ declare global {
 }
 
 interface TicketGalleryProps {
-  isNewRequestModalOpen: boolean;
-  setIsNewRequestModalOpen: (open: boolean) => void;
+  // Legacy modal props removed - now using unified modal
 }
 
-const TicketGallery: React.FC<TicketGalleryProps> = ({
-  isNewRequestModalOpen,
-  setIsNewRequestModalOpen,
-}) => {
+const TicketGallery: React.FC<TicketGalleryProps> = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus] = useState("all");
   const [selectedPriority] = useState("all");
@@ -45,6 +46,23 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [isCreateAgainModalOpen, setIsCreateAgainModalOpen] = useState(false);
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
+  const [isITSupportFormOpen, setIsITSupportFormOpen] = useState(false);
+
+  // Unified modal state
+  const [isUnifiedModalOpen, setIsUnifiedModalOpen] = useState(false);
+  const [unifiedModalMode, setUnifiedModalMode] = useState<
+    "new" | "edit" | "escalate"
+  >("new");
+  const [selectedTicketForEdit, setSelectedTicketForEdit] = useState<any>(null);
+  const [templateData, setTemplateData] = useState<any>(null);
+
+  // Create Another modal state
+  const [isCreateAnotherModalOpen, setIsCreateAnotherModalOpen] =
+    useState(false);
+  const [lastCreatedTicket, setLastCreatedTicket] = useState<any>(null);
+
+  // Legacy modal states (keeping for backward compatibility)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Form state for new request
   const [newRequestForm, setNewRequestForm] = useState({
@@ -60,9 +78,6 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     description: "",
   });
 
-  // State for severity dropdown
-  const [isSeverityDropdownOpen, setIsSeverityDropdownOpen] = useState(false);
-
   // State for new radio dropdowns
   const [isDepartmentDropdownOpen, setIsDepartmentDropdownOpen] =
     useState(false);
@@ -71,13 +86,34 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
   const [isAssigneeDropdownOpen, setIsAssigneeDropdownOpen] = useState(false);
   const [isBranchDropdownOpen, setIsBranchDropdownOpen] = useState(false);
 
+  // State for limiting dropdown options
+  const [showAllCategories, setShowAllCategories] = useState(false);
+  const [showAllDepartments, setShowAllDepartments] = useState(false);
+  const [showAllRequestors, setShowAllRequestors] = useState(false);
+  const [showAllAssignees, setShowAllAssignees] = useState(false);
+
+  // State for toolbar visibility
+  const [showAllToolbarOptions, setShowAllToolbarOptions] = useState(false);
+
+  // State for new searchable dropdowns
+  const [isRequestorSearchOpen, setIsRequestorSearchOpen] = useState(false);
+  const [isDepartmentSearchOpen, setIsDepartmentSearchOpen] = useState(false);
+  const [isCategorySearchOpen, setIsCategorySearchOpen] = useState(false);
+  const [isAssigneeSearchOpen, setIsAssigneeSearchOpen] = useState(false);
+  const [isBranchSearchOpen, setIsBranchSearchOpen] = useState(false);
+
+  // Search terms for each dropdown
+  const [requestorSearchTerm, setRequestorSearchTerm] = useState("");
+  const [departmentSearchTerm, setDepartmentSearchTerm] = useState("");
+  const [categorySearchTerm, setCategorySearchTerm] = useState("");
+  const [assigneeSearchTerm, setAssigneeSearchTerm] = useState("");
+  const [branchSearchTerm, setBranchSearchTerm] = useState("");
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
       if (
-        !target.closest("#dropdownRadioHelper") &&
-        !target.closest("#dropdownRadioHelperButton") &&
         !target.closest("#dropdownDepartmentRadio") &&
         !target.closest("#dropdownDepartmentRadioButton") &&
         !target.closest("#dropdownRequestorRadio") &&
@@ -87,24 +123,42 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
         !target.closest("#dropdownAssigneeRadio") &&
         !target.closest("#dropdownAssigneeRadioButton") &&
         !target.closest("#dropdownBranchRadio") &&
-        !target.closest("#dropdownBranchRadioButton")
+        !target.closest("#dropdownBranchRadioButton") &&
+        !target.closest("#dropdownRequestorSearch") &&
+        !target.closest("#dropdownRequestorSearchButton") &&
+        !target.closest("#dropdownDepartmentSearch") &&
+        !target.closest("#dropdownDepartmentSearchButton") &&
+        !target.closest("#dropdownCategorySearch") &&
+        !target.closest("#dropdownCategorySearchButton") &&
+        !target.closest("#dropdownAssigneeSearch") &&
+        !target.closest("#dropdownAssigneeSearchButton") &&
+        !target.closest("#dropdownBranchSearch") &&
+        !target.closest("#dropdownBranchSearchButton")
       ) {
-        setIsSeverityDropdownOpen(false);
         setIsDepartmentDropdownOpen(false);
         setIsRequestorDropdownOpen(false);
         setIsCategoryDropdownOpen(false);
         setIsAssigneeDropdownOpen(false);
         setIsBranchDropdownOpen(false);
+        setIsRequestorSearchOpen(false);
+        setIsDepartmentSearchOpen(false);
+        setIsCategorySearchOpen(false);
+        setIsAssigneeSearchOpen(false);
+        setIsBranchSearchOpen(false);
       }
     };
 
     if (
-      isSeverityDropdownOpen ||
       isDepartmentDropdownOpen ||
       isRequestorDropdownOpen ||
       isCategoryDropdownOpen ||
       isAssigneeDropdownOpen ||
-      isBranchDropdownOpen
+      isBranchDropdownOpen ||
+      isRequestorSearchOpen ||
+      isDepartmentSearchOpen ||
+      isCategorySearchOpen ||
+      isAssigneeSearchOpen ||
+      isBranchSearchOpen
     ) {
       document.addEventListener("mousedown", handleClickOutside);
     }
@@ -113,12 +167,16 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [
-    isSeverityDropdownOpen,
     isDepartmentDropdownOpen,
     isRequestorDropdownOpen,
     isCategoryDropdownOpen,
     isAssigneeDropdownOpen,
     isBranchDropdownOpen,
+    isRequestorSearchOpen,
+    isDepartmentSearchOpen,
+    isCategorySearchOpen,
+    isAssigneeSearchOpen,
+    isBranchSearchOpen,
   ]);
 
   // Department options (sorted A to Z)
@@ -312,13 +370,124 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     }
   };
 
-  // Function to handle ticket updates (resets the time)
+  // Function to handle ticket updates
   const handleTicketUpdate = (ticketId: string) => {
-    // In a real application, this would update the ticket in the database
-    // For demo purposes, we'll just show an alert
-    alert(
-      `Ticket ${ticketId} has been updated. The "Created" time will reset to show the update time.`
-    );
+    // Find the ticket data
+    const ticket = tickets.find((t) => t.id === ticketId);
+    if (ticket) {
+      setSelectedTicketForEdit(ticket);
+      setUnifiedModalMode("edit");
+      setIsUnifiedModalOpen(true);
+    }
+  };
+
+  const handleTicketEscalate = (ticketId: string) => {
+    const ticket = tickets.find((t) => t.id === ticketId);
+    if (ticket) {
+      setSelectedTicketForEdit(ticket);
+      setUnifiedModalMode("escalate");
+      setIsUnifiedModalOpen(true);
+    }
+  };
+
+  const handleNewTicketRequest = () => {
+    setTemplateData(null); // Clear any template data
+    setUnifiedModalMode("new");
+    setIsUnifiedModalOpen(true);
+  };
+
+  const handleSendTicketEmail = async (ticketData: any) => {
+    try {
+      // Get assignee email
+      const assigneeEmail = getAssigneeEmail(ticketData.assignee);
+
+      // Generate email content
+      const emailHtml = generateTicketEmailTemplate({
+        ticketNo: ticketData.ticketNo,
+        title: ticketData.ticketTitle,
+        requestor: ticketData.requestor,
+        department: ticketData.department,
+        category: ticketData.category,
+        severity: ticketData.severity,
+        assignee: ticketData.assignee,
+        branch: ticketData.branch,
+        description: ticketData.description,
+        date: ticketData.date,
+      });
+
+      // Send email notification
+      const emailData = {
+        to: assigneeEmail,
+        subject: `New Ticket Request - ${ticketData.ticketNo}: ${ticketData.ticketTitle}`,
+        html: emailHtml,
+        ticketData: {
+          ticketNo: ticketData.ticketNo,
+          title: ticketData.ticketTitle,
+          requestor: ticketData.requestor,
+          department: ticketData.department,
+          category: ticketData.category,
+          severity: ticketData.severity,
+          assignee: ticketData.assignee,
+          branch: ticketData.branch,
+          description: ticketData.description,
+          date: ticketData.date,
+        },
+      };
+
+      const emailSent = await sendTicketNotificationEmail(emailData);
+
+      if (emailSent) {
+        console.log(
+          `✅ Email notification sent to ${assigneeEmail} for ticket ${ticketData.ticketNo}`
+        );
+        // You could show a success toast notification here
+      } else {
+        console.error(
+          `❌ Failed to send email notification to ${assigneeEmail} for ticket ${ticketData.ticketNo}`
+        );
+        // You could show an error toast notification here
+      }
+    } catch (error) {
+      console.error("Error sending ticket email notification:", error);
+    }
+  };
+
+  const handleUnifiedModalSubmit = (data: any, mode: string) => {
+    console.log(`Unified modal submit - Mode: ${mode}`, data);
+
+    switch (mode) {
+      case "new":
+        // Handle new ticket creation
+        console.log("Creating new ticket:", data);
+
+        // Send email notification to assignee
+        handleSendTicketEmail(data);
+
+        // Store the created ticket data
+        setLastCreatedTicket(data);
+        // Show the "Create Another" modal
+        setIsCreateAnotherModalOpen(true);
+        // Close the unified modal
+        setIsUnifiedModalOpen(false);
+        break;
+      case "edit":
+        // Handle ticket update
+        console.log("Updating ticket:", data);
+        // Add your update logic here
+        break;
+      case "escalate":
+        // Handle ticket escalation
+        console.log("Escalating ticket:", data);
+        // Add your escalation logic here
+        break;
+    }
+  };
+
+  const handleCloseCreateAnother = () => {
+    // Close the "Create Another" modal
+    setIsCreateAnotherModalOpen(false);
+    // Clear the last created ticket data
+    setLastCreatedTicket(null);
   };
 
   // Form handlers for new request
@@ -329,12 +498,137 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     }));
   };
 
-  const handleSubmitRequest = () => {
-    // Get description from Tiptap editor if available
-    let description = newRequestForm.description;
-    if ((window as any).tiptapEditor) {
-      description = (window as any).tiptapEditor.getHTML();
+  // Handle edit form submission
+  const handleEditFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // In a real application, you would call your database service here
+    // For now, we'll just show a success message and close the modal
+    console.log("Updated ticket data:", selectedTicketForEdit);
+    alert(`Ticket ${selectedTicketForEdit?.id} has been updated successfully!`);
+
+    // Close the edit modal
+    setIsEditModalOpen(false);
+    setSelectedTicketForEdit(null);
+  };
+
+  // Handle quick request templates - opens unified modal with pre-filled data
+  const handleQuickRequest = (templateType: string) => {
+    const templates = {
+      "IT Support": {
+        ticketTitle: "IT Support Request",
+        category: "Technical",
+        severity: "Medium",
+        department: "IT",
+        assignee: "John Smith",
+        branch: "Manila",
+        description:
+          "<p>Please describe your IT support issue in detail...</p>",
+      },
+      "Network Issue": {
+        ticketTitle: "Network Connectivity Problem",
+        category: "Network",
+        severity: "High",
+        department: "IT",
+        assignee: "Sarah Johnson",
+        branch: "Jakarta",
+        description:
+          "<p>Network connectivity issue details:</p><ul><li>Location affected</li><li>Time of occurrence</li><li>Error messages</li><li>Impact on operations</li></ul>",
+      },
+      "Account Access": {
+        ticketTitle: "Account Access Request",
+        category: "Access",
+        severity: "Low",
+        department: "HR",
+        assignee: "Mike Wilson",
+        branch: "Singapore",
+        description:
+          "<p>Account access requirements:</p><ul><li>System/application needed</li><li>Access level required</li><li>Business justification</li><li>Duration of access</li></ul>",
+      },
+      "Equipment Request": {
+        ticketTitle: "Equipment Procurement Request",
+        category: "Procurement",
+        severity: "Medium",
+        department: "Operations",
+        assignee: "Lisa Chen",
+        branch: "Bali",
+        description:
+          "<p>Equipment request details:</p><ul><li>Equipment type and specifications</li><li>Quantity needed</li><li>Budget approval</li><li>Delivery timeline</li></ul>",
+      },
+      "Password Reset": {
+        ticketTitle: "Password Reset Request",
+        category: "Access",
+        severity: "Low",
+        department: "IT",
+        assignee: "John Smith",
+        branch: "Manila",
+        description:
+          "<p>Password reset for user account. Please provide:</p><ul><li>Username/email</li><li>System/application</li><li>Last successful login date</li></ul>",
+      },
+      "Software Installation": {
+        ticketTitle: "Software Installation Request",
+        category: "Technical",
+        severity: "Medium",
+        department: "IT",
+        assignee: "Sarah Johnson",
+        branch: "Jakarta",
+        description:
+          "<p>Software installation requirements:</p><ul><li>Software name and version</li><li>Target machines</li><li>License information</li><li>Installation timeline</li></ul>",
+      },
+      "Email Issue": {
+        ticketTitle: "Email System Problem",
+        category: "Technical",
+        severity: "Medium",
+        department: "IT",
+        assignee: "Mike Wilson",
+        branch: "Singapore",
+        description:
+          "<p>Email issue description:</p><ul><li>Problem type (send/receive/access)</li><li>Error messages</li><li>Affected users</li><li>Time of occurrence</li></ul>",
+      },
+      "Printer Problem": {
+        ticketTitle: "Printer Malfunction",
+        category: "Hardware",
+        severity: "Low",
+        department: "IT",
+        assignee: "Lisa Chen",
+        branch: "Bali",
+        description:
+          "<p>Printer issue details:</p><ul><li>Printer model and location</li><li>Error messages</li><li>Print quality issues</li><li>Network connectivity</li></ul>",
+      },
+      "VPN Access": {
+        ticketTitle: "VPN Access Request",
+        category: "Access",
+        severity: "Medium",
+        department: "IT",
+        assignee: "John Smith",
+        branch: "Manila",
+        description:
+          "<p>VPN access requirements:</p><ul><li>Business justification</li><li>Access duration</li><li>Remote work location</li><li>Manager approval</li></ul>",
+      },
+      "Data Recovery": {
+        ticketTitle: "Data Recovery Request",
+        category: "Technical",
+        severity: "High",
+        department: "IT",
+        assignee: "Sarah Johnson",
+        branch: "Jakarta",
+        description:
+          "<p>Data recovery requirements:</p><ul><li>File/folder names</li><li>Last known good date</li><li>Storage location</li><li>Urgency level</li></ul>",
+      },
+    };
+
+    const template = templates[templateType as keyof typeof templates];
+    if (template) {
+      // Set the template data and open the unified modal
+      setTemplateData(template);
+      setUnifiedModalMode("new");
+      setIsUnifiedModalOpen(true);
     }
+  };
+
+  const handleSubmitRequest = () => {
+    // Get description from rich text editor
+    const description = newRequestForm.description;
 
     // Validate required fields
     if (
@@ -359,11 +653,8 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
   };
 
   const handleConfirmSubmit = () => {
-    // Get description from Tiptap editor if available
-    let description = newRequestForm.description;
-    if ((window as any).tiptapEditor) {
-      description = (window as any).tiptapEditor.getHTML();
-    }
+    // Get description from rich text editor
+    const description = newRequestForm.description;
 
     // In a real application, this would submit to the backend
     const formData = {
@@ -378,37 +669,18 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
   };
 
   const handleCreateAnother = () => {
-    // Reset form and close create-again modal, keep new request modal open
-    setNewRequestForm({
-      ticketNo: `TKT-${Date.now().toString().slice(-6)}`,
-      date: new Date().toISOString().split("T")[0],
-      requestor: "",
-      department: "",
-      ticketTitle: "",
-      category: "",
-      severity: "",
-      assignee: "",
-      branch: "",
-      description: "",
-    });
-    setIsDepartmentDropdownOpen(false);
-    setIsRequestorDropdownOpen(false);
-    setIsCategoryDropdownOpen(false);
-    setIsAssigneeDropdownOpen(false);
-    setIsBranchDropdownOpen(false);
-    setIsSeverityDropdownOpen(false);
-    setIsCreateAgainModalOpen(false);
-
-    // Clear Tiptap editor content
-    if ((window as any).tiptapEditor) {
-      (window as any).tiptapEditor.commands.clearContent();
-    }
+    // Close the "Create Another" modal
+    setIsCreateAnotherModalOpen(false);
+    // Clear template data and open the unified modal in "new" mode
+    setTemplateData(null);
+    setUnifiedModalMode("new");
+    setIsUnifiedModalOpen(true);
   };
 
   const handleGoToTickets = () => {
     // Close all modals and go to ticket tab
     setIsCreateAgainModalOpen(false);
-    setIsNewRequestModalOpen(false);
+    // Legacy modal removed - no longer needed
   };
 
   const handleCloseValidationModal = () => {
@@ -416,224 +688,79 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     setIsValidationModalOpen(false);
   };
 
-  // Initialize Tiptap editor when modal opens
-  useEffect(() => {
-    if (isNewRequestModalOpen) {
-      const initializeTiptap = async () => {
-        try {
-          // Dynamically import Tiptap modules using string literals to avoid TypeScript errors
-          const coreModule = "https://esm.sh/@tiptap/core";
-          const starterKitModule = "https://esm.sh/@tiptap/starter-kit";
-          const placeholderModule =
-            "https://esm.sh/@tiptap/extension-placeholder";
+  // Advanced Rich Text Editor functionality
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [activeButtons, setActiveButtons] = useState<Set<string>>(new Set());
 
-          const { Editor, Node } = (await import(coreModule)) as any;
-          const StarterKit = (await import(starterKitModule)) as any;
-          const Placeholder = (await import(placeholderModule)) as any;
+  const fontList = [
+    "Arial",
+    "Verdana",
+    "Times New Roman",
+    "Garamond",
+    "Georgia",
+    "Courier New",
+    "cursive",
+  ];
 
-          const CustomBlockquote = Node.create({
-            name: "customBlockquote",
-            group: "block",
-            content: "block+",
-            defining: true,
-            parseHTML() {
-              return [{ tag: "blockquote" }];
-            },
-            addOptions() {
-              return {
-                HTMLAttributes: {},
-              };
-            },
-            addNodeView() {
-              return ({ node: _node }: { node: any }) => {
-                const blockquote = document.createElement("blockquote");
+  const modifyText = (command: string, defaultUi: boolean, value?: string) => {
+    document.execCommand(command, defaultUi, value);
+    updateFormContent();
+  };
 
-                Object.entries(this.options.HTMLAttributes).forEach(
-                  ([key, value]) => {
-                    blockquote.setAttribute(key, value as string);
-                  }
-                );
-
-                const svg = document.createElementNS(
-                  "http://www.w3.org/2000/svg",
-                  "svg"
-                );
-                svg.setAttribute(
-                  "class",
-                  "absolute top-0 start-0 size-16 text-gray-100 dark:text-neutral-700"
-                );
-                svg.setAttribute("width", "16");
-                svg.setAttribute("height", "16");
-                svg.setAttribute("viewBox", "0 0 16 16");
-                svg.setAttribute("fill", "none");
-                svg.setAttribute("aria-hidden", "true");
-
-                const path = document.createElementNS(
-                  "http://www.w3.org/2000/svg",
-                  "path"
-                );
-                path.setAttribute(
-                  "d",
-                  "M7.39762 10.3C7.39762 11.0733 7.14888 11.7 6.6514 12.18C6.15392 12.6333 5.52552 12.86 4.76621 12.86C3.84979 12.86 3.09047 12.5533 2.48825 11.94C1.91222 11.3266 1.62421 10.4467 1.62421 9.29999C1.62421 8.07332 1.96459 6.87332 2.64535 5.69999C3.35231 4.49999 4.33418 3.55332 5.59098 2.85999L6.4943 4.25999C5.81354 4.73999 5.26369 5.27332 4.84476 5.85999C4.45201 6.44666 4.19017 7.12666 4.05926 7.89999C4.29491 7.79332 4.56983 7.73999 4.88403 7.73999C5.61716 7.73999 6.21938 7.97999 6.69067 8.45999C7.16197 8.93999 7.39762 9.55333 7.39762 10.3ZM14.6242 10.3C14.6242 11.0733 14.3755 11.7 13.878 12.18C13.3805 12.6333 12.7521 12.86 11.9928 12.86C11.0764 12.86 10.3171 12.5533 9.71484 11.94C9.13881 11.3266 8.85079 10.4467 8.85079 9.29999C8.85079 8.07332 9.19117 6.87332 9.87194 5.69999C10.5789 4.49999 11.5608 3.55332 12.8176 2.85999L13.7209 4.25999C13.0401 4.73999 12.4903 5.27332 12.0713 5.85999C11.6786 6.44666 11.4168 7.12666 11.2858 7.89999C11.5215 7.79332 11.7964 7.73999 12.1106 7.73999C12.8437 7.73999 13.446 7.97999 13.9173 8.45999C14.3886 8.93999 14.6242 9.55333 14.6242 10.3Z"
-                );
-                path.setAttribute("fill", "currentColor");
-                svg.appendChild(path);
-
-                blockquote.appendChild(svg);
-
-                const contentWrapper = document.createElement("div");
-                contentWrapper.classList.add("relative", "z-10", "italic");
-                blockquote.appendChild(contentWrapper);
-
-                return {
-                  dom: blockquote,
-                  contentDOM: contentWrapper,
-                };
-              };
-            },
-          });
-
-          const editor = new Editor({
-            element: document.querySelector(
-              "#hs-editor-tiptap-blockquote-alt [data-hs-editor-field]"
-            ),
-            editorProps: {
-              attributes: {
-                class: "relative min-h-20 p-2 scrollbar-hide",
-              },
-            },
-            extensions: [
-              StarterKit.default.configure({
-                blockquote: false,
-                history: false,
-                paragraph: {
-                  HTMLAttributes: {
-                    class: "text-sm text-gray-800 dark:text-neutral-200",
-                  },
-                },
-                bold: {
-                  HTMLAttributes: {
-                    class: "font-bold",
-                  },
-                },
-                bulletList: {
-                  HTMLAttributes: {
-                    class:
-                      "list-disc list-inside text-gray-800 dark:text-white",
-                  },
-                },
-                orderedList: {
-                  HTMLAttributes: {
-                    class:
-                      "list-decimal list-inside text-gray-800 dark:text-white",
-                  },
-                },
-                listItem: {
-                  HTMLAttributes: {
-                    class: "marker:text-sm",
-                  },
-                },
-                link: {
-                  HTMLAttributes: {
-                    class:
-                      "inline-flex items-center gap-x-1 text-blue-600 decoration-2 hover:underline focus:outline-hidden focus:underline font-medium dark:text-white",
-                  },
-                },
-                underline: true,
-              }),
-              Placeholder.default.configure({
-                placeholder: "Describe your issue in detail...",
-                emptyNodeClass: "before:text-gray-400",
-              }),
-              CustomBlockquote.configure({
-                HTMLAttributes: {
-                  class: "relative sm:[&>div>p]:text-xl pt-6 pb-4 pe-4 ps-8",
-                },
-              }),
-            ],
-          });
-
-          const actions = [
-            {
-              id: "#hs-editor-tiptap-blockquote-alt [data-hs-editor-bold]",
-              fn: () => editor.chain().focus().toggleBold().run(),
-            },
-            {
-              id: "#hs-editor-tiptap-blockquote-alt [data-hs-editor-italic]",
-              fn: () => editor.chain().focus().toggleItalic().run(),
-            },
-            {
-              id: "#hs-editor-tiptap-blockquote-alt [data-hs-editor-underline]",
-              fn: () => editor.chain().focus().toggleUnderline().run(),
-            },
-            {
-              id: "#hs-editor-tiptap-blockquote-alt [data-hs-editor-strike]",
-              fn: () => editor.chain().focus().toggleStrike().run(),
-            },
-            {
-              id: "#hs-editor-tiptap-blockquote-alt [data-hs-editor-link]",
-              fn: () => {
-                const url = window.prompt("URL");
-                editor
-                  .chain()
-                  .focus()
-                  .extendMarkRange("link")
-                  .setLink({ href: url })
-                  .run();
-              },
-            },
-            {
-              id: "#hs-editor-tiptap-blockquote-alt [data-hs-editor-ol]",
-              fn: () => editor.chain().focus().toggleOrderedList().run(),
-            },
-            {
-              id: "#hs-editor-tiptap-blockquote-alt [data-hs-editor-ul]",
-              fn: () => editor.chain().focus().toggleBulletList().run(),
-            },
-            {
-              id: "#hs-editor-tiptap-blockquote-alt [data-hs-editor-blockquote]",
-              fn: () =>
-                editor.chain().focus().toggleWrap("customBlockquote").run(),
-            },
-            {
-              id: "#hs-editor-tiptap-blockquote-alt [data-hs-editor-code]",
-              fn: () => editor.chain().focus().toggleCode().run(),
-            },
-          ];
-
-          actions.forEach(({ id, fn }) => {
-            const action = document.querySelector(id);
-
-            if (action === null) return;
-
-            action.addEventListener("click", (e) => {
-              e.preventDefault();
-              // Check if editor is mounted and has focus capability
-              if (editor && editor.view && !editor.isDestroyed) {
-                fn();
-              }
-            });
-          });
-
-          // Store editor reference for cleanup
-          (window as any).tiptapEditor = editor;
-        } catch (error) {
-          console.error("Failed to initialize Tiptap editor:", error);
-        }
-      };
-
-      // Small delay to ensure DOM is ready
-      setTimeout(initializeTiptap, 100);
+  const updateFormContent = () => {
+    if (editorRef.current) {
+      const content = editorRef.current.innerHTML;
+      handleFormChange("description", content);
     }
+  };
 
-    return () => {
-      // Cleanup editor when modal closes
-      if ((window as any).tiptapEditor) {
-        (window as any).tiptapEditor.destroy();
-        (window as any).tiptapEditor = null;
-      }
-    };
-  }, [isNewRequestModalOpen]);
+  const handleFormatButton = (command: string) => {
+    modifyText(command, false);
+    updateActiveButtons();
+  };
+
+  const handleAdvancedOption = (command: string, value: string) => {
+    modifyText(command, false, value);
+    updateFormContent();
+  };
+
+  const handleCreateLink = () => {
+    const userLink = prompt("Enter a URL");
+    if (userLink) {
+      const link = /http/i.test(userLink) ? userLink : "http://" + userLink;
+      modifyText("createLink", false, link);
+    }
+  };
+
+  const updateActiveButtons = () => {
+    const newActiveButtons = new Set<string>();
+
+    // Check which formatting is currently active
+    if (document.queryCommandState("bold")) newActiveButtons.add("bold");
+    if (document.queryCommandState("italic")) newActiveButtons.add("italic");
+    if (document.queryCommandState("underline"))
+      newActiveButtons.add("underline");
+    if (document.queryCommandState("strikeThrough"))
+      newActiveButtons.add("strikeThrough");
+    if (document.queryCommandState("subscript"))
+      newActiveButtons.add("subscript");
+    if (document.queryCommandState("superscript"))
+      newActiveButtons.add("superscript");
+
+    setActiveButtons(newActiveButtons);
+  };
+
+  const handleAlignment = (alignment: string) => {
+    modifyText(alignment, false);
+    updateActiveButtons();
+  };
+
+  const handleEditorInput = () => {
+    updateFormContent();
+    updateActiveButtons();
+  };
+
+  // Legacy modal useEffect removed - no longer needed
 
   // Location selection state
   const [selectedLocation, setSelectedLocation] = useState({
@@ -1213,6 +1340,47 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
     setCurrentPage(1);
   }, [searchTerm, selectedStatus, selectedPriority, rowsPerPage]);
 
+  // Real-time metrics animation
+  useEffect(() => {
+    const animateCounter = (
+      elementId: string,
+      targetValue: number,
+      duration: number = 2000
+    ) => {
+      const element = document.getElementById(elementId);
+      if (!element) return;
+
+      const increment = targetValue / (duration / 16); // 60fps
+      let currentValue = 0;
+
+      const timer = setInterval(() => {
+        currentValue += increment;
+        if (currentValue >= targetValue) {
+          currentValue = targetValue;
+          clearInterval(timer);
+        }
+        element.textContent = Math.floor(currentValue).toString();
+      }, 16);
+
+      return timer;
+    };
+
+    // Animate counters with realistic ticket data
+    const timers = [
+      animateCounter("open-count", 247), // Open tickets
+      animateCounter("progress-count", 156), // In Progress tickets
+      animateCounter("resolved-count", 298), // Resolved tickets
+      animateCounter("closed-count", 189), // Closed tickets
+    ];
+
+    // Cleanup timers on unmount
+    return () => {
+      timers.forEach((timer) => {
+        if (timer) clearInterval(timer);
+      });
+    };
+  }, []);
+
   return (
     <>
       <style>
@@ -1230,16 +1398,83 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
             display: none;
           }
 
-          .tiptap ul p,
-          .tiptap ol p {
-            display: inline;
-          }
 
-          .tiptap p.is-editor-empty:first-child::before {
+          /* Rich Text Editor Styles */
+          [contenteditable]:empty:before {
             content: attr(data-placeholder);
-            float: left;
-            height: 0;
+            color: #9ca3af;
             pointer-events: none;
+          }
+          
+          [contenteditable]:focus:before {
+            content: none;
+          }
+          
+          /* Rich Text Editor Content Styles */
+          [contenteditable] {
+            line-height: 1.6;
+          }
+          
+          [contenteditable] h1 {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 1rem 0;
+          }
+          
+          [contenteditable] h2 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 0.8rem 0;
+          }
+          
+          [contenteditable] h3 {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin: 0.6rem 0;
+          }
+          
+          [contenteditable] h4 {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin: 0.5rem 0;
+          }
+          
+          [contenteditable] h5 {
+            font-size: 1rem;
+            font-weight: bold;
+            margin: 0.4rem 0;
+          }
+          
+          [contenteditable] h6 {
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin: 0.3rem 0;
+          }
+          
+          [contenteditable] ul, [contenteditable] ol {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+          }
+          
+          [contenteditable] li {
+            margin: 0.2rem 0;
+          }
+          
+          [contenteditable] blockquote {
+            border-left: 4px solid #e5e7eb;
+            padding-left: 1rem;
+            margin: 1rem 0;
+            font-style: italic;
+            color: #6b7280;
+          }
+          
+          [contenteditable] a {
+            color: #3b82f6;
+            text-decoration: underline;
+          }
+          
+          [contenteditable] a:hover {
+            color: #1d4ed8;
           }
 
           /* Shimmer Button Styles */
@@ -1257,360 +1492,367 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
         `}
       </style>
       <div className="space-y-6">
-        {/* New Request Button */}
-        <div className="flex justify-end">
-          <button
-            onClick={() => setIsNewRequestModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-200"
-          >
-            <Plus className="w-4 h-4" />
-            New Request
-          </button>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex justify-end"></div>
         </div>
 
-        {/* Stats Cards Header */}
-        <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={() => setIsDrawerOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
-          >
-            <Eye className="w-4 h-4" />
-            Status Flow
-          </button>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div
-            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-xl hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-300 cursor-pointer group"
-            title="All support requests"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/30 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors duration-300">
-                <MessageSquare className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        {/* Real-time Metrics Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* Open Tickets */}
+          <div className="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm dark:shadow-none">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  Open Tickets
+                </p>
+                <p
+                  className="text-2xl font-bold text-blue-600 dark:text-blue-400"
+                  id="open-count"
+                >
+                  0
+                </p>
               </div>
-              <div className="flex items-center text-sm font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 rounded-full">
-                <TrendingUp className="w-4 h-4 mr-1.5" />
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-full">
+                <AlertCircle className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
+            </div>
+            <div className="mt-2 flex items-center text-sm">
+              <span className="text-green-600 dark:text-green-400 flex items-center">
+                <svg
+                  className="w-4 h-4 mr-1"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
                 +12.5%
-              </div>
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                Total Tickets
-              </h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                {tickets.length}
-              </p>
-            </div>
-            {/* Chart */}
-            <div className="mt-3 h-8 rounded-lg p-2">
-              <ReactApexChart
-                options={{
-                  chart: {
-                    type: "area",
-                    height: 24,
-                    width: "100%",
-                    sparkline: { enabled: true },
-                    toolbar: { show: false },
-                    background: "transparent",
-                    animations: {
-                      enabled: true,
-                      speed: 800,
-                      animateGradually: { enabled: true, delay: 150 },
-                      dynamicAnimation: { enabled: true, speed: 350 },
-                    },
-                  },
-                  dataLabels: { enabled: false },
-                  stroke: { curve: "smooth", width: 2, colors: ["#3B82F6"] },
-                  fill: {
-                    type: "gradient",
-                    gradient: {
-                      shadeIntensity: 1,
-                      opacityFrom: 0.4,
-                      opacityTo: 0.05,
-                      stops: [0, 100],
-                      colorStops: [
-                        { offset: 0, color: "#3B82F6", opacity: 0.4 },
-                        { offset: 100, color: "#3B82F6", opacity: 0.05 },
-                      ],
-                    },
-                  },
-                  colors: ["#3B82F6"],
-                  tooltip: { enabled: false },
-                  grid: { show: false },
-                  xaxis: {
-                    labels: { show: false },
-                    axisBorder: { show: false },
-                    axisTicks: { show: false },
-                  },
-                  yaxis: { labels: { show: false } },
-                  markers: {
-                    size: 0,
-                    colors: ["#3B82F6"],
-                    strokeColors: "#3B82F6",
-                    strokeWidth: 2,
-                    hover: { size: 4 },
-                  },
-                }}
-                series={[
-                  {
-                    name: "Total Tickets",
-                    data: [4, 5, 3, 6, 4, 5, 6, 5, 4, 6, 5, 6],
-                  },
-                ]}
-                type="area"
-                height={24}
-                width="100%"
-              />
+              </span>
+              <span className="text-gray-500 dark:text-gray-400 ml-2">
+                vs last month
+              </span>
             </div>
           </div>
-          <div
-            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-xl hover:border-orange-300 dark:hover:border-orange-600 transition-all duration-300 cursor-pointer group"
-            title="Awaiting response"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="p-3 rounded-xl bg-orange-50 dark:bg-orange-900/30 group-hover:bg-orange-100 dark:group-hover:bg-orange-900/50 transition-colors duration-300">
-                <AlertCircle className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+
+          {/* In Progress Tickets */}
+          <div className="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm dark:shadow-none">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  In Progress
+                </p>
+                <p
+                  className="text-2xl font-bold text-amber-600 dark:text-amber-400"
+                  id="progress-count"
+                >
+                  0
+                </p>
               </div>
-              <div className="flex items-center text-sm font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-3 py-1.5 rounded-full">
-                <TrendingDown className="w-4 h-4 mr-1.5" />
-                -8.2%
+              <div className="p-3 bg-amber-100 dark:bg-amber-900/20 rounded-full">
+                <Clock className="w-6 h-6 text-amber-600 dark:text-amber-400" />
               </div>
             </div>
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                Open
-              </h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                {tickets.filter((t) => t.status === "Open").length}
-              </p>
-            </div>
-            {/* Chart */}
-            <div className="mt-3 h-8 rounded-lg p-2">
-              <ReactApexChart
-                options={{
-                  chart: {
-                    type: "area",
-                    height: 24,
-                    width: "100%",
-                    sparkline: { enabled: true },
-                    toolbar: { show: false },
-                    background: "transparent",
-                    animations: {
-                      enabled: true,
-                      speed: 800,
-                      animateGradually: { enabled: true, delay: 150 },
-                      dynamicAnimation: { enabled: true, speed: 350 },
-                    },
-                  },
-                  dataLabels: { enabled: false },
-                  stroke: { curve: "smooth", width: 2, colors: ["#F97316"] },
-                  fill: {
-                    type: "gradient",
-                    gradient: {
-                      shadeIntensity: 1,
-                      opacityFrom: 0.4,
-                      opacityTo: 0.05,
-                      stops: [0, 100],
-                      colorStops: [
-                        { offset: 0, color: "#F97316", opacity: 0.4 },
-                        { offset: 100, color: "#F97316", opacity: 0.05 },
-                      ],
-                    },
-                  },
-                  colors: ["#F97316"],
-                  tooltip: { enabled: false },
-                  grid: { show: false },
-                  xaxis: {
-                    labels: { show: false },
-                    axisBorder: { show: false },
-                    axisTicks: { show: false },
-                  },
-                  yaxis: { labels: { show: false } },
-                  markers: {
-                    size: 0,
-                    colors: ["#F97316"],
-                    strokeColors: "#F97316",
-                    strokeWidth: 2,
-                    hover: { size: 4 },
-                  },
-                }}
-                series={[
-                  {
-                    name: "Open Tickets",
-                    data: [2, 3, 2, 4, 3, 2, 3, 4, 3, 2, 3, 3],
-                  },
-                ]}
-                type="area"
-                height={24}
-                width="100%"
-              />
+            <div className="mt-2 flex items-center text-sm">
+              <span className="text-green-600 dark:text-green-400 flex items-center">
+                <svg
+                  className="w-4 h-4 mr-1"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                +8.2%
+              </span>
+              <span className="text-gray-500 dark:text-gray-400 ml-2">
+                vs last month
+              </span>
             </div>
           </div>
-          <div
-            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-xl hover:border-cyan-300 dark:hover:border-cyan-600 transition-all duration-300 cursor-pointer group"
-            title="Being worked on"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="p-3 rounded-xl bg-cyan-50 dark:bg-cyan-900/30 group-hover:bg-cyan-100 dark:group-hover:bg-cyan-900/50 transition-colors duration-300">
-                <Clock className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
+
+          {/* Resolved Tickets */}
+          <div className="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm dark:shadow-none">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  Resolved
+                </p>
+                <p
+                  className="text-2xl font-bold text-green-600 dark:text-green-400"
+                  id="resolved-count"
+                >
+                  0
+                </p>
               </div>
-              <div className="flex items-center text-sm font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 rounded-full">
-                <TrendingUp className="w-4 h-4 mr-1.5" />
+              <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-full">
+                <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+            <div className="mt-2 flex items-center text-sm">
+              <span className="text-green-600 dark:text-green-400 flex items-center">
+                <svg
+                  className="w-4 h-4 mr-1"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
                 +15.3%
-              </div>
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                In Progress
-              </h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                {tickets.filter((t) => t.status === "In Progress").length}
-              </p>
-            </div>
-            {/* Chart */}
-            <div className="mt-3 h-8 rounded-lg p-2">
-              <ReactApexChart
-                options={{
-                  chart: {
-                    type: "area",
-                    height: 24,
-                    width: "100%",
-                    sparkline: { enabled: true },
-                    toolbar: { show: false },
-                    background: "transparent",
-                    animations: {
-                      enabled: true,
-                      speed: 800,
-                      animateGradually: { enabled: true, delay: 150 },
-                      dynamicAnimation: { enabled: true, speed: 350 },
-                    },
-                  },
-                  dataLabels: { enabled: false },
-                  stroke: { curve: "smooth", width: 2, colors: ["#06B6D4"] },
-                  fill: {
-                    type: "gradient",
-                    gradient: {
-                      shadeIntensity: 1,
-                      opacityFrom: 0.4,
-                      opacityTo: 0.05,
-                      stops: [0, 100],
-                      colorStops: [
-                        { offset: 0, color: "#06B6D4", opacity: 0.4 },
-                        { offset: 100, color: "#06B6D4", opacity: 0.05 },
-                      ],
-                    },
-                  },
-                  colors: ["#06B6D4"],
-                  tooltip: { enabled: false },
-                  grid: { show: false },
-                  xaxis: {
-                    labels: { show: false },
-                    axisBorder: { show: false },
-                    axisTicks: { show: false },
-                  },
-                  yaxis: { labels: { show: false } },
-                  markers: {
-                    size: 0,
-                    colors: ["#06B6D4"],
-                    strokeColors: "#06B6D4",
-                    strokeWidth: 2,
-                    hover: { size: 4 },
-                  },
-                }}
-                series={[
-                  {
-                    name: "In Progress",
-                    data: [1, 2, 1, 2, 1, 2, 2, 1, 2, 2, 1, 2],
-                  },
-                ]}
-                type="area"
-                height={24}
-                width="100%"
-              />
+              </span>
+              <span className="text-gray-500 dark:text-gray-400 ml-2">
+                vs last month
+              </span>
             </div>
           </div>
-          <div
-            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-xl hover:border-emerald-300 dark:hover:border-emerald-600 transition-all duration-300 cursor-pointer group"
-            title="Successfully closed"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/50 transition-colors duration-300">
-                <CheckCircle className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+
+          {/* Closed Tickets */}
+          <div className="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm dark:shadow-none">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  Closed
+                </p>
+                <p
+                  className="text-2xl font-bold text-gray-600 dark:text-gray-400"
+                  id="closed-count"
+                >
+                  0
+                </p>
               </div>
-              <div className="flex items-center text-sm font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 rounded-full">
-                <TrendingUp className="w-4 h-4 mr-1.5" />
-                +22.1%
+              <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-full">
+                <X className="w-6 h-6 text-gray-600 dark:text-gray-400" />
               </div>
             </div>
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                Resolved
+            <div className="mt-2 flex items-center text-sm">
+              <span className="text-red-600 dark:text-red-400 flex items-center">
+                <svg
+                  className="w-4 h-4 mr-1"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M14.707 12.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l2.293-2.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                -2.1%
+              </span>
+              <span className="text-gray-500 dark:text-gray-400 ml-2">
+                vs last month
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Access for New Ticket Request */}
+        <div className="bg-white dark:bg-neutral-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm dark:shadow-none mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Quick Access
               </h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                {tickets.filter((t) => t.status === "Resolved").length}
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Create new tickets with pre-filled templates
               </p>
             </div>
-            {/* Chart */}
-            <div className="mt-3 h-8 rounded-lg p-2">
-              <ReactApexChart
-                options={{
-                  chart: {
-                    type: "area",
-                    height: 24,
-                    width: "100%",
-                    sparkline: { enabled: true },
-                    toolbar: { show: false },
-                    background: "transparent",
-                    animations: {
-                      enabled: true,
-                      speed: 800,
-                      animateGradually: { enabled: true, delay: 150 },
-                      dynamicAnimation: { enabled: true, speed: 350 },
-                    },
-                  },
-                  dataLabels: { enabled: false },
-                  stroke: { curve: "smooth", width: 2, colors: ["#10B981"] },
-                  fill: {
-                    type: "gradient",
-                    gradient: {
-                      shadeIntensity: 1,
-                      opacityFrom: 0.4,
-                      opacityTo: 0.05,
-                      stops: [0, 100],
-                      colorStops: [
-                        { offset: 0, color: "#10B981", opacity: 0.4 },
-                        { offset: 100, color: "#10B981", opacity: 0.05 },
-                      ],
-                    },
-                  },
-                  colors: ["#10B981"],
-                  tooltip: { enabled: false },
-                  grid: { show: false },
-                  xaxis: {
-                    labels: { show: false },
-                    axisBorder: { show: false },
-                    axisTicks: { show: false },
-                  },
-                  yaxis: { labels: { show: false } },
-                  markers: {
-                    size: 0,
-                    colors: ["#10B981"],
-                    strokeColors: "#10B981",
-                    strokeWidth: 2,
-                    hover: { size: 4 },
-                  },
-                }}
-                series={[
-                  {
-                    name: "Resolved",
-                    data: [1, 1, 2, 1, 2, 1, 1, 2, 1, 1, 2, 1],
-                  },
-                ]}
-                type="area"
-                height={24}
-                width="100%"
-              />
+            <button
+              onClick={handleNewTicketRequest}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-200"
+            >
+              <Plus className="w-4 h-4" />
+              Custom Request
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* IT Support Template */}
+            <div
+              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors duration-200"
+              onClick={() => setIsITSupportFormOpen(true)}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                  <Building className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">
+                    IT Support
+                  </h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Hardware & Software
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                <div className="flex justify-between">
+                  <span>Category:</span>
+                  <span className="font-medium">Technical</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Severity:</span>
+                  <span className="font-medium text-amber-600">Medium</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Department:</span>
+                  <span className="font-medium">IT</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Network Issue Template */}
+            <div
+              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors duration-200"
+              onClick={() => handleQuickRequest("Network Issue")}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+                  <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">
+                    Network Issue
+                  </h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Connectivity Problems
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                <div className="flex justify-between">
+                  <span>Category:</span>
+                  <span className="font-medium">Network</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Severity:</span>
+                  <span className="font-medium text-red-600">High</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Department:</span>
+                  <span className="font-medium">IT</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Account Access Template */}
+            <div
+              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors duration-200"
+              onClick={() => handleQuickRequest("Account Access")}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                  <UserCheck className="w-5 h-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">
+                    Account Access
+                  </h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Login & Permissions
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                <div className="flex justify-between">
+                  <span>Category:</span>
+                  <span className="font-medium">Access</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Severity:</span>
+                  <span className="font-medium text-blue-600">Low</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Department:</span>
+                  <span className="font-medium">HR</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Equipment Request Template */}
+            <div
+              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors duration-200"
+              onClick={() => handleQuickRequest("Equipment Request")}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                  <Tag className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">
+                    Equipment Request
+                  </h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Hardware & Supplies
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                <div className="flex justify-between">
+                  <span>Category:</span>
+                  <span className="font-medium">Procurement</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Severity:</span>
+                  <span className="font-medium text-amber-600">Medium</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Department:</span>
+                  <span className="font-medium">Operations</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Quick Actions */}
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleQuickRequest("Password Reset")}
+                className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors duration-200"
+              >
+                Password Reset
+              </button>
+              <button
+                onClick={() => handleQuickRequest("Software Installation")}
+                className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors duration-200"
+              >
+                Software Installation
+              </button>
+              <button
+                onClick={() => handleQuickRequest("Email Issue")}
+                className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors duration-200"
+              >
+                Email Issue
+              </button>
+              <button
+                onClick={() => handleQuickRequest("Printer Problem")}
+                className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors duration-200"
+              >
+                Printer Problem
+              </button>
+              <button
+                onClick={() => handleQuickRequest("VPN Access")}
+                className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors duration-200"
+              >
+                VPN Access
+              </button>
+              <button
+                onClick={() => handleQuickRequest("Data Recovery")}
+                className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors duration-200"
+              >
+                Data Recovery
+              </button>
             </div>
           </div>
         </div>
@@ -2661,6 +2903,15 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                         </svg>
                       </button>
 
+                      {/* Escalate Button */}
+                      <button
+                        className="p-1.5 text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-md transition-colors duration-200"
+                        title="Escalate Ticket"
+                        onClick={() => handleTicketEscalate(ticket.id)}
+                      >
+                        <AlertTriangle className="w-5 h-5" />
+                      </button>
+
                       {/* Delete Button */}
                       <button
                         className="p-1.5 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors duration-200"
@@ -3124,8 +3375,8 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
           </div>
         )}
 
-        {/* New Request Modal */}
-        {isNewRequestModalOpen && (
+        {/* Legacy New Request Modal - Removed */}
+        {false && (
           <div
             className="fixed inset-0 z-50 overflow-x-hidden overflow-y-auto scrollbar-hide"
             role="dialog"
@@ -3144,25 +3395,13 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                           <MessageSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                          <h3
+                          <h1
                             id="hs-vertically-centered-modal-label"
                             className="font-bold text-gray-800 dark:text-white"
+                            style={{ fontSize: "18pt" }}
                           >
-                            Create New Request
-                          </h3>
-                          <div className="flex items-center gap-3 mt-0.5">
-                            <span className="font-mono text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-                              {newRequestForm.ticketNo}
-                            </span>
-                            {newRequestForm.severity && (
-                              <div className="flex items-center gap-1">
-                                <Flag className="w-3 h-3 text-red-500" />
-                                <span className="text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
-                                  {newRequestForm.severity}
-                                </span>
-                              </div>
-                            )}
-                          </div>
+                            Request Details
+                          </h1>
                         </div>
                       </div>
                     </div>
@@ -3170,7 +3409,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                       type="button"
                       className="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none focus:bg-gray-200 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:text-neutral-400 dark:focus:bg-neutral-600"
                       aria-label="Close"
-                      onClick={() => setIsNewRequestModalOpen(false)}
+                      onClick={() => {}}
                     >
                       <span className="sr-only">Close</span>
                       <svg
@@ -3193,6 +3432,37 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
 
                   {/* Modal Content */}
                   <div className="p-3 overflow-y-auto max-h-[85vh] scrollbar-thin scrollbar-thumb-violet-600 scrollbar-track-violet-900 hover:scrollbar-thumb-violet-500">
+                    {/* Ticket Number */}
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 flex items-center justify-center">
+                          <svg
+                            className="w-4 h-4 text-primary-600 dark:text-primary-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                          </svg>
+                        </div>
+                        <label className="text-sm font-semibold text-gray-900 dark:text-white">
+                          Ticket Number
+                        </label>
+                      </div>
+                      <span className="font-mono text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                        {newRequestForm.ticketNo}
+                      </span>
+                      {newRequestForm.severity && (
+                        <div className="flex items-center gap-1">
+                          <Flag className="w-3 h-3 text-red-500" />
+                          <span className="text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
+                            {newRequestForm.severity}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Ticket Title Section */}
                     <div className="mb-3">
                       <div className="flex items-center gap-2 mb-1.5">
@@ -3229,9 +3499,9 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                     </div>
 
                     {/* Form Fields Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-1 mb-3">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
                       {/* Left Column */}
-                      <div className="space-y-1">
+                      <div className="space-y-3">
                         {/* Date */}
                         <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
                           <div className="mb-1">
@@ -3240,7 +3510,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                               Request Date
                             </label>
                           </div>
-                          <div className="relative max-w-sm">
+                          <div className="relative">
                             <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
                               <svg
                                 className="w-4 h-4 text-primary-500 dark:text-dark-400"
@@ -3258,7 +3528,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                               onChange={(e) =>
                                 handleFormChange("date", e.target.value)
                               }
-                              className="bg-primary-50 border border-primary-300 text-dark-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full ps-10 py-1 px-2 dark:bg-dark-700 dark:border-dark-600 dark:placeholder-dark-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                              className="bg-primary-50 border border-primary-300 text-dark-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full ps-10 py-1 px-2 dark:bg-dark-700 dark:border-dark-600 dark:placeholder-dark-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 h-10"
                             />
                           </div>
                         </div>
@@ -3273,14 +3543,25 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                           </div>
                           <div className="relative">
                             <button
-                              id="dropdownRequestorRadioButton"
-                              data-dropdown-toggle="dropdownRequestorRadio"
-                              onClick={() =>
-                                setIsRequestorDropdownOpen(
-                                  !isRequestorDropdownOpen
-                                )
-                              }
-                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
+                              id="dropdownRequestorSearchButton"
+                              data-dropdown-toggle="dropdownRequestorSearch"
+                              data-dropdown-placement="bottom"
+                              onClick={() => {
+                                // Close all other dropdowns
+                                setIsDepartmentDropdownOpen(false);
+                                setIsCategoryDropdownOpen(false);
+                                setIsAssigneeDropdownOpen(false);
+                                setIsBranchDropdownOpen(false);
+                                setIsDepartmentSearchOpen(false);
+                                setIsCategorySearchOpen(false);
+                                setIsAssigneeSearchOpen(false);
+                                setIsBranchSearchOpen(false);
+                                // Toggle current dropdown
+                                setIsRequestorSearchOpen(
+                                  !isRequestorSearchOpen
+                                );
+                              }}
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-2 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
                               type="button"
                             >
                               {newRequestForm.requestor || "Select Requestor"}
@@ -3302,45 +3583,90 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             </button>
 
                             {/* Dropdown menu */}
-                            {isRequestorDropdownOpen && (
+                            {isRequestorSearchOpen && (
                               <div
-                                id="dropdownRequestorRadio"
-                                className="absolute z-10 w-48 bg-white divide-y divide-primary-100 rounded-lg shadow-sm dark:bg-dark-700 dark:divide-dark-600 mt-1"
+                                id="dropdownRequestorSearch"
+                                className="absolute z-10 bg-white rounded-lg shadow-lg w-full min-w-80 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
                               >
-                                <ul
-                                  className="p-3 space-y-3 text-sm text-dark-700 dark:text-dark-200"
-                                  aria-labelledby="dropdownRequestorRadioButton"
-                                >
-                                  {requestorOptions.map((requestor, index) => (
-                                    <li key={requestor}>
-                                      <div className="flex items-center">
-                                        <input
-                                          id={`requestor-radio-${index}`}
-                                          type="radio"
-                                          value={requestor}
-                                          name="requestor-radio"
-                                          checked={
-                                            newRequestForm.requestor ===
-                                            requestor
-                                          }
-                                          onChange={(e) => {
-                                            handleFormChange(
-                                              "requestor",
-                                              e.target.value
-                                            );
-                                            setIsRequestorDropdownOpen(false);
-                                          }}
-                                          className="w-4 h-4 text-primary-600 bg-primary-100 border-primary-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-dark-700 dark:focus:ring-offset-dark-700 focus:ring-2 dark:bg-dark-600 dark:border-dark-500"
+                                <div className="p-4">
+                                  <label
+                                    htmlFor="input-group-search-requestor"
+                                    className="sr-only"
+                                  >
+                                    Search
+                                  </label>
+                                  <div className="relative">
+                                    <div className="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+                                      <svg
+                                        className="w-4 h-4 text-gray-500 dark:text-gray-400"
+                                        aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 20 20"
+                                      >
+                                        <path
+                                          stroke="currentColor"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth="2"
+                                          d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
                                         />
-                                        <label
-                                          htmlFor={`requestor-radio-${index}`}
-                                          className="ms-2 text-sm font-medium text-dark-900 dark:text-dark-300 cursor-pointer"
-                                        >
-                                          {requestor}
-                                        </label>
-                                      </div>
-                                    </li>
-                                  ))}
+                                      </svg>
+                                    </div>
+                                    <input
+                                      type="text"
+                                      id="input-group-search-requestor"
+                                      className="block w-full p-3 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                      placeholder="Search requestor"
+                                      value={requestorSearchTerm}
+                                      onChange={(e) =>
+                                        setRequestorSearchTerm(e.target.value)
+                                      }
+                                    />
+                                  </div>
+                                </div>
+                                <ul
+                                  className="max-h-64 px-4 pb-4 overflow-y-auto text-sm text-gray-700 dark:text-gray-200"
+                                  aria-labelledby="dropdownRequestorSearchButton"
+                                >
+                                  {requestorOptions
+                                    .filter((requestor) =>
+                                      requestor
+                                        .toLowerCase()
+                                        .includes(
+                                          requestorSearchTerm.toLowerCase()
+                                        )
+                                    )
+                                    .map((requestor, index) => (
+                                      <li key={requestor} className="mb-1">
+                                        <div className="flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                                          <input
+                                            id={`checkbox-requestor-${index}`}
+                                            type="radio"
+                                            name="requestor-radio"
+                                            value={requestor}
+                                            checked={
+                                              newRequestForm.requestor ===
+                                              requestor
+                                            }
+                                            onChange={(e) => {
+                                              handleFormChange(
+                                                "requestor",
+                                                e.target.value
+                                              );
+                                              setIsRequestorSearchOpen(false);
+                                            }}
+                                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                          />
+                                          <label
+                                            htmlFor={`checkbox-requestor-${index}`}
+                                            className="w-full py-2 ms-3 text-sm font-medium text-gray-900 rounded-sm dark:text-gray-300 cursor-pointer"
+                                          >
+                                            {requestor}
+                                          </label>
+                                        </div>
+                                      </li>
+                                    ))}
                                 </ul>
                               </div>
                             )}
@@ -3357,14 +3683,25 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                           </div>
                           <div className="relative">
                             <button
-                              id="dropdownDepartmentRadioButton"
-                              data-dropdown-toggle="dropdownDepartmentRadio"
-                              onClick={() =>
-                                setIsDepartmentDropdownOpen(
-                                  !isDepartmentDropdownOpen
-                                )
-                              }
-                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
+                              id="dropdownDepartmentSearchButton"
+                              data-dropdown-toggle="dropdownDepartmentSearch"
+                              data-dropdown-placement="bottom"
+                              onClick={() => {
+                                // Close all other dropdowns
+                                setIsRequestorDropdownOpen(false);
+                                setIsCategoryDropdownOpen(false);
+                                setIsAssigneeDropdownOpen(false);
+                                setIsBranchDropdownOpen(false);
+                                setIsRequestorSearchOpen(false);
+                                setIsCategorySearchOpen(false);
+                                setIsAssigneeSearchOpen(false);
+                                setIsBranchSearchOpen(false);
+                                // Toggle current dropdown
+                                setIsDepartmentSearchOpen(
+                                  !isDepartmentSearchOpen
+                                );
+                              }}
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-2 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
                               type="button"
                             >
                               {newRequestForm.department || "Select Department"}
@@ -3386,305 +3723,89 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             </button>
 
                             {/* Dropdown menu */}
-                            {isDepartmentDropdownOpen && (
+                            {isDepartmentSearchOpen && (
                               <div
-                                id="dropdownDepartmentRadio"
-                                className="absolute z-10 w-48 bg-white divide-y divide-primary-100 rounded-lg shadow-sm dark:bg-dark-700 dark:divide-dark-600 mt-1"
+                                id="dropdownDepartmentSearch"
+                                className="absolute z-10 bg-white rounded-lg shadow-lg w-full min-w-80 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
                               >
-                                <ul
-                                  className="p-3 space-y-3 text-sm text-dark-700 dark:text-dark-200"
-                                  aria-labelledby="dropdownDepartmentRadioButton"
-                                >
-                                  {departmentOptions.map((dept, index) => (
-                                    <li key={dept}>
-                                      <div className="flex items-center">
-                                        <input
-                                          id={`department-radio-${index}`}
-                                          type="radio"
-                                          value={dept}
-                                          name="department-radio"
-                                          checked={
-                                            newRequestForm.department === dept
-                                          }
-                                          onChange={(e) => {
-                                            handleFormChange(
-                                              "department",
-                                              e.target.value
-                                            );
-                                            setIsDepartmentDropdownOpen(false);
-                                          }}
-                                          className="w-4 h-4 text-primary-600 bg-primary-100 border-primary-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-dark-700 dark:focus:ring-offset-dark-700 focus:ring-2 dark:bg-dark-600 dark:border-dark-500"
+                                <div className="p-4">
+                                  <label
+                                    htmlFor="input-group-search-department"
+                                    className="sr-only"
+                                  >
+                                    Search
+                                  </label>
+                                  <div className="relative">
+                                    <div className="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+                                      <svg
+                                        className="w-4 h-4 text-gray-500 dark:text-gray-400"
+                                        aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 20 20"
+                                      >
+                                        <path
+                                          stroke="currentColor"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth="2"
+                                          d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
                                         />
-                                        <label
-                                          htmlFor={`department-radio-${index}`}
-                                          className="ms-2 text-sm font-medium text-dark-900 dark:text-dark-300 cursor-pointer"
-                                        >
-                                          {dept}
-                                        </label>
-                                      </div>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right Column */}
-                      <div className="space-y-1">
-                        {/* Severity */}
-                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
-                          <div className="mb-1">
-                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
-                              <Flag className="w-4 h-4 inline mr-2" />
-                              <span className="text-red-500">*</span> Severity
-                              Level
-                            </label>
-                          </div>
-                          <div className="relative">
-                            <button
-                              id="dropdownRadioHelperButton"
-                              data-dropdown-toggle="dropdownRadioHelper"
-                              onClick={() =>
-                                setIsSeverityDropdownOpen(
-                                  !isSeverityDropdownOpen
-                                )
-                              }
-                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
-                              type="button"
-                            >
-                              {newRequestForm.severity || "Select Severity"}
-                              <svg
-                                className="w-2.5 h-2.5 ms-3"
-                                aria-hidden="true"
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 10 6"
-                              >
-                                <path
-                                  stroke="currentColor"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="2"
-                                  d="m1 1 4 4 4-4"
-                                />
-                              </svg>
-                            </button>
-
-                            {/* Dropdown menu */}
-                            {isSeverityDropdownOpen && (
-                              <div
-                                id="dropdownRadioHelper"
-                                className="absolute z-10 bg-white divide-y divide-primary-100 rounded-lg shadow-sm w-full dark:bg-dark-700 dark:divide-dark-600 border border-primary-200 dark:border-dark-600 mt-1"
-                              >
+                                      </svg>
+                                    </div>
+                                    <input
+                                      type="text"
+                                      id="input-group-search-department"
+                                      className="block w-full p-3 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                      placeholder="Search department"
+                                      value={departmentSearchTerm}
+                                      onChange={(e) =>
+                                        setDepartmentSearchTerm(e.target.value)
+                                      }
+                                    />
+                                  </div>
+                                </div>
                                 <ul
-                                  className="p-3 space-y-1 text-sm text-dark-700 dark:text-dark-200"
-                                  aria-labelledby="dropdownRadioHelperButton"
+                                  className="max-h-64 px-4 pb-4 overflow-y-auto text-sm text-gray-700 dark:text-gray-200"
+                                  aria-labelledby="dropdownDepartmentSearchButton"
                                 >
-                                  {severityOptions.map((severity, index) => (
-                                    <li key={severity.value}>
-                                      <div className="flex p-2 rounded-sm hover:bg-primary-100 dark:hover:bg-dark-600">
-                                        <div className="flex items-center h-5">
+                                  {departmentOptions
+                                    .filter((dept) =>
+                                      dept
+                                        .toLowerCase()
+                                        .includes(
+                                          departmentSearchTerm.toLowerCase()
+                                        )
+                                    )
+                                    .map((dept, index) => (
+                                      <li key={dept} className="mb-1">
+                                        <div className="flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
                                           <input
-                                            id={`helper-radio-${index}`}
-                                            name="helper-radio"
+                                            id={`checkbox-department-${index}`}
                                             type="radio"
-                                            value={severity.value}
+                                            name="department-radio"
+                                            value={dept}
                                             checked={
-                                              newRequestForm.severity ===
-                                              severity.value
+                                              newRequestForm.department === dept
                                             }
                                             onChange={(e) => {
                                               handleFormChange(
-                                                "severity",
+                                                "department",
                                                 e.target.value
                                               );
-                                              setIsSeverityDropdownOpen(false);
+                                              setIsDepartmentSearchOpen(false);
                                             }}
-                                            className="w-4 h-4 text-primary-600 bg-primary-100 border-primary-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-dark-700 dark:focus:ring-offset-dark-700 focus:ring-2 dark:bg-dark-600 dark:border-dark-500"
+                                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
                                           />
-                                        </div>
-                                        <div className="ms-2 text-sm">
                                           <label
-                                            htmlFor={`helper-radio-${index}`}
-                                            className="font-medium text-dark-900 dark:text-dark-300 cursor-pointer"
+                                            htmlFor={`checkbox-department-${index}`}
+                                            className="w-full py-2 ms-3 text-sm font-medium text-gray-900 rounded-sm dark:text-gray-300 cursor-pointer"
                                           >
-                                            <div>{severity.label}</div>
-                                            <p className="text-xs font-normal text-primary-500 dark:text-dark-300">
-                                              {severity.description}
-                                            </p>
+                                            {dept}
                                           </label>
                                         </div>
-                                      </div>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Category */}
-                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
-                          <div className="mb-1">
-                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
-                              <Tag className="w-4 h-4 inline mr-2" />
-                              <span className="text-red-500">*</span> Category
-                            </label>
-                          </div>
-                          <div className="relative">
-                            <button
-                              id="dropdownCategoryRadioButton"
-                              data-dropdown-toggle="dropdownCategoryRadio"
-                              onClick={() =>
-                                setIsCategoryDropdownOpen(
-                                  !isCategoryDropdownOpen
-                                )
-                              }
-                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
-                              type="button"
-                            >
-                              {newRequestForm.category || "Select Category"}
-                              <svg
-                                className="w-2.5 h-2.5 ms-3"
-                                aria-hidden="true"
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 10 6"
-                              >
-                                <path
-                                  stroke="currentColor"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="2"
-                                  d="m1 1 4 4 4-4"
-                                />
-                              </svg>
-                            </button>
-
-                            {/* Dropdown menu */}
-                            {isCategoryDropdownOpen && (
-                              <div
-                                id="dropdownCategoryRadio"
-                                className="absolute z-10 w-48 bg-white divide-y divide-primary-100 rounded-lg shadow-sm dark:bg-dark-700 dark:divide-dark-600 mt-1"
-                              >
-                                <ul
-                                  className="p-3 space-y-3 text-sm text-dark-700 dark:text-dark-200"
-                                  aria-labelledby="dropdownCategoryRadioButton"
-                                >
-                                  {categoryOptions.map((category, index) => (
-                                    <li key={category}>
-                                      <div className="flex items-center">
-                                        <input
-                                          id={`category-radio-${index}`}
-                                          type="radio"
-                                          value={category}
-                                          name="category-radio"
-                                          checked={
-                                            newRequestForm.category === category
-                                          }
-                                          onChange={(e) => {
-                                            handleFormChange(
-                                              "category",
-                                              e.target.value
-                                            );
-                                            setIsCategoryDropdownOpen(false);
-                                          }}
-                                          className="w-4 h-4 text-primary-600 bg-primary-100 border-primary-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-dark-700 dark:focus:ring-offset-dark-700 focus:ring-2 dark:bg-dark-600 dark:border-dark-500"
-                                        />
-                                        <label
-                                          htmlFor={`category-radio-${index}`}
-                                          className="ms-2 text-sm font-medium text-dark-900 dark:text-dark-300 cursor-pointer"
-                                        >
-                                          {category}
-                                        </label>
-                                      </div>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Assignee */}
-                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
-                          <div className="mb-1">
-                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
-                              <UserCheck className="w-4 h-4 inline mr-2" />
-                              <span className="text-red-500">*</span> Assignee
-                            </label>
-                          </div>
-                          <div className="relative">
-                            <button
-                              id="dropdownAssigneeRadioButton"
-                              data-dropdown-toggle="dropdownAssigneeRadio"
-                              onClick={() =>
-                                setIsAssigneeDropdownOpen(
-                                  !isAssigneeDropdownOpen
-                                )
-                              }
-                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
-                              type="button"
-                            >
-                              {newRequestForm.assignee || "Select Assignee"}
-                              <svg
-                                className="w-2.5 h-2.5 ms-3"
-                                aria-hidden="true"
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 10 6"
-                              >
-                                <path
-                                  stroke="currentColor"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="2"
-                                  d="m1 1 4 4 4-4"
-                                />
-                              </svg>
-                            </button>
-
-                            {/* Dropdown menu */}
-                            {isAssigneeDropdownOpen && (
-                              <div
-                                id="dropdownAssigneeRadio"
-                                className="absolute z-10 w-48 bg-white divide-y divide-primary-100 rounded-lg shadow-sm dark:bg-dark-700 dark:divide-dark-600 mt-1"
-                              >
-                                <ul
-                                  className="p-3 space-y-3 text-sm text-dark-700 dark:text-dark-200"
-                                  aria-labelledby="dropdownAssigneeRadioButton"
-                                >
-                                  {assigneeOptions.map((assignee, index) => (
-                                    <li key={assignee}>
-                                      <div className="flex items-center">
-                                        <input
-                                          id={`assignee-radio-${index}`}
-                                          type="radio"
-                                          value={assignee}
-                                          name="assignee-radio"
-                                          checked={
-                                            newRequestForm.assignee === assignee
-                                          }
-                                          onChange={(e) => {
-                                            handleFormChange(
-                                              "assignee",
-                                              e.target.value
-                                            );
-                                            setIsAssigneeDropdownOpen(false);
-                                          }}
-                                          className="w-4 h-4 text-primary-600 bg-primary-100 border-primary-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-dark-700 dark:focus:ring-offset-dark-700 focus:ring-2 dark:bg-dark-600 dark:border-dark-500"
-                                        />
-                                        <label
-                                          htmlFor={`assignee-radio-${index}`}
-                                          className="ms-2 text-sm font-medium text-dark-900 dark:text-dark-300 cursor-pointer"
-                                        >
-                                          {assignee}
-                                        </label>
-                                      </div>
-                                    </li>
-                                  ))}
+                                      </li>
+                                    ))}
                                 </ul>
                               </div>
                             )}
@@ -3701,12 +3822,23 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                           </div>
                           <div className="relative">
                             <button
-                              id="dropdownBranchRadioButton"
-                              data-dropdown-toggle="dropdownBranchRadio"
-                              onClick={() =>
-                                setIsBranchDropdownOpen(!isBranchDropdownOpen)
-                              }
-                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600"
+                              id="dropdownBranchSearchButton"
+                              data-dropdown-toggle="dropdownBranchSearch"
+                              data-dropdown-placement="bottom"
+                              onClick={() => {
+                                // Close all other dropdowns
+                                setIsRequestorDropdownOpen(false);
+                                setIsDepartmentDropdownOpen(false);
+                                setIsCategoryDropdownOpen(false);
+                                setIsAssigneeDropdownOpen(false);
+                                setIsRequestorSearchOpen(false);
+                                setIsDepartmentSearchOpen(false);
+                                setIsCategorySearchOpen(false);
+                                setIsAssigneeSearchOpen(false);
+                                // Toggle current dropdown
+                                setIsBranchSearchOpen(!isBranchSearchOpen);
+                              }}
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-2 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
                               type="button"
                             >
                               {newRequestForm.branch || "Select Branch"}
@@ -3728,49 +3860,501 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                             </button>
 
                             {/* Dropdown menu */}
-                            {isBranchDropdownOpen && (
+                            {isBranchSearchOpen && (
                               <div
-                                id="dropdownBranchRadio"
-                                className="absolute z-10 w-48 bg-white divide-y divide-gray-100 rounded-lg shadow-sm dark:bg-gray-700 dark:divide-gray-600 border border-gray-200 dark:border-gray-600 mt-1"
+                                id="dropdownBranchSearch"
+                                className="absolute z-10 bg-white rounded-lg shadow-lg w-full min-w-80 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
                               >
-                                <ul
-                                  className="p-3 space-y-1 text-sm text-gray-700 dark:text-gray-200"
-                                  aria-labelledby="dropdownBranchRadioButton"
-                                >
-                                  {branchOptions.map((branch, index) => (
-                                    <li key={branch}>
-                                      <div className="flex items-center">
-                                        <input
-                                          id={`branch-radio-${index}`}
-                                          type="radio"
-                                          value={branch}
-                                          name="branch-radio"
-                                          checked={
-                                            newRequestForm.branch === branch
-                                          }
-                                          onChange={(e) => {
-                                            handleFormChange(
-                                              "branch",
-                                              e.target.value
-                                            );
-                                            setIsBranchDropdownOpen(false);
-                                          }}
-                                          className="w-4 h-4 text-gray-600 bg-gray-100 border-gray-300 focus:ring-gray-500 dark:focus:ring-gray-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                <div className="p-4">
+                                  <label
+                                    htmlFor="input-group-search-branch"
+                                    className="sr-only"
+                                  >
+                                    Search
+                                  </label>
+                                  <div className="relative">
+                                    <div className="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+                                      <svg
+                                        className="w-4 h-4 text-gray-500 dark:text-gray-400"
+                                        aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 20 20"
+                                      >
+                                        <path
+                                          stroke="currentColor"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth="2"
+                                          d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
                                         />
-                                        <div className="ms-2 text-sm">
+                                      </svg>
+                                    </div>
+                                    <input
+                                      type="text"
+                                      id="input-group-search-branch"
+                                      className="block w-full p-3 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                      placeholder="Search branch"
+                                      value={branchSearchTerm}
+                                      onChange={(e) =>
+                                        setBranchSearchTerm(e.target.value)
+                                      }
+                                    />
+                                  </div>
+                                </div>
+                                <ul
+                                  className="max-h-64 px-4 pb-4 overflow-y-auto text-sm text-gray-700 dark:text-gray-200"
+                                  aria-labelledby="dropdownBranchSearchButton"
+                                >
+                                  {branchOptions
+                                    .filter((branch) =>
+                                      branch
+                                        .toLowerCase()
+                                        .includes(
+                                          branchSearchTerm.toLowerCase()
+                                        )
+                                    )
+                                    .map((branch, index) => (
+                                      <li key={branch} className="mb-1">
+                                        <div className="flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                                          <input
+                                            id={`checkbox-branch-${index}`}
+                                            type="radio"
+                                            name="branch-radio"
+                                            value={branch}
+                                            checked={
+                                              newRequestForm.branch === branch
+                                            }
+                                            onChange={(e) => {
+                                              handleFormChange(
+                                                "branch",
+                                                e.target.value
+                                              );
+                                              setIsBranchSearchOpen(false);
+                                            }}
+                                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                          />
                                           <label
-                                            htmlFor={`branch-radio-${index}`}
-                                            className="font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                            htmlFor={`checkbox-branch-${index}`}
+                                            className="w-full py-2 ms-3 text-sm font-medium text-gray-900 rounded-sm dark:text-gray-300 cursor-pointer"
                                           >
                                             {branch}
                                           </label>
                                         </div>
-                                      </div>
-                                    </li>
-                                  ))}
+                                      </li>
+                                    ))}
                                 </ul>
                               </div>
                             )}
+                          </div>
+                        </div>
+
+                        {/* Assignee */}
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <UserCheck className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Assignee
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              id="dropdownAssigneeSearchButton"
+                              data-dropdown-toggle="dropdownAssigneeSearch"
+                              data-dropdown-placement="bottom"
+                              onClick={() => {
+                                // Close all other dropdowns
+                                setIsRequestorDropdownOpen(false);
+                                setIsDepartmentDropdownOpen(false);
+                                setIsCategoryDropdownOpen(false);
+                                setIsBranchDropdownOpen(false);
+                                setIsRequestorSearchOpen(false);
+                                setIsDepartmentSearchOpen(false);
+                                setIsCategorySearchOpen(false);
+                                setIsBranchSearchOpen(false);
+                                // Toggle current dropdown
+                                setIsAssigneeSearchOpen(!isAssigneeSearchOpen);
+                              }}
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-2 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
+                              type="button"
+                            >
+                              {newRequestForm.assignee || "Select Assignee"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+
+                            {/* Dropdown menu */}
+                            {isAssigneeSearchOpen && (
+                              <div
+                                id="dropdownAssigneeSearch"
+                                className="absolute z-10 bg-white rounded-lg shadow-lg w-full min-w-80 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
+                              >
+                                <div className="p-4">
+                                  <label
+                                    htmlFor="input-group-search-assignee"
+                                    className="sr-only"
+                                  >
+                                    Search
+                                  </label>
+                                  <div className="relative">
+                                    <div className="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+                                      <svg
+                                        className="w-4 h-4 text-gray-500 dark:text-gray-400"
+                                        aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 20 20"
+                                      >
+                                        <path
+                                          stroke="currentColor"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth="2"
+                                          d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
+                                        />
+                                      </svg>
+                                    </div>
+                                    <input
+                                      type="text"
+                                      id="input-group-search-assignee"
+                                      className="block w-full p-3 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                      placeholder="Search assignee"
+                                      value={assigneeSearchTerm}
+                                      onChange={(e) =>
+                                        setAssigneeSearchTerm(e.target.value)
+                                      }
+                                    />
+                                  </div>
+                                </div>
+                                <ul
+                                  className="max-h-64 px-4 pb-4 overflow-y-auto text-sm text-gray-700 dark:text-gray-200"
+                                  aria-labelledby="dropdownAssigneeSearchButton"
+                                >
+                                  {assigneeOptions
+                                    .filter((assignee) =>
+                                      assignee
+                                        .toLowerCase()
+                                        .includes(
+                                          assigneeSearchTerm.toLowerCase()
+                                        )
+                                    )
+                                    .map((assignee, index) => (
+                                      <li key={assignee} className="mb-1">
+                                        <div className="flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                                          <input
+                                            id={`checkbox-assignee-${index}`}
+                                            type="radio"
+                                            name="assignee-radio"
+                                            value={assignee}
+                                            checked={
+                                              newRequestForm.assignee ===
+                                              assignee
+                                            }
+                                            onChange={(e) => {
+                                              handleFormChange(
+                                                "assignee",
+                                                e.target.value
+                                              );
+                                              setIsAssigneeSearchOpen(false);
+                                            }}
+                                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                          />
+                                          <label
+                                            htmlFor={`checkbox-assignee-${index}`}
+                                            className="w-full py-2 ms-3 text-sm font-medium text-gray-900 rounded-sm dark:text-gray-300 cursor-pointer"
+                                          >
+                                            {assignee}
+                                          </label>
+                                        </div>
+                                      </li>
+                                    ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Column */}
+                      <div className="space-y-3">
+                        {/* Category */}
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <Tag className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Category
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              id="dropdownCategorySearchButton"
+                              data-dropdown-toggle="dropdownCategorySearch"
+                              data-dropdown-placement="bottom"
+                              onClick={() => {
+                                // Close all other dropdowns
+                                setIsRequestorDropdownOpen(false);
+                                setIsDepartmentDropdownOpen(false);
+                                setIsAssigneeDropdownOpen(false);
+                                setIsBranchDropdownOpen(false);
+                                setIsRequestorSearchOpen(false);
+                                setIsDepartmentSearchOpen(false);
+                                setIsAssigneeSearchOpen(false);
+                                setIsBranchSearchOpen(false);
+                                // Toggle current dropdown
+                                setIsCategorySearchOpen(!isCategorySearchOpen);
+                              }}
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
+                              type="button"
+                            >
+                              {newRequestForm.category || "Select Category"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+
+                            {/* Dropdown menu */}
+                            {isCategorySearchOpen && (
+                              <div
+                                id="dropdownCategorySearch"
+                                className="absolute z-10 bg-white rounded-lg shadow-lg w-full min-w-80 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
+                              >
+                                <div className="p-4">
+                                  <label
+                                    htmlFor="input-group-search-category"
+                                    className="sr-only"
+                                  >
+                                    Search
+                                  </label>
+                                  <div className="relative">
+                                    <div className="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+                                      <svg
+                                        className="w-4 h-4 text-gray-500 dark:text-gray-400"
+                                        aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 20 20"
+                                      >
+                                        <path
+                                          stroke="currentColor"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth="2"
+                                          d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
+                                        />
+                                      </svg>
+                                    </div>
+                                    <input
+                                      type="text"
+                                      id="input-group-search-category"
+                                      className="block w-full p-3 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                      placeholder="Search category"
+                                      value={categorySearchTerm}
+                                      onChange={(e) =>
+                                        setCategorySearchTerm(e.target.value)
+                                      }
+                                    />
+                                  </div>
+                                </div>
+                                <ul
+                                  className="max-h-64 px-4 pb-4 overflow-y-auto text-sm text-gray-700 dark:text-gray-200"
+                                  aria-labelledby="dropdownCategorySearchButton"
+                                >
+                                  {categoryOptions
+                                    .filter((category) =>
+                                      category
+                                        .toLowerCase()
+                                        .includes(
+                                          categorySearchTerm.toLowerCase()
+                                        )
+                                    )
+                                    .map((category, index) => (
+                                      <li key={category} className="mb-1">
+                                        <div className="flex items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                                          <input
+                                            id={`checkbox-category-${index}`}
+                                            type="radio"
+                                            name="category-radio"
+                                            value={category}
+                                            checked={
+                                              newRequestForm.category ===
+                                              category
+                                            }
+                                            onChange={(e) => {
+                                              handleFormChange(
+                                                "category",
+                                                e.target.value
+                                              );
+                                              setIsCategorySearchOpen(false);
+                                            }}
+                                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                          />
+                                          <label
+                                            htmlFor={`checkbox-category-${index}`}
+                                            className="w-full py-2 ms-3 text-sm font-medium text-gray-900 rounded-sm dark:text-gray-300 cursor-pointer"
+                                          >
+                                            {category}
+                                          </label>
+                                        </div>
+                                      </li>
+                                    ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Urgency Level */}
+                        <div
+                          className="bg-primary-50 dark:bg-dark-700/50 p-3 rounded-lg flex flex-col"
+                          style={{ height: "340px" }}
+                        >
+                          <div className="mb-4">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <Clock className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Urgency
+                              Level
+                            </label>
+                          </div>
+                          <div className="space-y-4 flex-1 flex flex-col justify-between">
+                            <div className="flex items-center">
+                              <input
+                                id="urgency-low"
+                                name="urgency"
+                                type="radio"
+                                value="Low"
+                                checked={newRequestForm.severity === "Low"}
+                                onChange={(e) =>
+                                  handleFormChange("severity", e.target.value)
+                                }
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label
+                                htmlFor="urgency-low"
+                                className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                              >
+                                <div className="font-semibold">Low</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  Can wait 1-2 business days
+                                </div>
+                              </label>
+                            </div>
+                            <div className="flex items-center">
+                              <input
+                                id="urgency-medium"
+                                name="urgency"
+                                type="radio"
+                                value="Medium"
+                                checked={newRequestForm.severity === "Medium"}
+                                onChange={(e) =>
+                                  handleFormChange("severity", e.target.value)
+                                }
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label
+                                htmlFor="urgency-medium"
+                                className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                              >
+                                <div className="font-semibold">Medium</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  Needs attention within 24 hours
+                                </div>
+                              </label>
+                            </div>
+                            <div className="flex items-center">
+                              <input
+                                id="urgency-high"
+                                name="urgency"
+                                type="radio"
+                                value="High"
+                                checked={newRequestForm.severity === "High"}
+                                onChange={(e) =>
+                                  handleFormChange("severity", e.target.value)
+                                }
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label
+                                htmlFor="urgency-high"
+                                className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                              >
+                                <div className="font-semibold">High</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  Needs immediate attention
+                                </div>
+                              </label>
+                            </div>
+                            <div className="flex items-center">
+                              <input
+                                id="urgency-urgent"
+                                name="urgency"
+                                type="radio"
+                                value="Urgent"
+                                checked={newRequestForm.severity === "Urgent"}
+                                onChange={(e) =>
+                                  handleFormChange("severity", e.target.value)
+                                }
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label
+                                htmlFor="urgency-urgent"
+                                className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                              >
+                                <div className="font-semibold">Urgent</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  Business critical - immediate response
+                                  required
+                                </div>
+                              </label>
+                            </div>
+                            <div className="flex items-center">
+                              <input
+                                id="urgency-critical"
+                                name="urgency"
+                                type="radio"
+                                value="Critical"
+                                checked={newRequestForm.severity === "Critical"}
+                                onChange={(e) =>
+                                  handleFormChange("severity", e.target.value)
+                                }
+                                className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500 dark:focus:ring-red-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label
+                                htmlFor="urgency-critical"
+                                className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                              >
+                                <div className="font-semibold text-red-600 dark:text-red-400">
+                                  Critical
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  System down or major security breach -
+                                  escalate immediately
+                                </div>
+                              </label>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -3788,220 +4372,304 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                         <span className="text-red-500 text-sm">*</span>
                       </div>
 
-                      {/* Enhanced Tiptap Rich Text Editor */}
+                      {/* Advanced Rich Text Editor */}
                       <div className="bg-white border-2 border-gray-200 rounded-xl overflow-hidden dark:bg-gray-800 dark:border-gray-600 shadow-sm hover:shadow-md transition-shadow duration-200">
-                        <div id="hs-editor-tiptap-blockquote-alt">
-                          <div className="sticky top-0 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 flex align-middle gap-x-1 border-b border-gray-200 dark:border-gray-600 p-1.5">
-                            <button
-                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                              type="button"
-                              data-hs-editor-bold=""
-                            >
-                              <svg
-                                className="shrink-0 size-4"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M14 12a4 4 0 0 0 0-8H6v8"></path>
-                                <path d="M15 20a4 4 0 0 0 0-8H6v8Z"></path>
-                              </svg>
-                            </button>
-                            <button
-                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                              type="button"
-                              data-hs-editor-italic=""
-                            >
-                              <svg
-                                className="shrink-0 size-4"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <line x1="19" x2="10" y1="4" y2="4"></line>
-                                <line x1="14" x2="5" y1="20" y2="20"></line>
-                                <line x1="15" x2="9" y1="4" y2="20"></line>
-                              </svg>
-                            </button>
-                            <button
-                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                              type="button"
-                              data-hs-editor-underline=""
-                            >
-                              <svg
-                                className="shrink-0 size-4"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M6 4v6a6 6 0 0 0 12 0V4"></path>
-                                <line x1="4" x2="20" y1="20" y2="20"></line>
-                              </svg>
-                            </button>
-                            <button
-                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                              type="button"
-                              data-hs-editor-strike=""
-                            >
-                              <svg
-                                className="shrink-0 size-4"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M16 4H9a3 3 0 0 0-2.83 4"></path>
-                                <path d="M14 12a4 4 0 0 1 0 8H6"></path>
-                                <line x1="4" x2="20" y1="12" y2="12"></line>
-                              </svg>
-                            </button>
-                            <button
-                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                              type="button"
-                              data-hs-editor-link=""
-                            >
-                              <svg
-                                className="shrink-0 size-4"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                              </svg>
-                            </button>
-                            <button
-                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                              type="button"
-                              data-hs-editor-ol=""
-                            >
-                              <svg
-                                className="shrink-0 size-4"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <line x1="10" x2="21" y1="6" y2="6"></line>
-                                <line x1="10" x2="21" y1="12" y2="12"></line>
-                                <line x1="10" x2="21" y1="18" y2="18"></line>
-                                <path d="M4 6h1v4"></path>
-                                <path d="M4 10h2"></path>
-                                <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path>
-                              </svg>
-                            </button>
-                            <button
-                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                              type="button"
-                              data-hs-editor-ul=""
-                            >
-                              <svg
-                                className="shrink-0 size-4"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <line x1="8" x2="21" y1="6" y2="6"></line>
-                                <line x1="8" x2="21" y1="12" y2="12"></line>
-                                <line x1="8" x2="21" y1="18" y2="18"></line>
-                                <line x1="3" x2="3.01" y1="6" y2="6"></line>
-                                <line x1="3" x2="3.01" y1="12" y2="12"></line>
-                                <line x1="3" x2="3.01" y1="18" y2="18"></line>
-                              </svg>
-                            </button>
-                            <button
-                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                              type="button"
-                              data-hs-editor-blockquote=""
-                            >
-                              <svg
-                                className="shrink-0 size-4"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M17 6H3"></path>
-                                <path d="M21 12H8"></path>
-                                <path d="M21 18H8"></path>
-                                <path d="M3 12v6"></path>
-                              </svg>
-                            </button>
-                            <button
-                              className="size-7 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                              type="button"
-                              data-hs-editor-code=""
-                            >
-                              <svg
-                                className="shrink-0 size-4"
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="m18 16 4-4-4-4"></path>
-                                <path d="m6 8-4 4 4 4"></path>
-                                <path d="m14.5 4-5 16"></path>
-                              </svg>
-                            </button>
-                          </div>
+                        {/* Toolbar */}
+                        <div className="sticky top-0 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-600 p-3">
+                          {/* Essential Text Format - Always Visible */}
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton("bold")}
+                            className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                              activeButtons.has("bold")
+                                ? "bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white"
+                                : "bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            }`}
+                            title="Bold"
+                          >
+                            <i className="fa-solid fa-bold text-xs"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton("italic")}
+                            className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                              activeButtons.has("italic")
+                                ? "bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white"
+                                : "bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            }`}
+                            title="Italic"
+                          >
+                            <i className="fa-solid fa-italic text-xs"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton("underline")}
+                            className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                              activeButtons.has("underline")
+                                ? "bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white"
+                                : "bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            }`}
+                            title="Underline"
+                          >
+                            <i className="fa-solid fa-underline text-xs"></i>
+                          </button>
 
-                          <div
-                            className="overflow-auto p-4 bg-gray-800 scrollbar-thin scrollbar-thumb-violet-600 scrollbar-track-violet-800 hover:scrollbar-thumb-violet-500 text-gray-300"
-                            style={{ height: "205px" }}
-                            data-hs-editor-field=""
-                          ></div>
+                          {/* View All Button */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setShowAllToolbarOptions(!showAllToolbarOptions)
+                            }
+                            className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-500"
+                            title={
+                              showAllToolbarOptions
+                                ? "Hide Advanced Options"
+                                : "Show All Options"
+                            }
+                          >
+                            <i
+                              className={`fa-solid ${
+                                showAllToolbarOptions
+                                  ? "fa-eye-slash"
+                                  : "fa-eye"
+                              } text-xs`}
+                            ></i>
+                          </button>
+
+                          {/* Advanced Options - Hidden by Default */}
+                          {showAllToolbarOptions && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleFormatButton("strikeThrough")
+                                }
+                                className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                  activeButtons.has("strikeThrough")
+                                    ? "bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white"
+                                    : "bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                }`}
+                                title="Strikethrough"
+                              >
+                                <i className="fa-solid fa-strikethrough text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleFormatButton("superscript")
+                                }
+                                className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                  activeButtons.has("superscript")
+                                    ? "bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white"
+                                    : "bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                }`}
+                                title="Superscript"
+                              >
+                                <i className="fa-solid fa-superscript text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton("subscript")}
+                                className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                  activeButtons.has("subscript")
+                                    ? "bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white"
+                                    : "bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                }`}
+                                title="Subscript"
+                              >
+                                <i className="fa-solid fa-subscript text-xs"></i>
+                              </button>
+
+                              {/* Lists */}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleFormatButton("insertOrderedList")
+                                }
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Numbered List"
+                              >
+                                <i className="fa-solid fa-list-ol text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleFormatButton("insertUnorderedList")
+                                }
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Bullet List"
+                              >
+                                <i className="fa-solid fa-list text-xs"></i>
+                              </button>
+
+                              {/* Undo/Redo */}
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton("undo")}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Undo"
+                              >
+                                <i className="fa-solid fa-rotate-left text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton("redo")}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Redo"
+                              >
+                                <i className="fa-solid fa-rotate-right text-xs"></i>
+                              </button>
+
+                              {/* Link */}
+                              <button
+                                type="button"
+                                onClick={handleCreateLink}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Create Link"
+                              >
+                                <i className="fa fa-link text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton("unlink")}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Remove Link"
+                              >
+                                <i className="fa fa-unlink text-xs"></i>
+                              </button>
+
+                              {/* Alignment */}
+                              <button
+                                type="button"
+                                onClick={() => handleAlignment("justifyLeft")}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Align Left"
+                              >
+                                <i className="fa-solid fa-align-left text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleAlignment("justifyCenter")}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Align Center"
+                              >
+                                <i className="fa-solid fa-align-center text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleAlignment("justifyRight")}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Align Right"
+                              >
+                                <i className="fa-solid fa-align-right text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleAlignment("justifyFull")}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Justify"
+                              >
+                                <i className="fa-solid fa-align-justify text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton("indent")}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Indent"
+                              >
+                                <i className="fa-solid fa-indent text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton("outdent")}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Outdent"
+                              >
+                                <i className="fa-solid fa-outdent text-xs"></i>
+                              </button>
+
+                              {/* Headings */}
+                              <select
+                                onChange={(e) =>
+                                  handleAdvancedOption(
+                                    "formatBlock",
+                                    e.target.value
+                                  )
+                                }
+                                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                title="Heading"
+                              >
+                                <option value="div">Normal</option>
+                                <option value="H1">H1</option>
+                                <option value="H2">H2</option>
+                                <option value="H3">H3</option>
+                                <option value="H4">H4</option>
+                                <option value="H5">H5</option>
+                                <option value="H6">H6</option>
+                              </select>
+
+                              {/* Font */}
+                              <select
+                                onChange={(e) =>
+                                  handleAdvancedOption(
+                                    "fontName",
+                                    e.target.value
+                                  )
+                                }
+                                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                title="Font Family"
+                              >
+                                {fontList.map((font) => (
+                                  <option key={font} value={font}>
+                                    {font}
+                                  </option>
+                                ))}
+                              </select>
+                              <select
+                                onChange={(e) =>
+                                  handleAdvancedOption(
+                                    "fontSize",
+                                    e.target.value
+                                  )
+                                }
+                                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                title="Font Size"
+                                defaultValue="3"
+                              >
+                                {[1, 2, 3, 4, 5, 6, 7].map((size) => (
+                                  <option key={size} value={size}>
+                                    {size}
+                                  </option>
+                                ))}
+                              </select>
+
+                              {/* Colors */}
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="color"
+                                  onChange={(e) =>
+                                    handleAdvancedOption(
+                                      "foreColor",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-7 h-7 border-none cursor-pointer rounded"
+                                  title="Font Color"
+                                />
+                              </div>
+                            </>
+                          )}
                         </div>
+
+                        {/* Editor Content */}
+                        <div
+                          ref={editorRef}
+                          contentEditable
+                          onInput={handleEditorInput}
+                          className="w-full min-h-32 p-4 text-sm text-gray-900 dark:text-white border-0 focus:ring-0 focus:outline-none"
+                          style={{ minHeight: "200px" }}
+                          data-placeholder="Describe your request in detail..."
+                        />
                       </div>
                     </div>
                   </div>
@@ -4014,7 +4682,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
                     <button
                       type="button"
                       className="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 focus:outline-none focus:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-800 dark:border-neutral-700 dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
-                      onClick={() => setIsNewRequestModalOpen(false)}
+                      onClick={() => {}}
                     >
                       Close
                     </button>
@@ -4376,6 +5044,1618 @@ const TicketGallery: React.FC<TicketGalleryProps> = ({
             </div>
           </div>
         )}
+
+        {/* Edit Ticket Modal */}
+        {isEditModalOpen && selectedTicketForEdit && (
+          <div
+            className="fixed inset-0 z-50 overflow-x-hidden overflow-y-auto scrollbar-hide"
+            role="dialog"
+            tabIndex={-1}
+            aria-labelledby="hs-vertically-centered-modal-label"
+            aria-modal="true"
+          >
+            <div className="flex items-center justify-center min-h-screen px-4 py-8">
+              <div className="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm"></div>
+              <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[98vh] overflow-hidden">
+                {/* Modal Header */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                      <svg
+                        className="w-4 h-4 text-green-600 dark:text-green-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <h1
+                        id="hs-vertically-centered-modal-label"
+                        className="font-bold text-gray-800 dark:text-white"
+                        style={{ fontSize: "18pt" }}
+                      >
+                        Edit Ticket
+                      </h1>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none focus:bg-gray-200 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:text-neutral-400 dark:focus:bg-neutral-600"
+                    aria-label="Close"
+                    onClick={() => {
+                      setIsEditModalOpen(false);
+                      setSelectedTicketForEdit(null);
+                    }}
+                  >
+                    <span className="sr-only">Close</span>
+                    <svg
+                      className="shrink-0 size-4"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M18 6 6 18"></path>
+                      <path d="m6 6 12 12"></path>
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Modal Content */}
+                <div className="p-3 overflow-y-auto max-h-[93vh] scrollbar-thin scrollbar-thumb-violet-600 scrollbar-track-violet-900 hover:scrollbar-thumb-violet-500">
+                  {/* Ticket Number */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 flex items-center justify-center">
+                        <svg
+                          className="w-4 h-4 text-primary-600 dark:text-primary-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                      </div>
+                      <label className="text-sm font-semibold text-gray-900 dark:text-white">
+                        Ticket Number
+                      </label>
+                    </div>
+                    <span className="font-mono text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                      {selectedTicketForEdit.id}
+                    </span>
+                    {selectedTicketForEdit.severity && (
+                      <div className="flex items-center gap-1">
+                        <Flag className="w-3 h-3 text-red-500" />
+                        <span className="text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
+                          {selectedTicketForEdit.severity}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleEditFormSubmit}>
+                    {/* Ticket Title Section */}
+                    <div className="mb-3">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="p-1 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400"
+                          >
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                          </svg>
+                        </div>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                          Request Title
+                        </h3>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Enter a clear, descriptive title for your request..."
+                        defaultValue={selectedTicketForEdit.title}
+                        className="w-full px-3 py-1.5 text-sm font-medium bg-primary-50 dark:bg-dark-700 border border-primary-200 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white placeholder-primary-500 dark:placeholder-dark-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
+                      />
+                    </div>
+
+                    {/* Form Fields Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
+                      {/* Left Column */}
+                      <div className="space-y-3">
+                        {/* Request Date */}
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <Calendar className="w-4 h-4 inline mr-2" />
+                              Request Date
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                              <svg
+                                className="w-4 h-4 text-primary-500 dark:text-dark-400"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z" />
+                              </svg>
+                            </div>
+                            <input
+                              type="date"
+                              defaultValue={selectedTicketForEdit.date}
+                              className="bg-primary-50 border border-primary-300 text-dark-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full ps-10 py-1 px-2 dark:bg-dark-700 dark:border-dark-600 dark:placeholder-dark-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 h-10"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Requestor */}
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <User className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Requestor
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              type="button"
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
+                            >
+                              {selectedTicketForEdit.requestor ||
+                                "Select Requestor"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Department */}
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <Building className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Department
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              type="button"
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
+                            >
+                              {selectedTicketForEdit.department ||
+                                "Select Department"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Branch */}
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <MapPin className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Branch
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              type="button"
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
+                            >
+                              {selectedTicketForEdit.branch || "Select Branch"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Assignee */}
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <UserCheck className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Assignee
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              type="button"
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
+                            >
+                              {selectedTicketForEdit.assignee ||
+                                "Select Assignee"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Column */}
+                      <div className="space-y-3">
+                        {/* Category */}
+                        <div className="bg-primary-50 dark:bg-dark-700/50 p-1.5 rounded-lg">
+                          <div className="mb-1">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <Tag className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Category
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <button
+                              type="button"
+                              className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-dark-800 hover:bg-primary-50 dark:hover:bg-dark-700 focus:ring-4 focus:outline-none focus:ring-primary-200 dark:focus:ring-dark-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-primary-200 dark:border-dark-600 h-10"
+                            >
+                              {selectedTicketForEdit.category ||
+                                "Select Category"}
+                              <svg
+                                className="w-2.5 h-2.5 ms-3"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 10 6"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="m1 1 4 4 4-4"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Urgency Level */}
+                        <div
+                          className="bg-primary-50 dark:bg-dark-700/50 p-3 rounded-lg flex flex-col"
+                          style={{ height: "340px" }}
+                        >
+                          <div className="mb-4">
+                            <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                              <Clock className="w-4 h-4 inline mr-2" />
+                              <span className="text-red-500">*</span> Urgency
+                              Level
+                            </label>
+                          </div>
+                          <div className="space-y-4 flex-1 flex flex-col justify-between">
+                            <div className="flex items-center">
+                              <input
+                                id="edit-urgency-low"
+                                name="edit-urgency"
+                                type="radio"
+                                value="Low"
+                                defaultChecked={
+                                  selectedTicketForEdit.severity === "Low"
+                                }
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label
+                                htmlFor="edit-urgency-low"
+                                className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                              >
+                                <div className="font-semibold">Low</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  Can wait 1-2 business days
+                                </div>
+                              </label>
+                            </div>
+                            <div className="flex items-center">
+                              <input
+                                id="edit-urgency-medium"
+                                name="edit-urgency"
+                                type="radio"
+                                value="Medium"
+                                defaultChecked={
+                                  selectedTicketForEdit.severity === "Medium"
+                                }
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label
+                                htmlFor="edit-urgency-medium"
+                                className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                              >
+                                <div className="font-semibold">Medium</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  Needs attention within 24 hours
+                                </div>
+                              </label>
+                            </div>
+                            <div className="flex items-center">
+                              <input
+                                id="edit-urgency-high"
+                                name="edit-urgency"
+                                type="radio"
+                                value="High"
+                                defaultChecked={
+                                  selectedTicketForEdit.severity === "High"
+                                }
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label
+                                htmlFor="edit-urgency-high"
+                                className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                              >
+                                <div className="font-semibold">High</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  Needs immediate attention
+                                </div>
+                              </label>
+                            </div>
+                            <div className="flex items-center">
+                              <input
+                                id="edit-urgency-urgent"
+                                name="edit-urgency"
+                                type="radio"
+                                value="Urgent"
+                                defaultChecked={
+                                  selectedTicketForEdit.severity === "Urgent"
+                                }
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label
+                                htmlFor="edit-urgency-urgent"
+                                className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                              >
+                                <div className="font-semibold">Urgent</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  Business critical - immediate response
+                                  required
+                                </div>
+                              </label>
+                            </div>
+                            <div className="flex items-center">
+                              <input
+                                id="edit-urgency-critical"
+                                name="edit-urgency"
+                                type="radio"
+                                value="Critical"
+                                defaultChecked={
+                                  selectedTicketForEdit.severity === "Critical"
+                                }
+                                className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500 dark:focus:ring-red-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                              />
+                              <label
+                                htmlFor="edit-urgency-critical"
+                                className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                              >
+                                <div className="font-semibold text-red-600 dark:text-red-400">
+                                  Critical
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  System down or major security breach -
+                                  escalate immediately
+                                </div>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* IT Support Section */}
+                    <div className="mb-3">
+                      {/* Visual Separator */}
+                      <div className="border-t-2 border-orange-200 dark:border-orange-600 my-4"></div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="p-1 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400"
+                          >
+                            <path d="M9 12l2 2 4-4"></path>
+                            <path d="M21 12c.552 0 1-.448 1-1V5c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v6c0 .552.448 1 1 1h18z"></path>
+                            <path d="M3 12v6c0 .552.448 1 1 1h16c.552 0 1-.448 1-1v-6H3z"></path>
+                          </svg>
+                        </div>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                          IT Support
+                        </h3>
+                      </div>
+
+                      {/* IT Support Fields Grid */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
+                        {/* Left Column */}
+                        <div className="space-y-3">
+                          {/* Due Date */}
+                          <div className="bg-orange-50 dark:bg-orange-900/20 p-1.5 rounded-lg">
+                            <div className="mb-1">
+                              <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                                <Calendar className="w-4 h-4 inline mr-2" />
+                                Due Date
+                              </label>
+                            </div>
+                            <div className="relative">
+                              <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                                <svg
+                                  className="w-4 h-4 text-orange-500 dark:text-orange-400"
+                                  aria-hidden="true"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z" />
+                                </svg>
+                              </div>
+                              <input
+                                type="date"
+                                defaultValue={
+                                  selectedTicketForEdit.dueDate || ""
+                                }
+                                className="bg-orange-50 border border-orange-300 text-dark-900 text-sm rounded-lg focus:ring-orange-500 focus:border-orange-500 block w-full ps-10 py-1 px-2 dark:bg-orange-900/20 dark:border-orange-600 dark:placeholder-dark-400 dark:text-white dark:focus:ring-orange-500 dark:focus:border-orange-500 h-10"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Escalate */}
+                          <div className="bg-orange-50 dark:bg-orange-900/20 p-1.5 rounded-lg">
+                            <div className="mb-1">
+                              <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                                <AlertTriangle className="w-4 h-4 inline mr-2" />
+                                Escalate
+                              </label>
+                            </div>
+                            <div className="relative">
+                              <button
+                                type="button"
+                                className="w-full text-dark-700 dark:text-dark-300 bg-white dark:bg-orange-900/30 hover:bg-orange-50 dark:hover:bg-orange-900/40 focus:ring-4 focus:outline-none focus:ring-orange-200 dark:focus:ring-orange-600 font-medium rounded-lg text-sm px-2 py-1 text-center inline-flex items-center justify-between border border-orange-300 dark:border-orange-600 h-10"
+                              >
+                                {selectedTicketForEdit.escalate ||
+                                  "Level 2 support"}
+                                <svg
+                                  className="w-2.5 h-2.5 ms-3"
+                                  aria-hidden="true"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="none"
+                                  viewBox="0 0 10 6"
+                                >
+                                  <path
+                                    stroke="currentColor"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="m1 1 4 4 4-4"
+                                  />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right Column */}
+                        <div className="space-y-3">
+                          {/* Ticket Status */}
+                          <div
+                            className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg flex flex-col"
+                            style={{ height: "340px" }}
+                          >
+                            <div className="mb-4">
+                              <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300">
+                                <Flag className="w-4 h-4 inline mr-2" />
+                                <span className="text-red-500">*</span> Ticket
+                                Status
+                              </label>
+                            </div>
+                            <div className="space-y-4 flex-1 flex flex-col justify-between">
+                              <div className="flex items-center">
+                                <input
+                                  id="edit-status-closed"
+                                  name="edit-status"
+                                  type="radio"
+                                  value="Closed"
+                                  defaultChecked={
+                                    selectedTicketForEdit.status === "Closed"
+                                  }
+                                  className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 focus:ring-green-500 dark:focus:ring-green-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <label
+                                  htmlFor="edit-status-closed"
+                                  className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                >
+                                  <div className="font-semibold text-green-600 dark:text-green-400">
+                                    Closed
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    Ticket has been resolved and closed
+                                  </div>
+                                </label>
+                              </div>
+                              <div className="flex items-center">
+                                <input
+                                  id="edit-status-pending"
+                                  name="edit-status"
+                                  type="radio"
+                                  value="Pending"
+                                  defaultChecked={
+                                    selectedTicketForEdit.status === "Pending"
+                                  }
+                                  className="w-4 h-4 text-yellow-600 bg-gray-100 border-gray-300 focus:ring-yellow-500 dark:focus:ring-yellow-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <label
+                                  htmlFor="edit-status-pending"
+                                  className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                >
+                                  <div className="font-semibold text-yellow-600 dark:text-yellow-400">
+                                    Pending
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    Waiting for response or action
+                                  </div>
+                                </label>
+                              </div>
+                              <div className="flex items-center">
+                                <input
+                                  id="edit-status-resolved"
+                                  name="edit-status"
+                                  type="radio"
+                                  value="Resolved"
+                                  defaultChecked={
+                                    selectedTicketForEdit.status === "Resolved"
+                                  }
+                                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <label
+                                  htmlFor="edit-status-resolved"
+                                  className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                >
+                                  <div className="font-semibold text-blue-600 dark:text-blue-400">
+                                    Resolved
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    Issue has been fixed and verified
+                                  </div>
+                                </label>
+                              </div>
+                              <div className="flex items-center">
+                                <input
+                                  id="edit-status-on-hold"
+                                  name="edit-status"
+                                  type="radio"
+                                  value="On Hold"
+                                  defaultChecked={
+                                    selectedTicketForEdit.status === "On Hold"
+                                  }
+                                  className="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 focus:ring-orange-500 dark:focus:ring-orange-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <label
+                                  htmlFor="edit-status-on-hold"
+                                  className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                >
+                                  <div className="font-semibold text-orange-600 dark:text-orange-400">
+                                    On Hold
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    Temporarily paused due to external factors
+                                  </div>
+                                </label>
+                              </div>
+                              <div className="flex items-center">
+                                <input
+                                  id="edit-status-in-progress"
+                                  name="edit-status"
+                                  type="radio"
+                                  value="In Progress"
+                                  defaultChecked={
+                                    selectedTicketForEdit.status ===
+                                    "In Progress"
+                                  }
+                                  className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 focus:ring-purple-500 dark:focus:ring-purple-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <label
+                                  htmlFor="edit-status-in-progress"
+                                  className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                >
+                                  <div className="font-semibold text-purple-600 dark:text-purple-400">
+                                    In Progress
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    Currently being worked on
+                                  </div>
+                                </label>
+                              </div>
+                              <div className="flex items-center">
+                                <input
+                                  id="edit-status-escalate"
+                                  name="edit-status"
+                                  type="radio"
+                                  value="Escalate"
+                                  defaultChecked={
+                                    selectedTicketForEdit.status === "Escalate"
+                                  }
+                                  className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500 dark:focus:ring-red-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <label
+                                  htmlFor="edit-status-escalate"
+                                  className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                >
+                                  <div className="font-semibold text-red-600 dark:text-red-400">
+                                    Escalate
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    Requires higher level support
+                                  </div>
+                                </label>
+                              </div>
+                              <div className="flex items-center">
+                                <input
+                                  id="edit-status-cancelled"
+                                  name="edit-status"
+                                  type="radio"
+                                  value="Cancelled"
+                                  defaultChecked={
+                                    selectedTicketForEdit.status === "Cancelled"
+                                  }
+                                  className="w-4 h-4 text-gray-600 bg-gray-100 border-gray-300 focus:ring-gray-500 dark:focus:ring-gray-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <label
+                                  htmlFor="edit-status-cancelled"
+                                  className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer"
+                                >
+                                  <div className="font-semibold text-gray-600 dark:text-gray-400">
+                                    Cancelled
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    Request has been cancelled
+                                  </div>
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Job Resolution */}
+                      <div className="mb-3">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <div className="p-1 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400"
+                            >
+                              <path d="M9 12l2 2 4-4"></path>
+                              <path d="M21 12c.552 0 1-.448 1-1V5c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v6c0 .552.448 1 1 1h18z"></path>
+                              <path d="M3 12v6c0 .552.448 1 1 1h16c.552 0 1-.448 1-1v-6H3z"></path>
+                            </svg>
+                          </div>
+                          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                            <span className="text-red-500">*</span> Job
+                            Resolution
+                          </h3>
+                        </div>
+                        <div className="border border-orange-200 dark:border-orange-600 rounded-lg overflow-hidden">
+                          {/* Rich Text Editor Toolbar */}
+                          <div className="sticky top-0 bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-700 dark:to-orange-800 flex flex-wrap items-center gap-2 border-b border-orange-200 dark:border-orange-600 p-3">
+                            <button
+                              type="button"
+                              onClick={() => handleFormatButton("bold")}
+                              className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                activeButtons.has("bold")
+                                  ? "bg-orange-200 text-orange-800 dark:bg-orange-600 dark:text-white"
+                                  : "bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                              }`}
+                              title="Bold"
+                            >
+                              <i className="fa-solid fa-bold text-xs"></i>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleFormatButton("italic")}
+                              className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                activeButtons.has("italic")
+                                  ? "bg-orange-200 text-orange-800 dark:bg-orange-600 dark:text-white"
+                                  : "bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                              }`}
+                              title="Italic"
+                            >
+                              <i className="fa-solid fa-italic text-xs"></i>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleFormatButton("underline")}
+                              className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                activeButtons.has("underline")
+                                  ? "bg-orange-200 text-orange-800 dark:bg-orange-600 dark:text-white"
+                                  : "bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                              }`}
+                              title="Underline"
+                            >
+                              <i className="fa-solid fa-underline text-xs"></i>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setShowAllToolbarOptions(!showAllToolbarOptions)
+                              }
+                              className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                              title="View All"
+                            >
+                              <i className="fa-solid fa-eye text-xs"></i>
+                            </button>
+
+                            {showAllToolbarOptions && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleFormatButton("strikeThrough")
+                                  }
+                                  className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                    activeButtons.has("strikeThrough")
+                                      ? "bg-orange-200 text-orange-800 dark:bg-orange-600 dark:text-white"
+                                      : "bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  }`}
+                                  title="Strikethrough"
+                                >
+                                  <i className="fa-solid fa-strikethrough text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleFormatButton("superscript")
+                                  }
+                                  className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                    activeButtons.has("superscript")
+                                      ? "bg-orange-200 text-orange-800 dark:bg-orange-600 dark:text-white"
+                                      : "bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  }`}
+                                  title="Superscript"
+                                >
+                                  <i className="fa-solid fa-superscript text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleFormatButton("subscript")
+                                  }
+                                  className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                    activeButtons.has("subscript")
+                                      ? "bg-orange-200 text-orange-800 dark:bg-orange-600 dark:text-white"
+                                      : "bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  }`}
+                                  title="Subscript"
+                                >
+                                  <i className="fa-solid fa-subscript text-xs"></i>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleFormatButton("insertOrderedList")
+                                  }
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Numbered List"
+                                >
+                                  <i className="fa-solid fa-list-ol text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleFormatButton("insertUnorderedList")
+                                  }
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Bullet List"
+                                >
+                                  <i className="fa-solid fa-list text-xs"></i>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleFormatButton("undo")}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Undo"
+                                >
+                                  <i className="fa-solid fa-rotate-left text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleFormatButton("redo")}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Redo"
+                                >
+                                  <i className="fa-solid fa-rotate-right text-xs"></i>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={handleCreateLink}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Create Link"
+                                >
+                                  <i className="fa fa-link text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleFormatButton("unlink")}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Remove Link"
+                                >
+                                  <i className="fa fa-unlink text-xs"></i>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleAlignment("justifyLeft")}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Align Left"
+                                >
+                                  <i className="fa-solid fa-align-left text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleAlignment("justifyCenter")
+                                  }
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Align Center"
+                                >
+                                  <i className="fa-solid fa-align-center text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleAlignment("justifyRight")
+                                  }
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Align Right"
+                                >
+                                  <i className="fa-solid fa-align-right text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAlignment("justifyFull")}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Justify"
+                                >
+                                  <i className="fa-solid fa-align-justify text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleFormatButton("indent")}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Indent"
+                                >
+                                  <i className="fa-solid fa-indent text-xs"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleFormatButton("outdent")}
+                                  className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-orange-50 dark:bg-orange-700 dark:text-white dark:hover:bg-orange-600"
+                                  title="Outdent"
+                                >
+                                  <i className="fa-solid fa-outdent text-xs"></i>
+                                </button>
+
+                                <select
+                                  onChange={(e) =>
+                                    handleAdvancedOption(
+                                      "formatBlock",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="px-2 py-1 text-xs border border-orange-300 dark:border-orange-600 rounded bg-white dark:bg-orange-700 text-gray-800 dark:text-white"
+                                  title="Heading"
+                                >
+                                  <option value="div">Normal</option>
+                                  <option value="H1">H1</option>
+                                  <option value="H2">H2</option>
+                                  <option value="H3">H3</option>
+                                  <option value="H4">H4</option>
+                                  <option value="H5">H5</option>
+                                  <option value="H6">H6</option>
+                                </select>
+
+                                <select
+                                  onChange={(e) =>
+                                    handleAdvancedOption(
+                                      "fontName",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="px-2 py-1 text-xs border border-orange-300 dark:border-orange-600 rounded bg-white dark:bg-orange-700 text-gray-800 dark:text-white"
+                                  title="Font Family"
+                                >
+                                  {fontList.map((font) => (
+                                    <option key={font} value={font}>
+                                      {font}
+                                    </option>
+                                  ))}
+                                </select>
+                                <select
+                                  onChange={(e) =>
+                                    handleAdvancedOption(
+                                      "fontSize",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="px-2 py-1 text-xs border border-orange-300 dark:border-orange-600 rounded bg-white dark:bg-orange-700 text-gray-800 dark:text-white"
+                                  title="Font Size"
+                                  defaultValue="3"
+                                >
+                                  {[1, 2, 3, 4, 5, 6, 7].map((size) => (
+                                    <option key={size} value={size}>
+                                      {size}
+                                    </option>
+                                  ))}
+                                </select>
+
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="color"
+                                    onChange={(e) =>
+                                      handleAdvancedOption(
+                                        "foreColor",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-7 h-7 border-none cursor-pointer rounded"
+                                    title="Font Color"
+                                  />
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Rich Text Editor Content */}
+                          <div
+                            ref={editorRef}
+                            contentEditable
+                            onInput={handleEditorInput}
+                            className="min-h-[200px] p-4 text-sm text-gray-900 dark:text-white bg-white dark:bg-orange-900/20 focus:outline-none"
+                            style={{ minHeight: "200px" }}
+                            dangerouslySetInnerHTML={{
+                              __html:
+                                selectedTicketForEdit.jobResolution ||
+                                "<p>Describe the job resolution in detail...</p>",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Request Description */}
+                    <div className="mb-3">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="p-1 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400"
+                          >
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14,2 14,8 20,8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10,9 9,9 8,9"></polyline>
+                          </svg>
+                        </div>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                          <span className="text-red-500">*</span> Request
+                          Description
+                        </h3>
+                      </div>
+                      <div className="border border-primary-200 dark:border-dark-600 rounded-lg overflow-hidden">
+                        {/* Rich Text Editor Toolbar */}
+                        <div className="sticky top-0 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-600 p-3">
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton("bold")}
+                            className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                              activeButtons.has("bold")
+                                ? "bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white"
+                                : "bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            }`}
+                            title="Bold"
+                          >
+                            <i className="fa-solid fa-bold text-xs"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton("italic")}
+                            className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                              activeButtons.has("italic")
+                                ? "bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white"
+                                : "bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            }`}
+                            title="Italic"
+                          >
+                            <i className="fa-solid fa-italic text-xs"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleFormatButton("underline")}
+                            className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                              activeButtons.has("underline")
+                                ? "bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white"
+                                : "bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            }`}
+                            title="Underline"
+                          >
+                            <i className="fa-solid fa-underline text-xs"></i>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setShowAllToolbarOptions(!showAllToolbarOptions)
+                            }
+                            className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                            title="View All"
+                          >
+                            <i className="fa-solid fa-eye text-xs"></i>
+                          </button>
+
+                          {showAllToolbarOptions && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleFormatButton("strikeThrough")
+                                }
+                                className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                  activeButtons.has("strikeThrough")
+                                    ? "bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white"
+                                    : "bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                }`}
+                                title="Strikethrough"
+                              >
+                                <i className="fa-solid fa-strikethrough text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleFormatButton("superscript")
+                                }
+                                className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                  activeButtons.has("superscript")
+                                    ? "bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white"
+                                    : "bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                }`}
+                                title="Superscript"
+                              >
+                                <i className="fa-solid fa-superscript text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton("subscript")}
+                                className={`w-7 h-7 flex items-center justify-center rounded border-none outline-none ${
+                                  activeButtons.has("subscript")
+                                    ? "bg-blue-200 text-blue-800 dark:bg-blue-600 dark:text-white"
+                                    : "bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                }`}
+                                title="Subscript"
+                              >
+                                <i className="fa-solid fa-subscript text-xs"></i>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleFormatButton("insertOrderedList")
+                                }
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Numbered List"
+                              >
+                                <i className="fa-solid fa-list-ol text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleFormatButton("insertUnorderedList")
+                                }
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Bullet List"
+                              >
+                                <i className="fa-solid fa-list text-xs"></i>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton("undo")}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Undo"
+                              >
+                                <i className="fa-solid fa-rotate-left text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton("redo")}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Redo"
+                              >
+                                <i className="fa-solid fa-rotate-right text-xs"></i>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={handleCreateLink}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Create Link"
+                              >
+                                <i className="fa fa-link text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton("unlink")}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Remove Link"
+                              >
+                                <i className="fa fa-unlink text-xs"></i>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleAlignment("justifyLeft")}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Align Left"
+                              >
+                                <i className="fa-solid fa-align-left text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleAlignment("justifyCenter")}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Align Center"
+                              >
+                                <i className="fa-solid fa-align-center text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleAlignment("justifyRight")}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Align Right"
+                              >
+                                <i className="fa-solid fa-align-right text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleAlignment("justifyFull")}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Justify"
+                              >
+                                <i className="fa-solid fa-align-justify text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton("indent")}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Indent"
+                              >
+                                <i className="fa-solid fa-indent text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFormatButton("outdent")}
+                                className="w-7 h-7 flex items-center justify-center rounded border-none outline-none bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                title="Outdent"
+                              >
+                                <i className="fa-solid fa-outdent text-xs"></i>
+                              </button>
+
+                              <select
+                                onChange={(e) =>
+                                  handleAdvancedOption(
+                                    "formatBlock",
+                                    e.target.value
+                                  )
+                                }
+                                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                title="Heading"
+                              >
+                                <option value="div">Normal</option>
+                                <option value="H1">H1</option>
+                                <option value="H2">H2</option>
+                                <option value="H3">H3</option>
+                                <option value="H4">H4</option>
+                                <option value="H5">H5</option>
+                                <option value="H6">H6</option>
+                              </select>
+
+                              <select
+                                onChange={(e) =>
+                                  handleAdvancedOption(
+                                    "fontName",
+                                    e.target.value
+                                  )
+                                }
+                                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                title="Font Family"
+                              >
+                                {fontList.map((font) => (
+                                  <option key={font} value={font}>
+                                    {font}
+                                  </option>
+                                ))}
+                              </select>
+                              <select
+                                onChange={(e) =>
+                                  handleAdvancedOption(
+                                    "fontSize",
+                                    e.target.value
+                                  )
+                                }
+                                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                title="Font Size"
+                                defaultValue="3"
+                              >
+                                {[1, 2, 3, 4, 5, 6, 7].map((size) => (
+                                  <option key={size} value={size}>
+                                    {size}
+                                  </option>
+                                ))}
+                              </select>
+
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="color"
+                                  onChange={(e) =>
+                                    handleAdvancedOption(
+                                      "foreColor",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-7 h-7 border-none cursor-pointer rounded"
+                                  title="Font Color"
+                                />
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Rich Text Editor Content */}
+                        <div
+                          ref={editorRef}
+                          contentEditable
+                          onInput={handleEditorInput}
+                          className="min-h-[200px] p-4 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none"
+                          style={{ minHeight: "200px" }}
+                          dangerouslySetInnerHTML={{
+                            __html:
+                              selectedTicketForEdit.description ||
+                              "<p>Describe your request in detail...</p>",
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        <span className="text-red-500">*</span> Required fields
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEditModalOpen(false);
+                            setSelectedTicketForEdit(null);
+                          }}
+                          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors duration-200"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 rounded-lg transition-colors duration-200 flex items-center gap-2"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                          Update Ticket
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Unified Ticket Modal */}
+        <UnifiedTicketModal
+          isOpen={isUnifiedModalOpen}
+          onClose={() => {
+            setIsUnifiedModalOpen(false);
+            setSelectedTicketForEdit(null);
+            setTemplateData(null); // Clear template data when closing
+          }}
+          mode={unifiedModalMode}
+          selectedTicket={selectedTicketForEdit}
+          templateData={templateData}
+          onSubmit={handleUnifiedModalSubmit}
+        />
+
+        {/* Create Another Modal */}
+        {isCreateAnotherModalOpen && lastCreatedTicket && (
+          <div
+            className="fixed inset-0 z-50 overflow-x-hidden overflow-y-auto scrollbar-hide"
+            role="dialog"
+            tabIndex={-1}
+            aria-labelledby="create-another-modal-label"
+          >
+            <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity overflow-hidden"></div>
+            <div className="relative min-h-screen flex items-center justify-center p-4">
+              <div className="w-full max-w-md opacity-100 duration-500 ease-out transition-all">
+                <div className="w-full flex flex-col bg-white border border-gray-200 shadow-2xl rounded-xl pointer-events-auto dark:bg-neutral-800 dark:border-neutral-700 dark:shadow-neutral-700/70">
+                  {/* Modal Header */}
+                  <div className="flex justify-between items-center py-4 px-6 border-b border-gray-200 dark:border-neutral-700">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                        <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div>
+                        <h1
+                          id="create-another-modal-label"
+                          className="font-bold text-gray-800 dark:text-white text-lg"
+                        >
+                          Ticket Created Successfully!
+                        </h1>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Ticket #{lastCreatedTicket.ticketNo} has been created
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="size-8 inline-flex justify-center items-center gap-x-2 rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-none focus:bg-gray-200 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:text-neutral-400 dark:focus:bg-neutral-600"
+                      aria-label="Close"
+                      onClick={handleCloseCreateAnother}
+                    >
+                      <span className="sr-only">Close</span>
+                      <X className="shrink-0 size-4" />
+                    </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div className="p-6">
+                    <div className="text-center">
+                      <div className="mb-4">
+                        <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                          Great! Your ticket has been created.
+                        </h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                          Ticket{" "}
+                          <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
+                            #{lastCreatedTicket.ticketNo}
+                          </span>{" "}
+                          for{" "}
+                          <span className="font-semibold">
+                            {lastCreatedTicket.ticketTitle}
+                          </span>{" "}
+                          has been successfully submitted.
+                        </p>
+                      </div>
+
+                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 mb-6">
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                          Ticket Details:
+                        </h4>
+                        <div className="text-left space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                          <div className="flex justify-between">
+                            <span>Requestor:</span>
+                            <span className="font-medium">
+                              {lastCreatedTicket.requestor}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Department:</span>
+                            <span className="font-medium">
+                              {lastCreatedTicket.department}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Category:</span>
+                            <span className="font-medium">
+                              {lastCreatedTicket.category}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Severity:</span>
+                            <span
+                              className={`font-medium ${
+                                lastCreatedTicket.severity === "Critical"
+                                  ? "text-red-600"
+                                  : lastCreatedTicket.severity === "High"
+                                  ? "text-orange-600"
+                                  : lastCreatedTicket.severity === "Medium"
+                                  ? "text-yellow-600"
+                                  : "text-green-600"
+                              }`}
+                            >
+                              {lastCreatedTicket.severity}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Email Notification Status */}
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                            <svg
+                              className="w-5 h-5 text-blue-600 dark:text-blue-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                              />
+                            </svg>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                              📧 Email Notification Sent
+                            </h4>
+                            <p className="text-xs text-blue-600 dark:text-blue-300">
+                              An email notification has been sent to{" "}
+                              <span className="font-medium">
+                                {lastCreatedTicket.assignee}
+                              </span>{" "}
+                              at {getAssigneeEmail(lastCreatedTicket.assignee)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                        Would you like to create another ticket?
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className="flex justify-center gap-3 px-6 py-4 border-t border-gray-200 dark:border-neutral-700">
+                    <button
+                      type="button"
+                      onClick={handleCloseCreateAnother}
+                      className="px-6 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors duration-200"
+                    >
+                      No, I'm Done
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCreateAnother}
+                      className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-200 flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create Another Ticket
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* IT Support Ticket Form */}
+        <ITSupportTicketForm
+          isOpen={isITSupportFormOpen}
+          onClose={() => setIsITSupportFormOpen(false)}
+          onSubmit={(ticketData) => {
+            console.log("IT Support ticket submitted:", ticketData);
+            // Here you would typically send the data to your backend
+            alert("IT Support ticket submitted successfully!");
+          }}
+        />
       </div>
     </>
   );

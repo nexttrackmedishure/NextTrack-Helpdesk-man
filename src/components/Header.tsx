@@ -4,7 +4,6 @@ import { AnimatedThemeToggler } from "./magicui/animated-theme-toggler";
 import { useAuth } from "../contexts/AuthContext";
 
 interface HeaderProps {
-  onMenuClick: () => void;
   activeTab: string; // Add activeTab prop
 }
 
@@ -98,19 +97,19 @@ const Header: React.FC<HeaderProps> = ({ activeTab }) => {
   }, []);
 
   return (
-    <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        {/* Left side - Page Title */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+    <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 h-20 flex items-center shadow-sm">
+      <div className="flex items-center justify-between w-full">
+        {/* Left Section - Page Title */}
+        <div className="flex flex-col">
+          <h1 className="text-2xl font-bold text-purple-600 dark:text-purple-400">
             {headerContent.title}
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 -mt-1">
+          <p className="text-sm text-gray-700 dark:text-gray-400">
             {headerContent.subtitle}
           </p>
         </div>
 
-        {/* Right side - User controls */}
+        {/* Right Section - User controls */}
         <div className="flex items-center space-x-3">
           {/* Animated Theme Toggle */}
           <div className="relative">

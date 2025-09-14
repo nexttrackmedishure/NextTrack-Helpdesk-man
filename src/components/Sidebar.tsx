@@ -10,6 +10,8 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
+  Monitor,
+  UserPlus,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -29,6 +31,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     { icon: LayoutDashboard, label: "Dashboard" },
     { icon: MessageSquare, label: "Tickets" },
     { icon: Users, label: "Customers" },
+    { icon: UserPlus, label: "Register User" },
+    { icon: Monitor, label: "IT Support Demo" },
     { icon: FileText, label: "Knowledge Base" },
     { icon: BarChart3, label: "Analytics" },
     { icon: FolderOpen, label: "Categories" },

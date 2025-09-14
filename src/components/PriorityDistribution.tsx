@@ -1,8 +1,10 @@
 
 import React, { useState } from "react";
 import ReactApexChart from "react-apexcharts";
+import { useTheme } from "../contexts/ThemeContext";
 
 const PriorityDistribution: React.FC = () => {
+  const { isDark } = useTheme();
   const [chartData, setChartData] = useState([35.1, 23.5, 2.4, 5.4, 8.2]);
   const [checkedDevices, setCheckedDevices] = useState<string[]>([]);
 
@@ -28,12 +30,14 @@ const PriorityDistribution: React.FC = () => {
                 show: true,
                 fontFamily: "Inter, sans-serif",
                 offsetY: 20,
+                color: isDark ? "#ffffff" : "#1f2937", // White for dark mode, dark for light mode
               },
             total: {
                 showAlways: true,
                 show: true,
                 label: "Total Tickets",
                 fontFamily: "Inter, sans-serif",
+                color: isDark ? "#ffffff" : "#1f2937", // White for dark mode, dark for light mode
                 formatter: function (w: any) {
                   const sum = w.globals.seriesTotals.reduce((a: number, b: number) => {
                     return a + b
@@ -45,12 +49,13 @@ const PriorityDistribution: React.FC = () => {
               show: true,
                 fontFamily: "Inter, sans-serif",
                 offsetY: -20,
+                color: isDark ? "#ffffff" : "#1f2937", // White for dark mode, dark for light mode
                 formatter: function (val: string) {
                   return Math.round(Number(val)) + " tickets"
                 },
               },
             },
-            size: "80%",
+            size: "60%",
             },
           },
         },
@@ -66,6 +71,9 @@ const PriorityDistribution: React.FC = () => {
     legend: {
         position: "bottom" as const,
         fontFamily: "Inter, sans-serif",
+        labels: {
+          colors: isDark ? "#ffffff" : "#1f2937", // White for dark mode, dark for light mode
+        },
       },
       yaxis: {
         labels: {

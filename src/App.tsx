@@ -8,12 +8,15 @@ import Login from "./components/Login";
 // Lazy load components for better performance
 const Dashboard = lazy(() => import("./components/Dashboard"));
 const TicketGallery = lazy(() => import("./components/TicketGallery"));
+const ChatApplication = lazy(() => import("./components/ChatApplication"));
+const ITSupportDemo = lazy(() => import("./components/ITSupportDemo"));
+const RegisterForm = lazy(() => import("./components/RegisterForm"));
 
 // Authenticated App Component
 function AuthenticatedApp() {
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [activeTab, setActiveTab] = useState("Dashboard");
-  const [isNewRequestModalOpen, setIsNewRequestModalOpen] = useState(false);
+  // Legacy modal state removed - now using unified modal in TicketGallery
 
   const toggleSidebar = () => {
     setSidebarExpanded(!sidebarExpanded);
@@ -28,9 +31,9 @@ function AuthenticatedApp() {
     document.title = `NexTrack | ${activeTab}`;
   }, [activeTab]);
 
-  // Prevent body scrolling when modal is open
+  // Prevent body scrolling when in Customers tab
   useEffect(() => {
-    if (isNewRequestModalOpen) {
+    if (activeTab === "Customers") {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "unset";
@@ -40,7 +43,7 @@ function AuthenticatedApp() {
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, [isNewRequestModalOpen]);
+  }, [activeTab]);
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-dark-900">
@@ -50,14 +53,16 @@ function AuthenticatedApp() {
         activeTab={activeTab}
         onTabChange={handleTabChange}
       />
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {!isNewRequestModalOpen && <Header activeTab={activeTab} />}
+      <div className="flex-1 flex flex-col min-w-0">
+        <Header activeTab={activeTab} />
         <main
-          className={`flex-1 overflow-x-hidden bg-gray-50 dark:bg-dark-900 p-4 md:p-6 ${
-            isNewRequestModalOpen ? "overflow-y-hidden" : "overflow-y-auto"
+          className={`flex-1 overflow-x-hidden bg-gray-50 dark:bg-dark-900 ${
+            activeTab === "Customers" ? "p-0" : "p-4 md:p-6"
+          } ${
+            activeTab === "Customers" ? "overflow-y-hidden" : "overflow-y-auto"
           }`}
         >
-          <div className="max-w-full">
+          <div className={activeTab === "Customers" ? "h-full" : "max-w-full"}>
             <Suspense
               fallback={
                 <div className="flex items-center justify-center h-64">
@@ -66,12 +71,10 @@ function AuthenticatedApp() {
               }
             >
               {activeTab === "Dashboard" && <Dashboard />}
-              {activeTab === "Tickets" && (
-                <TicketGallery
-                  isNewRequestModalOpen={isNewRequestModalOpen}
-                  setIsNewRequestModalOpen={setIsNewRequestModalOpen}
-                />
-              )}
+              {activeTab === "Tickets" && <TicketGallery />}
+              {activeTab === "Customers" && <ChatApplication />}
+              {activeTab === "Register User" && <RegisterForm />}
+              {activeTab === "IT Support Demo" && <ITSupportDemo />}
             </Suspense>
           </div>
         </main>
