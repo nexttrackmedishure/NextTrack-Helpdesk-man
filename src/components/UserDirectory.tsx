@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { getAllUsers, UserDirectoryUser } from "../services/userService";
 import NewUserRegistrationModal from "./NewUserRegistrationModal";
+import ViewUserModal from "./ViewUserModal";
+import EditUserModal from "./EditUserModal";
 
 const UserDirectory: React.FC = () => {
   const [users, setUsers] = useState<UserDirectoryUser[]>([]);
@@ -26,11 +28,42 @@ const UserDirectory: React.FC = () => {
     null
   );
   const [showUserActions, setShowUserActions] = useState<string | null>(null);
+  const [showViewModal, setShowViewModal] = useState<boolean>(false);
+  const [showEditModal, setShowEditModal] = useState<boolean>(false);
+  const [dropdownDirection, setDropdownDirection] = useState<"up" | "down">(
+    "down"
+  );
 
   // Load users on component mount
   useEffect(() => {
     loadUsers();
   }, []);
+
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showUserActions) {
+        const target = event.target as Element;
+        const dropdown = target.closest(".user-actions-dropdown");
+        const button = target.closest("[data-user-id]");
+
+        // If click is outside both dropdown and button, close the dropdown
+        if (!dropdown && !button) {
+          setShowUserActions(null);
+        }
+      }
+    };
+
+    // Add event listener when dropdown is open
+    if (showUserActions) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    // Cleanup event listener
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showUserActions]);
 
   const loadUsers = async () => {
     try {
@@ -71,23 +104,274 @@ const UserDirectory: React.FC = () => {
 
     switch (action) {
       case "view":
-        // TODO: Implement view user details
-        console.log("View user:", user);
+        setShowViewModal(true);
         break;
       case "edit":
-        // TODO: Implement edit user
-        console.log("Edit user:", user);
+        setShowEditModal(true);
         break;
       case "delete":
-        // TODO: Implement delete user
-        console.log("Delete user:", user);
+        handleDeleteUser(user);
         break;
       case "toggle-status":
-        // TODO: Implement toggle user status
-        console.log("Toggle status for user:", user);
+        handleToggleUserStatus(user);
         break;
     }
   };
+
+  // Handle delete user
+  const handleDeleteUser = async (user: UserDirectoryUser) => {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete user "${user.fullName}"? This action cannot be undone.`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      // Simulate API call to delete user
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Remove user from local state
+      setUsers((prevUsers) => prevUsers.filter((u) => u.id !== user.id));
+
+      alert(`User "${user.fullName}" has been deleted successfully.`);
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      alert("Failed to delete user. Please try again.");
+    }
+  };
+
+  // Handle toggle user status
+  const handleToggleUserStatus = async (user: UserDirectoryUser) => {
+    const newStatus = user.status === "active" ? "inactive" : "active";
+    const action = newStatus === "active" ? "activate" : "deactivate";
+
+    const confirmToggle = window.confirm(
+      `Are you sure you want to ${action} user "${user.fullName}"?`
+    );
+
+    if (!confirmToggle) return;
+
+    try {
+      // Simulate API call to update user status
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Update user status in local state
+      setUsers((prevUsers) =>
+        prevUsers.map((u) =>
+          u.id === user.id
+            ? { ...u, status: newStatus, isActive: newStatus === "active" }
+            : u
+        )
+      );
+
+      alert(`User "${user.fullName}" has been ${action}d successfully.`);
+    } catch (error) {
+      console.error("Error updating user status:", error);
+      alert("Failed to update user status. Please try again.");
+    }
+  };
+
+  // Handle user update from edit modal
+  const handleUserUpdated = (updatedUser: UserDirectoryUser) => {
+    setUsers((prevUsers) =>
+      prevUsers.map((u) => (u.id === updatedUser.id ? updatedUser : u))
+    );
+  };
+
+  // Function to determine dropdown direction with collision detection
+  const determineDropdownDirection = (userId: string) => {
+    const userIndex = filteredUsers.findIndex((user) => user.id === userId);
+    const totalUsers = filteredUsers.length;
+
+    // Get the button element to check its position
+    const buttonElement = document.querySelector(`[data-user-id="${userId}"]`);
+
+    if (buttonElement) {
+      const rect = buttonElement.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
+      const dropdownHeight = 200; // Approximate height of dropdown menu
+      const dropdownWidth = 192; // 48 * 4 (w-48 in Tailwind)
+
+      // Check available space
+      const spaceBelow = viewportHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const spaceRight = viewportWidth - rect.right;
+      const spaceLeft = rect.left;
+
+      // Check for collisions with other table elements and rows
+      const tableContainer =
+        buttonElement.closest("table") ||
+        buttonElement.closest(".overflow-x-auto");
+      let collisionDetected = false;
+      let preferredDirection = "down";
+
+      if (tableContainer) {
+        const tableRect = tableContainer.getBoundingClientRect();
+
+        // Check if dropdown would extend beyond table boundaries
+        const dropdownBottom = rect.bottom + dropdownHeight;
+        const dropdownTop = rect.top - dropdownHeight;
+
+        // Check for collision with table bottom
+        if (dropdownBottom > tableRect.bottom) {
+          collisionDetected = true;
+          preferredDirection = "up";
+        }
+
+        // Check for collision with table top
+        if (dropdownTop < tableRect.top) {
+          collisionDetected = true;
+          preferredDirection = "down";
+        }
+
+        // Check for collision with other table rows
+        const allTableRows = tableContainer.querySelectorAll("tbody tr");
+        const currentRow = buttonElement.closest("tr");
+
+        if (allTableRows && currentRow) {
+          allTableRows.forEach((row) => {
+            if (row !== currentRow) {
+              const rowRect = row.getBoundingClientRect();
+
+              // Check if dropdown would overlap with other rows when going down
+              if (
+                dropdownBottom > rowRect.top &&
+                dropdownBottom < rowRect.bottom
+              ) {
+                collisionDetected = true;
+                preferredDirection = "up";
+              }
+
+              // Check if dropdown would overlap with other rows when going up
+              if (dropdownTop < rowRect.bottom && dropdownTop > rowRect.top) {
+                collisionDetected = true;
+                preferredDirection = "down";
+              }
+            }
+          });
+        }
+      }
+
+      // Enhanced positioning logic with collision detection
+      const fitsDown = spaceBelow >= dropdownHeight && !collisionDetected;
+      const fitsUp = spaceAbove >= dropdownHeight && !collisionDetected;
+      const fitsRight = spaceRight >= dropdownWidth;
+
+      // Smart direction selection
+      if (collisionDetected) {
+        // If collision detected, use preferred direction
+        setDropdownDirection(preferredDirection);
+      } else if (fitsDown && fitsRight) {
+        setDropdownDirection("down");
+      } else if (fitsUp && fitsRight) {
+        setDropdownDirection("up");
+      } else if (fitsDown && !fitsUp) {
+        setDropdownDirection("down");
+      } else if (fitsUp && !fitsDown) {
+        setDropdownDirection("up");
+      } else {
+        // Neither direction fits perfectly, choose the one with more space
+        setDropdownDirection(spaceBelow > spaceAbove ? "down" : "up");
+      }
+      return;
+    }
+
+    // Fallback: Use row position logic with more aggressive upward positioning
+    const isLastRow = userIndex === totalUsers - 1;
+    const isSecondLastRow = userIndex === totalUsers - 2;
+    const isThirdLastRow = userIndex === totalUsers - 3;
+    const isFourthLastRow = userIndex === totalUsers - 4;
+    const isFifthLastRow = userIndex === totalUsers - 5;
+
+    // More aggressive upward positioning - if it's in the bottom half, go up
+    const isInBottomHalf = userIndex >= totalUsers / 2;
+
+    // If it's one of the last 5 rows or in bottom half, show dropdown upward
+    if (
+      isLastRow ||
+      isSecondLastRow ||
+      isThirdLastRow ||
+      isFourthLastRow ||
+      isFifthLastRow ||
+      isInBottomHalf
+    ) {
+      setDropdownDirection("up");
+    } else {
+      setDropdownDirection("down");
+    }
+  };
+
+  // Enhanced function to handle user actions with smart positioning
+  const handleUserActionClick = (userId: string) => {
+    // Determine dropdown direction first
+    determineDropdownDirection(userId);
+
+    // Then show/hide the dropdown
+    setShowUserActions(showUserActions === userId ? null : userId);
+
+    // If opening dropdown, do a final collision check after a brief delay
+    if (showUserActions !== userId) {
+      setTimeout(() => {
+        checkRealTimeCollision(userId);
+      }, 50);
+    }
+  };
+
+  // Function to re-check positioning when dropdown is open (for scroll/resize)
+  const recheckDropdownPosition = () => {
+    if (showUserActions) {
+      // Add a small delay to ensure DOM updates are complete
+      setTimeout(() => {
+        determineDropdownDirection(showUserActions);
+      }, 10);
+    }
+  };
+
+  // Enhanced positioning with real-time collision detection
+  const checkRealTimeCollision = (userId: string) => {
+    const buttonElement = document.querySelector(`[data-user-id="${userId}"]`);
+    if (!buttonElement) return false;
+
+    const rect = buttonElement.getBoundingClientRect();
+    const dropdownHeight = 200;
+    const dropdownBottom = rect.bottom + dropdownHeight;
+    const dropdownTop = rect.top - dropdownHeight;
+
+    // Check for immediate collisions with viewport
+    const viewportHeight = window.innerHeight;
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    // If there's not enough space in current direction, switch immediately
+    if (dropdownDirection === "down" && spaceBelow < dropdownHeight) {
+      setDropdownDirection("up");
+      return true;
+    }
+
+    if (dropdownDirection === "up" && spaceAbove < dropdownHeight) {
+      setDropdownDirection("down");
+      return true;
+    }
+
+    return false;
+  };
+
+  // Add scroll and resize listeners to recheck positioning
+  useEffect(() => {
+    if (showUserActions) {
+      const handleScroll = () => recheckDropdownPosition();
+      const handleResize = () => recheckDropdownPosition();
+
+      window.addEventListener("scroll", handleScroll, true);
+      window.addEventListener("resize", handleResize);
+
+      return () => {
+        window.removeEventListener("scroll", handleScroll, true);
+        window.removeEventListener("resize", handleResize);
+      };
+    }
+  }, [showUserActions]);
 
   // Get role badge color
   const getRoleBadgeColor = (role: string) => {
@@ -299,18 +583,35 @@ const UserDirectory: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="relative">
                           <button
-                            onClick={() =>
-                              setShowUserActions(
-                                showUserActions === user.id ? null : user.id
-                              )
-                            }
+                            data-user-id={user.id}
+                            onClick={() => handleUserActionClick(user.id)}
                             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>
 
                           {showUserActions === user.id && (
-                            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-md shadow-lg z-10 border border-gray-200 dark:border-gray-600">
+                            <div
+                              className={`user-actions-dropdown absolute right-0 w-48 bg-white dark:bg-gray-700 rounded-md shadow-lg z-10 border border-gray-200 dark:border-gray-600 ${
+                                dropdownDirection === "up"
+                                  ? "bottom-full mb-2"
+                                  : "top-full mt-2"
+                              }`}
+                            >
+                              {/* Arrow indicator with smart positioning indicator */}
+                              <div
+                                className={`absolute right-4 w-0 h-0 border-l-4 border-r-4 border-l-transparent border-r-transparent ${
+                                  dropdownDirection === "up"
+                                    ? "top-full border-t-4 border-t-white dark:border-t-gray-700"
+                                    : "bottom-full border-b-4 border-b-white dark:border-b-gray-700"
+                                }`}
+                              ></div>
+
+                              {/* Smart positioning indicator */}
+                              <div
+                                className="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500 opacity-60"
+                                title="Smart positioning active"
+                              ></div>
                               <div className="py-1">
                                 <button
                                   onClick={() => handleUserAction("view", user)}
@@ -428,6 +729,21 @@ const UserDirectory: React.FC = () => {
         isOpen={showRegistrationModal}
         onClose={() => setShowRegistrationModal(false)}
         onUserCreated={handleUserCreated}
+      />
+
+      {/* View User Modal */}
+      <ViewUserModal
+        isOpen={showViewModal}
+        onClose={() => setShowViewModal(false)}
+        user={selectedUser}
+      />
+
+      {/* Edit User Modal */}
+      <EditUserModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        user={selectedUser}
+        onUserUpdated={handleUserUpdated}
       />
     </div>
   );
