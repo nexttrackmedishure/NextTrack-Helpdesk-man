@@ -9,20 +9,27 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true,
+    proxy: {
+      "/api": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   resolve: {
     extensions: [".mjs", ".js", ".ts", ".jsx", ".tsx", ".json"],
   },
   optimizeDeps: {
     include: [
-      "react", 
-      "react-dom", 
+      "react",
+      "react-dom",
       "lucide-react",
       "apexcharts",
       "react-apexcharts",
       "chart.js",
       "react-chartjs-2",
-      "recharts"
+      "recharts",
     ],
   },
   build: {

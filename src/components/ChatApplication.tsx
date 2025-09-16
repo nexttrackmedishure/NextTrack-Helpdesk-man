@@ -29,9 +29,12 @@ import {
   Menu,
   ChevronLeft,
   PanelLeftClose,
+  Inbox,
+  Plus,
 } from "lucide-react";
 import VideoCall from "./VideoCall";
 import EmojiPicker from "./EmojiPicker";
+import { chatService, ChatContact } from "../services/chatService";
 
 // Type definitions
 interface BaseMessage {
@@ -232,11 +235,19 @@ const mockMessages: { [key: number]: Message[] } = {
 };
 
 const ChatApplication: React.FC = () => {
-  const [selectedContact, setSelectedContact] = useState(mockContacts[0]);
+  const [contacts, setContacts] = useState(mockContacts);
+  const [selectedContact, setSelectedContact] = useState(contacts[0]);
   const [messages, setMessages] = useState<Message[]>(
     (mockMessages as any)[selectedContact.id] || []
   );
   const [newMessage, setNewMessage] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Filter contacts based on search term
+  const filteredContacts = contacts.filter((contact) =>
+    contact.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
@@ -289,6 +300,9 @@ const ChatApplication: React.FC = () => {
     left: 0,
   });
   const [isInboxOpen, setIsInboxOpen] = useState(true); // Inbox drawer toggle
+  const [isUserSelectionOpen, setIsUserSelectionOpen] = useState(false); // User selection modal
+  const [availableUsers, setAvailableUsers] = useState<any[]>([]); // Available users from database
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false); // Loading state for users
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -363,6 +377,27 @@ const ChatApplication: React.FC = () => {
     loadDevicePermissions();
   }, []);
 
+  // Load contacts from database on component mount
+  useEffect(() => {
+    const loadContacts = async () => {
+      try {
+        const contacts = await chatService.getContacts();
+        if (contacts.length > 0) {
+          setContacts(contacts);
+          // Select the first contact if none is selected
+          if (!selectedContact || selectedContact.id === 0) {
+            setSelectedContact(contacts[0]);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading contacts from database:", error);
+        // Continue with mock data if database fails
+      }
+    };
+
+    loadContacts();
+  }, []);
+
   // Restart monitoring when micStream changes
   useEffect(() => {
     if (micStream && isMicTestOpen) {
@@ -390,7 +425,7 @@ const ChatApplication: React.FC = () => {
     };
   }, [isVoiceCallOpen]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (newMessage.trim()) {
       const message: Message = {
         id: messages.length + 1,
@@ -402,8 +437,20 @@ const ChatApplication: React.FC = () => {
         }),
         isRead: false,
       };
+
+      // Add message to local state immediately for better UX
       setMessages([...messages, message]);
       setNewMessage("");
+
+      // Save message to database if connected
+      try {
+        // For now, we'll skip database saving for messages since we need to implement
+        // proper conversation ID mapping. This will be enhanced in future iterations.
+        // The message is already saved in local state for immediate user experience.
+      } catch (error) {
+        console.error("Error saving message to database:", error);
+        // Message is already in local state, so user experience is not affected
+      }
     }
   };
 
@@ -436,6 +483,33 @@ const ChatApplication: React.FC = () => {
         break;
       default:
         console.log(`Unknown action: ${action}`);
+    }
+    setOpenDropdownId(null);
+  };
+
+  // Handle user management actions
+  const handleUserAction = (userId: number, action: string) => {
+    const user = contacts.find((c) => c.id === userId);
+    if (!user) return;
+
+    switch (action) {
+      case "view-profile":
+        handleViewProfile(user);
+        break;
+      case "edit-user":
+        handleEditUser(user);
+        break;
+      case "user-directory":
+        handleOpenUserDirectory(user);
+        break;
+      case "toggle-status":
+        handleToggleUserStatus(user);
+        break;
+      case "block-user":
+        handleBlockUser(user);
+        break;
+      default:
+        console.log(`Unknown user action: ${action}`);
     }
     setOpenDropdownId(null);
   };
@@ -545,6 +619,190 @@ const ChatApplication: React.FC = () => {
       setTimeout(() => {
         document.title = originalTitle;
       }, 2000);
+    }
+  };
+
+  // User management action functions
+  const handleViewProfile = (user: any) => {
+    // Create a modal or navigate to user profile
+    alert(
+      `Viewing profile for ${user.name}\n\nEmail: ${user.email}\nStatus: ${user.status}\nLast seen: ${user.lastSeen}`
+    );
+  };
+
+  const handleEditUser = (user: any) => {
+    // Open user edit modal or navigate to edit page
+    alert(
+      `Editing user: ${user.name}\n\nThis would open the user edit form with pre-filled data for:\n- Name: ${user.name}\n- Email: ${user.email}\n- Status: ${user.status}`
+    );
+  };
+
+  const handleOpenUserDirectory = (user: any) => {
+    // Navigate to user directory and highlight this user
+    alert(
+      `Opening User Directory\n\nThis would navigate to the User Directory tab and highlight user: ${user.name}\n\nUser ID: ${user.id}\nEmail: ${user.email}`
+    );
+
+    // In a real implementation, you would:
+    // 1. Switch to the User Directory tab
+    // 2. Scroll to and highlight the specific user
+    // 3. Maybe open a user details modal
+  };
+
+  const handleToggleUserStatus = (user: any) => {
+    const newStatus = user.status === "active" ? "inactive" : "active";
+    const action = newStatus === "active" ? "activate" : "deactivate";
+
+    if (confirm(`Are you sure you want to ${action} ${user.name}?`)) {
+      // Update user status in the contacts list
+      setContacts((prevContacts) =>
+        prevContacts.map((contact) =>
+          contact.id === user.id ? { ...contact, status: newStatus } : contact
+        )
+      );
+
+      // Show success message
+      alert(`User ${user.name} has been ${action}d successfully!`);
+    }
+  };
+
+  const handleBlockUser = (user: any) => {
+    if (
+      confirm(
+        `Are you sure you want to block ${user.name}?\n\nThis will prevent them from sending messages and accessing the system.`
+      )
+    ) {
+      // Update user status to blocked
+      setContacts((prevContacts) =>
+        prevContacts.map((contact) =>
+          contact.id === user.id ? { ...contact, status: "blocked" } : contact
+        )
+      );
+
+      // Show success message
+      alert(`User ${user.name} has been blocked successfully!`);
+    }
+  };
+
+  // Function to fetch users from database
+  const fetchAvailableUsers = async () => {
+    try {
+      setIsLoadingUsers(true);
+      console.log("🔄 Fetching users from MongoDB...");
+
+      // Import the getAllUsers function from userService
+      const { getAllUsers } = await import("../services/userService");
+
+      // Fetch actual users from your MongoDB database
+      const users = await getAllUsers();
+      console.log("📊 Users fetched from database:", users);
+
+      // Transform users to the format needed for chat selection
+      const transformedUsers = users.map((user) => ({
+        id: user.id,
+        name: user.fullName || user.nickname || "Unknown User",
+        email: user.email,
+        avatar:
+          user.profileImage ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(
+            user.fullName || user.nickname || "User"
+          )}&background=8b5cf6&color=fff`,
+        department: user.department || "General",
+        role: user.role || "Member",
+        status: user.status || "active",
+        // Include additional user data
+        idNumber: user.idNumber,
+        nickname: user.nickname,
+        branch: user.branch,
+        contactNumber: user.contactNumber,
+        isActive: user.isActive,
+        lastLogin: user.lastLogin,
+        createdAt: user.createdAt,
+      }));
+
+      console.log("✨ Transformed users for chat selection:", transformedUsers);
+
+      if (transformedUsers.length === 0) {
+        alert(
+          "No users found in the MongoDB database. Please create some users first using the User Directory."
+        );
+        return;
+      }
+
+      setAvailableUsers(transformedUsers);
+      setIsUserSelectionOpen(true);
+      console.log(
+        "✅ User selection modal opened with",
+        transformedUsers.length,
+        "users"
+      );
+    } catch (error) {
+      console.error("❌ Error fetching users from MongoDB:", error);
+      alert(
+        "Error loading users from MongoDB database. Please check your database connection and try again."
+      );
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  // Handle creating a new chat - now shows user selection
+  const handleCreateNewChat = async () => {
+    await fetchAvailableUsers();
+  };
+
+  // Function to start chat with selected user
+  const startChatWithUser = async (user: any) => {
+    try {
+      // Create new contact using chat service
+      const newContact = await chatService.createContact({
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        status: "Online",
+        lastMessage: "New conversation started",
+        timestamp: "now",
+        unreadCount: 0,
+      });
+
+      // Create conversation for the new contact
+      await chatService.createConversation(newContact);
+
+      // Add new contact to the local state
+      setContacts((prevContacts) => [...prevContacts, newContact]);
+
+      // Select the new contact
+      setSelectedContact(newContact);
+
+      // Initialize empty messages for the new chat
+      setMessages([]);
+
+      // Close the user selection modal
+      setIsUserSelectionOpen(false);
+
+      // Show success message
+      alert(`New chat created with ${user.name}!`);
+    } catch (error) {
+      console.error("Error creating new chat:", error);
+
+      // Fallback to local creation if database fails
+      const newContact: ChatContact = {
+        id: Math.max(...contacts.map((c) => c.id)) + 1,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        status: "Online",
+        lastMessage: "New conversation started",
+        timestamp: "now",
+        unreadCount: 0,
+      };
+
+      setContacts((prevContacts) => [...prevContacts, newContact]);
+      setSelectedContact(newContact);
+      setMessages([]);
+      setIsUserSelectionOpen(false);
+
+      alert(`New chat created with ${user.name}! (Offline mode)`);
     }
   };
 
@@ -1740,8 +1998,22 @@ const ChatApplication: React.FC = () => {
     return "type" in message && message.type === "url";
   };
 
+  // Function to check if message contains only emojis
+  const isEmojiOnly = (text: string): boolean => {
+    // Remove whitespace and check if the remaining characters are emojis
+    const cleanText = text.trim();
+    if (!cleanText) return false;
+
+    // Regular expression to match emojis (including Unicode ranges for emojis)
+    const emojiRegex =
+      /^[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1F018}-\u{1F0FF}]|[\u{1F200}-\u{1F2FF}]|[\u{1FA70}-\u{1FAFF}]|[\u{1F004}]|[\u{1F0CF}]|[\u{1F170}-\u{1F251}]+$/u;
+
+    return emojiRegex.test(cleanText);
+  };
+
   const renderMessage = (message: Message) => {
     const isAgent = message.sender === "agent";
+    const isEmoji = isEmojiOnly(message.text);
 
     return (
       <div
@@ -1759,7 +2031,7 @@ const ChatApplication: React.FC = () => {
                   openDropdownId === message.id ? null : message.id
                 )
               }
-              className="inline-flex items-center p-2 text-sm font-medium text-center rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-50 dark:focus:ring-gray-600 text-white bg-blue-500 hover:bg-blue-600"
+              className="inline-flex items-center p-2 text-sm font-medium text-center rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-50 dark:focus:ring-gray-600 text-white bg-violet-300/40 hover:bg-violet-200/30"
             >
               <svg
                 className="w-4 h-4"
@@ -1774,14 +2046,52 @@ const ChatApplication: React.FC = () => {
 
             {/* Dropdown menu */}
             {openDropdownId === message.id && (
-              <div className="absolute z-20 bg-white divide-y divide-gray-100 rounded-lg shadow-lg w-40 dark:bg-gray-700 dark:divide-gray-600 top-full left-0 mt-2">
+              <div className="absolute z-20 bg-white divide-y divide-gray-100 rounded-lg shadow-lg w-48 dark:bg-gray-700 dark:divide-gray-600 top-full left-0 mt-2">
                 <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
+                  {/* User Management Section */}
+                  <li>
+                    <button
+                      onClick={() =>
+                        handleUserAction(selectedContact.id, "view-profile")
+                      }
+                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                    >
+                      👤 View Profile
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() =>
+                        handleUserAction(selectedContact.id, "edit-user")
+                      }
+                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                    >
+                      ✏️ Edit User
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() =>
+                        handleUserAction(selectedContact.id, "user-directory")
+                      }
+                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                    >
+                      📋 User Directory
+                    </button>
+                  </li>
+
+                  {/* Divider */}
+                  <li>
+                    <hr className="my-1 border-gray-200 dark:border-gray-600" />
+                  </li>
+
+                  {/* Message Actions Section */}
                   <li>
                     <button
                       onClick={() => handleMessageAction(message.id, "reply")}
                       className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
                     >
-                      Reply
+                      💬 Reply
                     </button>
                   </li>
                   <li>
@@ -1789,7 +2099,7 @@ const ChatApplication: React.FC = () => {
                       onClick={() => handleMessageAction(message.id, "forward")}
                       className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
                     >
-                      Forward
+                      ➡️ Forward
                     </button>
                   </li>
                   <li>
@@ -1798,23 +2108,36 @@ const ChatApplication: React.FC = () => {
                       data-message-id={message.id}
                       className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
                     >
-                      Copy
+                      📋 Copy
+                    </button>
+                  </li>
+
+                  {/* Divider */}
+                  <li>
+                    <hr className="my-1 border-gray-200 dark:border-gray-600" />
+                  </li>
+
+                  {/* User Status Actions */}
+                  <li>
+                    <button
+                      onClick={() =>
+                        handleUserAction(selectedContact.id, "toggle-status")
+                      }
+                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                    >
+                      {selectedContact.status === "active"
+                        ? "🚫 Deactivate"
+                        : "✅ Activate"}
                     </button>
                   </li>
                   <li>
                     <button
-                      onClick={() => handleMessageAction(message.id, "report")}
-                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                      onClick={() =>
+                        handleUserAction(selectedContact.id, "block-user")
+                      }
+                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white text-red-600 dark:text-red-400"
                     >
-                      Report
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => handleMessageAction(message.id, "delete")}
-                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                    >
-                      Delete
+                      🚫 Block User
                     </button>
                   </li>
                 </ul>
@@ -1856,7 +2179,7 @@ const ChatApplication: React.FC = () => {
           <div
             className={`flex flex-col w-full max-w-[320px] leading-1.5 p-4 rounded-xl ${
               isAgent
-                ? "bg-blue-500 text-white rounded-e-xl rounded-es-xl"
+                ? "bg-violet-300/40 text-white rounded-e-xl rounded-es-xl"
                 : "border-gray-200 bg-gray-100 dark:bg-gray-700 rounded-e-xl rounded-es-xl"
             }`}
           >
@@ -1871,7 +2194,9 @@ const ChatApplication: React.FC = () => {
               </span>
               <span
                 className={`text-sm font-normal ${
-                  isAgent ? "text-blue-100" : "text-gray-500 dark:text-gray-400"
+                  isAgent
+                    ? "text-violet-100"
+                    : "text-gray-500 dark:text-gray-400"
                 }`}
               >
                 {message.timestamp}
@@ -1882,7 +2207,7 @@ const ChatApplication: React.FC = () => {
             {isVoiceMessage(message) ? (
               <div
                 className={`flex flex-col w-full max-w-[320px] leading-1.5 p-4 border-gray-200 rounded-e-xl rounded-es-xl ${
-                  isAgent ? "bg-blue-600" : "bg-gray-100 dark:bg-gray-700"
+                  isAgent ? "bg-violet-200/30" : "bg-gray-100 dark:bg-gray-700"
                 }`}
               >
                 <div className="flex items-center space-x-2 rtl:space-x-reverse">
@@ -1893,7 +2218,7 @@ const ChatApplication: React.FC = () => {
                     }
                     className={`inline-flex self-center items-center p-2 text-sm font-medium text-center rounded-lg hover:bg-gray-200 focus:ring-4 focus:outline-none focus:ring-gray-50 dark:focus:ring-gray-600 ${
                       isAgent
-                        ? "text-white bg-blue-500 hover:bg-blue-400"
+                        ? "text-white bg-violet-300/40 hover:bg-violet-400"
                         : "text-gray-900 bg-gray-100 hover:bg-gray-200 dark:text-white dark:bg-gray-700 dark:hover:bg-gray-600"
                     }`}
                     type="button"
@@ -2178,7 +2503,7 @@ const ChatApplication: React.FC = () => {
             ) : isFileMessage(message) ? (
               <div
                 className={`flex flex-col w-full max-w-[320px] leading-1.5 p-4 border-gray-200 rounded-e-xl rounded-es-xl ${
-                  isAgent ? "bg-blue-600" : "bg-gray-100 dark:bg-gray-700"
+                  isAgent ? "bg-violet-200/30" : "bg-gray-100 dark:bg-gray-700"
                 }`}
               >
                 <div className="flex items-start bg-gray-50 dark:bg-gray-600 rounded-xl p-2">
@@ -2235,7 +2560,7 @@ const ChatApplication: React.FC = () => {
                     <span
                       className={`flex text-xs font-normal gap-2 ${
                         isAgent
-                          ? "text-blue-100"
+                          ? "text-violet-100"
                           : "text-gray-500 dark:text-gray-400"
                       }`}
                     >
@@ -2271,7 +2596,7 @@ const ChatApplication: React.FC = () => {
                       onClick={() => window.open(message.fileUrl, "_blank")}
                       className={`inline-flex self-center items-center p-2 text-sm font-medium text-center rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-50 dark:focus:ring-gray-600 ${
                         isAgent
-                          ? "text-white bg-blue-500 hover:bg-blue-400"
+                          ? "text-white bg-violet-300/40 hover:bg-violet-400"
                           : "text-gray-900 bg-gray-50 hover:bg-gray-100 dark:text-white dark:bg-gray-600 dark:hover:bg-gray-500"
                       }`}
                       type="button"
@@ -2293,7 +2618,7 @@ const ChatApplication: React.FC = () => {
             ) : isImageMessage(message) ? (
               <div
                 className={`flex flex-col w-full max-w-[320px] leading-1.5 p-4 border-gray-200 rounded-e-xl rounded-es-xl ${
-                  isAgent ? "bg-blue-600" : "bg-gray-100 dark:bg-gray-700"
+                  isAgent ? "bg-violet-200/30" : "bg-gray-100 dark:bg-gray-700"
                 }`}
               >
                 {message.text && (
@@ -2431,8 +2756,8 @@ const ChatApplication: React.FC = () => {
                     <button
                       className={`text-sm font-medium inline-flex items-center hover:underline ${
                         isAgent
-                          ? "text-blue-200 hover:text-blue-100"
-                          : "text-blue-700 dark:text-blue-500"
+                          ? "text-violet-200 hover:text-violet-100"
+                          : "text-violet-700 dark:text-violet-500"
                       }`}
                       onClick={() => {
                         // Handle save all images
@@ -2467,7 +2792,7 @@ const ChatApplication: React.FC = () => {
             ) : isUrlMessage(message) ? (
               <div
                 className={`flex flex-col w-full max-w-[320px] leading-1.5 p-4 border-gray-200 rounded-e-xl rounded-es-xl ${
-                  isAgent ? "bg-blue-600" : "bg-gray-100 dark:bg-gray-700"
+                  isAgent ? "bg-violet-200/30" : "bg-gray-100 dark:bg-gray-700"
                 }`}
               >
                 <p
@@ -2488,8 +2813,8 @@ const ChatApplication: React.FC = () => {
                     rel="noopener noreferrer"
                     className={`underline hover:no-underline font-medium break-all ${
                       isAgent
-                        ? "text-blue-200 hover:text-blue-100"
-                        : "text-blue-700 dark:text-blue-500"
+                        ? "text-violet-200 hover:text-violet-100"
+                        : "text-violet-700 dark:text-violet-500"
                     }`}
                   >
                     {message.url}
@@ -2501,7 +2826,7 @@ const ChatApplication: React.FC = () => {
                   rel="noopener noreferrer"
                   className={`block rounded-xl p-4 mb-2 hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors ${
                     isAgent
-                      ? "bg-blue-500/20 hover:bg-blue-500/30"
+                      ? "bg-violet-300/40/20 hover:bg-violet-300/40/30"
                       : "bg-gray-50 dark:bg-gray-600"
                   }`}
                 >
@@ -2520,7 +2845,7 @@ const ChatApplication: React.FC = () => {
                   <span
                     className={`text-xs font-normal ${
                       isAgent
-                        ? "text-blue-100"
+                        ? "text-violet-100"
                         : "text-gray-500 dark:text-gray-400"
                     }`}
                   >
@@ -2530,13 +2855,29 @@ const ChatApplication: React.FC = () => {
               </div>
             ) : (
               <div
-                className={`flex flex-col leading-1.5 p-4 border-gray-200 rounded-e-xl rounded-es-xl ${
-                  isAgent ? "bg-blue-600" : "bg-gray-100 dark:bg-gray-700"
+                className={`flex flex-col leading-1.5 ${
+                  isEmoji
+                    ? "p-2" // Less padding for emoji messages
+                    : "p-4 border-gray-200 rounded-e-xl rounded-es-xl"
+                } ${
+                  isEmoji
+                    ? "" // No background for emoji messages
+                    : isAgent
+                    ? "bg-violet-50/60/40 dark:bg-violet-900/30/10"
+                    : "bg-gray-50 dark:bg-gray-800/50"
                 }`}
               >
                 <p
-                  className={`text-sm font-normal ${
-                    isAgent ? "text-white" : "text-gray-900 dark:text-white"
+                  className={`${
+                    isEmoji
+                      ? "text-4xl" // Larger text for emojis
+                      : "text-sm font-normal"
+                  } ${
+                    isEmoji
+                      ? "" // No color override for emojis
+                      : isAgent
+                      ? "text-violet-600 dark:text-violet-300"
+                      : "text-gray-800 dark:text-gray-200"
                   }`}
                 >
                   {message.text}
@@ -2547,7 +2888,9 @@ const ChatApplication: React.FC = () => {
             {/* Message status */}
             <span
               className={`text-sm font-normal ${
-                isAgent ? "text-blue-100" : "text-gray-500 dark:text-gray-400"
+                isAgent
+                  ? "text-violet-500 dark:text-violet-400"
+                  : "text-gray-500 dark:text-gray-400"
               }`}
             >
               {isAgent ? (message.isRead ? "Read" : "Delivered") : "Sent"}
@@ -2579,14 +2922,52 @@ const ChatApplication: React.FC = () => {
 
             {/* Dropdown menu */}
             {openDropdownId === message.id && (
-              <div className="absolute z-20 bg-white divide-y divide-gray-100 rounded-lg shadow-lg w-40 dark:bg-gray-700 dark:divide-gray-600 top-full right-0 mt-2">
+              <div className="absolute z-20 bg-white divide-y divide-gray-100 rounded-lg shadow-lg w-48 dark:bg-gray-700 dark:divide-gray-600 top-full right-0 mt-2">
                 <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
+                  {/* User Management Section */}
+                  <li>
+                    <button
+                      onClick={() =>
+                        handleUserAction(selectedContact.id, "view-profile")
+                      }
+                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                    >
+                      👤 View Profile
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() =>
+                        handleUserAction(selectedContact.id, "edit-user")
+                      }
+                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                    >
+                      ✏️ Edit User
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() =>
+                        handleUserAction(selectedContact.id, "user-directory")
+                      }
+                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                    >
+                      📋 User Directory
+                    </button>
+                  </li>
+
+                  {/* Divider */}
+                  <li>
+                    <hr className="my-1 border-gray-200 dark:border-gray-600" />
+                  </li>
+
+                  {/* Message Actions Section */}
                   <li>
                     <button
                       onClick={() => handleMessageAction(message.id, "reply")}
                       className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
                     >
-                      Reply
+                      💬 Reply
                     </button>
                   </li>
                   <li>
@@ -2594,7 +2975,7 @@ const ChatApplication: React.FC = () => {
                       onClick={() => handleMessageAction(message.id, "forward")}
                       className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
                     >
-                      Forward
+                      ➡️ Forward
                     </button>
                   </li>
                   <li>
@@ -2603,23 +2984,36 @@ const ChatApplication: React.FC = () => {
                       data-message-id={message.id}
                       className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
                     >
-                      Copy
+                      📋 Copy
+                    </button>
+                  </li>
+
+                  {/* Divider */}
+                  <li>
+                    <hr className="my-1 border-gray-200 dark:border-gray-600" />
+                  </li>
+
+                  {/* User Status Actions */}
+                  <li>
+                    <button
+                      onClick={() =>
+                        handleUserAction(selectedContact.id, "toggle-status")
+                      }
+                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                    >
+                      {selectedContact.status === "active"
+                        ? "🚫 Deactivate"
+                        : "✅ Activate"}
                     </button>
                   </li>
                   <li>
                     <button
-                      onClick={() => handleMessageAction(message.id, "report")}
-                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                      onClick={() =>
+                        handleUserAction(selectedContact.id, "block-user")
+                      }
+                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white text-red-600 dark:text-red-400"
                     >
-                      Report
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => handleMessageAction(message.id, "delete")}
-                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                    >
-                      Delete
+                      🚫 Block User
                     </button>
                   </li>
                 </ul>
@@ -2640,18 +3034,45 @@ const ChatApplication: React.FC = () => {
         } bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden transition-all duration-300 ease-in-out`}
       >
         {/* Inbox Header */}
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 shadow-sm flex-shrink-0">
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 shadow-sm flex-shrink-0 min-h-[80px]">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Inbox
-            </h2>
-            <button
-              onClick={toggleInbox}
-              className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              title="Hide Inbox"
-            >
-              <PanelLeftClose className="w-5 h-5" />
-            </button>
+            <div className="flex flex-col">
+              {/* Inbox Title with Icon */}
+              <div className="flex items-center space-x-2">
+                <Inbox className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  Inbox
+                </h2>
+              </div>
+              {/* Visual line break under the inbox title - matching sidebar style */}
+              <div className="h-px w-full bg-gradient-to-r from-violet-500 to-violet-300 dark:from-violet-400 dark:to-violet-600 mt-2"></div>
+            </div>
+            <div className="flex items-center space-x-2">
+              {/* Create New Chat Button - moved to right before toggle button */}
+              <button
+                onClick={handleCreateNewChat}
+                disabled={isLoadingUsers}
+                className={`p-2 rounded-lg transition-colors ${
+                  isLoadingUsers
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-violet-600 hover:bg-violet-700"
+                } text-white`}
+                title={isLoadingUsers ? "Loading users..." : "Create New Chat"}
+              >
+                {isLoadingUsers ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
+              </button>
+              <button
+                onClick={toggleInbox}
+                className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                title="Hide Inbox"
+              >
+                <PanelLeftClose className="w-5 h-5" />
+              </button>
+            </div>
           </div>
           {isInboxOpen && (
             <div className="mt-3 relative">
@@ -2659,7 +3080,9 @@ const ChatApplication: React.FC = () => {
               <input
                 type="text"
                 placeholder="Search conversations..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
               />
             </div>
           )}
@@ -2668,13 +3091,13 @@ const ChatApplication: React.FC = () => {
         {/* Contact List */}
         {isInboxOpen && (
           <div className="flex-1 overflow-y-auto scrollbar-hide">
-            {mockContacts.map((contact) => (
+            {filteredContacts.map((contact) => (
               <div
                 key={contact.id}
                 onClick={() => setSelectedContact(contact)}
                 className={`p-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
                   selectedContact.id === contact.id
-                    ? "bg-blue-50 dark:bg-blue-900/20"
+                    ? "bg-violet-50/60 dark:bg-violet-900/30/20"
                     : ""
                 }`}
               >
@@ -2709,7 +3132,7 @@ const ChatApplication: React.FC = () => {
                     </p>
                   </div>
                   {contact.unreadCount > 0 && (
-                    <div className="bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    <div className="bg-violet-300/40 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                       {contact.unreadCount}
                     </div>
                   )}
@@ -2755,8 +3178,8 @@ const ChatApplication: React.FC = () => {
                 onClick={() => setUseOutlineBubble(!useOutlineBubble)}
                 className={`p-2 rounded-lg transition-colors ${
                   useOutlineBubble
-                    ? "bg-blue-500 text-white hover:bg-blue-600"
-                    : "text-gray-500 dark:text-gray-400 hover:text-blue-500 hover:bg-gray-100 dark:hover:bg-dark-700"
+                    ? "bg-violet-300/40 text-white hover:bg-violet-200/30"
+                    : "text-gray-500 dark:text-gray-400 hover:text-violet-500 hover:bg-gray-100 dark:hover:bg-dark-700"
                 }`}
                 title="Toggle Bubble Style"
               >
@@ -2828,14 +3251,14 @@ const ChatApplication: React.FC = () => {
               </button>
               <button
                 onClick={() => setIsVoiceCallOpen(true)}
-                className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-500 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
+                className="p-2 text-gray-500 dark:text-gray-400 hover:text-violet-500 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
                 title="Voice Call"
               >
                 <Phone className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setIsVideoCallOpen(true)}
-                className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-500 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
+                className="p-2 text-gray-500 dark:text-gray-400 hover:text-violet-500 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
                 title="Video Call"
               >
                 <Video className="w-5 h-5" />
@@ -2887,7 +3310,7 @@ const ChatApplication: React.FC = () => {
             {/* Emoji Button - Moved to the left */}
             <button
               onClick={openEmojiPicker}
-              className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-500 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors flex-shrink-0"
+              className="p-2 text-gray-500 dark:text-gray-400 hover:text-violet-500 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors flex-shrink-0"
             >
               <Smile className="w-5 h-5" />
             </button>
@@ -2898,7 +3321,7 @@ const ChatApplication: React.FC = () => {
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Type a message..."
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
                 rows={1}
                 style={{ minHeight: "48px", maxHeight: "120px" }}
               />
@@ -2910,7 +3333,7 @@ const ChatApplication: React.FC = () => {
               <div className="relative">
                 <button
                   onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-                  className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-500 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
+                  className="p-2 text-gray-500 dark:text-gray-400 hover:text-violet-500 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
                 >
                   <Paperclip className="w-5 h-5" />
                 </button>
@@ -2968,7 +3391,7 @@ const ChatApplication: React.FC = () => {
                 onMouseDown={startRecording}
                 onMouseUp={stopRecording}
                 onMouseLeave={stopRecording}
-                className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-500 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
+                className="p-2 text-gray-500 dark:text-gray-400 hover:text-violet-500 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
                 title="Hold to record voice message"
               >
                 {isRecording ? (
@@ -2983,7 +3406,7 @@ const ChatApplication: React.FC = () => {
                 onClick={handleSendMessage}
                 className={`p-2 rounded-lg transition-colors ${
                   newMessage.trim()
-                    ? "bg-blue-500 hover:bg-blue-600 text-white"
+                    ? "bg-violet-300/40 hover:bg-violet-200/30 text-white"
                     : "bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-500 dark:text-gray-400"
                 }`}
               >
@@ -3039,7 +3462,7 @@ const ChatApplication: React.FC = () => {
             </div>
 
             <div className="text-center mb-6">
-              <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+              <div className="w-20 h-20 bg-violet-100/50 dark:bg-violet-900/30 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
                 <Phone className="w-10 h-10 text-blue-600 dark:text-blue-400" />
               </div>
               <h4 className="text-xl font-medium text-gray-900 dark:text-white mb-2">
@@ -3128,8 +3551,8 @@ const ChatApplication: React.FC = () => {
                     <p className="text-gray-500 dark:text-gray-400 mb-4">
                       Please allow camera access in your browser
                     </p>
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 max-w-sm">
-                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <div className="bg-violet-50/60 dark:bg-violet-900/30/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 max-w-sm">
+                      <p className="text-sm text-blue-800 dark:text-violet-200">
                         <strong>💡 Tip:</strong> If you don't see a permission
                         dialog, check your browser's address bar for a camera
                         icon and click "Allow".
@@ -3168,7 +3591,7 @@ const ChatApplication: React.FC = () => {
                   closeCameraTest();
                   setIsVideoCallOpen(true);
                 }}
-                className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                className="flex-1 px-4 py-2 bg-violet-300/40 hover:bg-violet-200/30 text-white rounded-lg transition-colors"
               >
                 Start Video Call
               </button>
@@ -3221,8 +3644,8 @@ const ChatApplication: React.FC = () => {
                   <p className="text-gray-500 dark:text-gray-400 mb-6">
                     Please allow microphone access in your browser
                   </p>
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                  <div className="bg-violet-50/60 dark:bg-violet-900/30/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <p className="text-sm text-blue-800 dark:text-violet-200">
                       <strong>💡 Tip:</strong> If you don't see a permission
                       dialog, check your browser's address bar for a microphone
                       icon and click "Allow".
@@ -3318,7 +3741,7 @@ const ChatApplication: React.FC = () => {
                               ? "bg-yellow-500"
                               : micLevel > 10
                               ? "bg-green-500"
-                              : "bg-blue-500"
+                              : "bg-violet-300/40"
                           }`}
                           style={{
                             width: `${Math.min(micLevel * 1.5, 100)}%`,
@@ -3355,7 +3778,7 @@ const ChatApplication: React.FC = () => {
                       <select
                         value={selectedMicrophone}
                         onChange={(e) => switchMicrophone(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                       >
                         {availableMicrophones.map((mic) => (
                           <option key={mic.deviceId} value={mic.deviceId}>
@@ -3415,7 +3838,7 @@ const ChatApplication: React.FC = () => {
                           onClick={playRecordedAudio}
                           className={`flex flex-col items-center justify-center w-16 h-16 rounded-full transition-colors shadow-lg group ${
                             isMicTestPlaying
-                              ? "bg-blue-500 hover:bg-blue-600 text-white"
+                              ? "bg-violet-300/40 hover:bg-violet-200/30 text-white"
                               : "bg-green-500 hover:bg-green-600 text-white"
                           }`}
                           title={
@@ -3514,7 +3937,7 @@ const ChatApplication: React.FC = () => {
                     closeMicTest();
                     setIsVoiceCallOpen(true);
                   }}
-                  className="flex-1 px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors font-medium"
+                  className="flex-1 px-4 py-3 bg-violet-300/40 hover:bg-violet-200/30 text-white rounded-lg transition-colors font-medium"
                 >
                   Start Voice Call
                 </button>
@@ -3536,6 +3959,99 @@ const ChatApplication: React.FC = () => {
         onEmojiSelect={handleEmojiSelect}
         position={emojiPickerPosition}
       />
+
+      {/* User Selection Modal */}
+      {isUserSelectionOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-violet-600 text-white p-4 rounded-t-lg">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">
+                  Select User to Chat With
+                </h3>
+                <button
+                  onClick={() => setIsUserSelectionOpen(false)}
+                  className="text-white hover:text-gray-200 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-4 max-h-[60vh] overflow-y-auto">
+              {isLoadingUsers ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="flex flex-col items-center space-y-3">
+                    <div className="w-8 h-8 border-4 border-violet-600 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      Loading users from MongoDB...
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {availableUsers.map((user) => (
+                    <div
+                      key={user.id}
+                      onClick={() => startChatWithUser(user)}
+                      className="flex items-center space-x-3 p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                    >
+                      <img
+                        src={user.avatar}
+                        alt={user.name}
+                        className="w-12 h-12 rounded-full"
+                      />
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900 dark:text-white">
+                          {user.name}
+                        </h4>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {user.email}
+                        </p>
+                        {user.nickname && (
+                          <p className="text-xs text-gray-400 dark:text-gray-500">
+                            @{user.nickname}
+                          </p>
+                        )}
+                        <div className="flex items-center space-x-2 mt-1">
+                          <span className="text-xs bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300 px-2 py-1 rounded">
+                            {user.department}
+                          </span>
+                          <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded">
+                            {user.role}
+                          </span>
+                          {user.branch && (
+                            <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">
+                              {user.branch}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-b-lg">
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setIsUserSelectionOpen(false)}
+                  className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
