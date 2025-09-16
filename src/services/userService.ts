@@ -1,6 +1,8 @@
 // User Service for handling user registration and management
 // This service handles user operations with MongoDB integration
 
+import { userStorage } from "../utils/userStorage";
+
 export interface User {
   _id?: string;
   idNumber: string;
@@ -69,16 +71,12 @@ export const registerUser = async (
         dbError
       );
 
-      // Fallback to localStorage
-      const existingUsers = JSON.parse(
-        localStorage.getItem("nexttrack_users") || "[]"
-      );
+      // Fallback to localStorage using userStorage
       const newUserWithId = {
         ...newUser,
         _id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       };
-      existingUsers.push(newUserWithId);
-      localStorage.setItem("nexttrack_users", JSON.stringify(existingUsers));
+      userStorage.addUser(newUserWithId);
       console.log("User saved to localStorage:", newUserWithId);
     }
 
@@ -136,10 +134,8 @@ export const getAllUsers = async (): Promise<UserDirectoryUser[]> => {
         dbError
       );
 
-      // Fallback to localStorage
-      const localUsers = JSON.parse(
-        localStorage.getItem("nexttrack_users") || "[]"
-      );
+      // Fallback to localStorage using userStorage
+      const localUsers = userStorage.getAllUsers();
       console.log("Fetched users from localStorage:", localUsers);
 
       // Transform localStorage users to UserDirectoryUser format

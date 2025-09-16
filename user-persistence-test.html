@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User Persistence Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      .test-section {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ccc;
+      }
+      button {
+        padding: 10px 15px;
+        margin: 5px;
+        cursor: pointer;
+      }
+      pre {
+        background: #f5f5f5;
+        padding: 10px;
+        overflow-x: auto;
+      }
+      .success {
+        color: green;
+      }
+      .error {
+        color: red;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔧 User Persistence Test</h1>
+
+      <div class="test-section">
+        <h3>User Storage Test</h3>
+        <button onclick="testUserStorage()">Test User Storage</button>
+        <button onclick="addTestUser()">Add Test User</button>
+        <button onclick="showAllUsers()">Show All Users</button>
+        <button onclick="clearUserData()">Clear User Data</button>
+        <pre id="userStorageResults"></pre>
+      </div>
+
+      <div class="test-section">
+        <h3>Login Test</h3>
+        <input
+          type="text"
+          id="loginEmail"
+          placeholder="Email"
+          value="reggie@medishure.com"
+        />
+        <input
+          type="password"
+          id="loginPassword"
+          placeholder="Password"
+          value="password123"
+        />
+        <button onclick="testLogin()">Test Login</button>
+        <button onclick="testLogout()">Test Logout</button>
+        <pre id="loginResults"></pre>
+      </div>
+
+      <div class="test-section">
+        <h3>Persistence Test</h3>
+        <button onclick="testPersistence()">Test User Persistence</button>
+        <button onclick="simulateLogout()">Simulate Logout</button>
+        <button onclick="checkAfterLogout()">Check After Logout</button>
+        <pre id="persistenceResults"></pre>
+      </div>
+    </div>
+
+    <script>
+      // Simple user storage implementation
+      class UserStorage {
+        constructor() {
+          this.usersKey = "nexttrack_users";
+          this.backupKey = "nexttrack_users_backup";
+        }
+
+        getAllUsers() {
+          try {
+            const data = localStorage.getItem(this.usersKey);
+            return data ? JSON.parse(data) : [];
+          } catch (error) {
+            console.error("Error loading users:", error);
+            return [];
+          }
+        }
+
+        saveUsers(users) {
+          try {
+            localStorage.setItem(this.usersKey, JSON.stringify(users));
+            localStorage.setItem(this.backupKey, JSON.stringify(users));
+            console.log("✅ Users saved:", users.length, "users");
+          } catch (error) {
+            console.error("Error saving users:", error);
+          }
+        }
+
+        addUser(user) {
+          const users = this.getAllUsers();
+          users.push(user);
+          this.saveUsers(users);
+        }
+
+        getUserByEmail(email) {
+          const users = this.getAllUsers();
+          return (
+            users.find(
+              (user) => user.email.toLowerCase() === email.toLowerCase()
+            ) || null
+          );
+        }
+
+        initializeWithDemoUsers() {
+          const users = this.getAllUsers();
+          if (users.length === 0) {
+            const demoUsers = [
+              {
+                _id: "demo_admin",
+                idNumber: "ADMIN001",
+                fullName: "System Administrator",
+                nickname: "Admin",
+                department: "IT",
+                branch: "Main Office",
+                contactNumber: "1234567890",
+                email: "admin@nexttrack.com",
+                password: btoa("password123_hashed"),
+                role: "Administrator",
+                createdAt: new Date(),
+                isActive: true,
+              },
+              {
+                _id: "demo_reggie",
+                idNumber: "REG001",
+                fullName: "Reggie Gabayno",
+                nickname: "Reggie",
+                department: "IT",
+                branch: "Main Office",
+                contactNumber: "1234567893",
+                email: "reggie@medishure.com",
+                password: btoa("password123_hashed"),
+                role: "Administrator",
+                createdAt: new Date(),
+                isActive: true,
+              },
+            ];
+            this.saveUsers(demoUsers);
+            console.log("✅ Initialized with demo users");
+          }
+        }
+
+        restoreFromBackup() {
+          try {
+            const mainUsers = this.getAllUsers();
+            if (mainUsers.length === 0) {
+              const backupData = localStorage.getItem(this.backupKey);
+              if (backupData) {
+                const backupUsers = JSON.parse(backupData);
+                this.saveUsers(backupUsers);
+                console.log("✅ Restored from backup");
+              }
+            }
+          } catch (error) {
+            console.error("Error restoring from backup:", error);
+          }
+        }
+      }
+
+      const userStorage = new UserStorage();
+
+      function testUserStorage() {
+        try {
+          userStorage.initializeWithDemoUsers();
+          userStorage.restoreFromBackup();
+
+          const users = userStorage.getAllUsers();
+          document.getElementById("userStorageResults").textContent =
+            `✅ User Storage Test Passed\nUsers found: ${users.length}\n` +
+            JSON.stringify(users, null, 2);
+        } catch (error) {
+          document.getElementById(
+            "userStorageResults"
+          ).textContent = `❌ User Storage Test Failed: ${error.message}`;
+        }
+      }
+
+      function addTestUser() {
+        const testUser = {
+          _id: `test_${Date.now()}`,
+          idNumber: "TEST001",
+          fullName: "Test User",
+          nickname: "Test",
+          department: "Testing",
+          branch: "Test Office",
+          contactNumber: "1234567899",
+          email: "test@example.com",
+          password: btoa("password123_hashed"),
+          role: "Member",
+          createdAt: new Date(),
+          isActive: true,
+        };
+
+        userStorage.addUser(testUser);
+        document.getElementById("userStorageResults").textContent =
+          `✅ Test User Added\n` + JSON.stringify(testUser, null, 2);
+      }
+
+      function showAllUsers() {
+        const users = userStorage.getAllUsers();
+        document.getElementById("userStorageResults").textContent =
+          `📊 All Users (${users.length}):\n` + JSON.stringify(users, null, 2);
+      }
+
+      function clearUserData() {
+        localStorage.removeItem("nexttrack_users");
+        localStorage.removeItem("nexttrack_users_backup");
+        localStorage.removeItem("helpdesk_user");
+        document.getElementById("userStorageResults").textContent =
+          "🧹 All user data cleared";
+      }
+
+      function testLogin() {
+        const email = document.getElementById("loginEmail").value;
+        const password = document.getElementById("loginPassword").value;
+
+        const user = userStorage.getUserByEmail(email);
+        if (user) {
+          const hashedPassword = btoa(password + "_hashed");
+          if (user.password === hashedPassword) {
+            // Simulate login
+            const authUser = {
+              id: user._id,
+              email: user.email,
+              name: user.fullName,
+              role: user.role.toLowerCase(),
+            };
+            localStorage.setItem("helpdesk_user", JSON.stringify(authUser));
+
+            document.getElementById("loginResults").textContent =
+              `✅ Login Successful\n` + JSON.stringify(authUser, null, 2);
+          } else {
+            document.getElementById("loginResults").textContent =
+              "❌ Invalid password";
+          }
+        } else {
+          document.getElementById("loginResults").textContent =
+            "❌ User not found";
+        }
+      }
+
+      function testLogout() {
+        localStorage.removeItem("helpdesk_user");
+        document.getElementById("loginResults").textContent =
+          "✅ Logged out successfully";
+      }
+
+      function testPersistence() {
+        // Initialize users
+        userStorage.initializeWithDemoUsers();
+
+        const users = userStorage.getAllUsers();
+        const userCount = users.length;
+
+        document.getElementById("persistenceResults").textContent =
+          `📊 User Persistence Test\nInitial user count: ${userCount}\n` +
+          `Users: ${users.map((u) => u.email).join(", ")}`;
+      }
+
+      function simulateLogout() {
+        // Clear only the current user session, not the user data
+        localStorage.removeItem("helpdesk_user");
+        document.getElementById("persistenceResults").textContent =
+          "🔄 Simulated logout - current user session cleared";
+      }
+
+      function checkAfterLogout() {
+        const users = userStorage.getAllUsers();
+        const currentUser = localStorage.getItem("helpdesk_user");
+
+        document.getElementById("persistenceResults").textContent =
+          `📊 After Logout Check\n` +
+          `Users still in storage: ${users.length}\n` +
+          `Current user session: ${currentUser ? "Active" : "None"}\n` +
+          `Users: ${users.map((u) => u.email).join(", ")}`;
+      }
+
+      // Initialize on page load
+      testUserStorage();
+    </script>
+  </body>
+</html>

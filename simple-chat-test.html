@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simple Chat Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      .chat-window {
+        border: 1px solid #ccc;
+        height: 400px;
+        margin: 20px 0;
+      }
+      .messages {
+        height: 300px;
+        overflow-y: auto;
+        padding: 10px;
+        background: #f9f9f9;
+      }
+      .message {
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 5px;
+      }
+      .message.sent {
+        background: #007bff;
+        color: white;
+        margin-left: 50px;
+      }
+      .message.received {
+        background: #e9ecef;
+        margin-right: 50px;
+      }
+      .input-area {
+        padding: 10px;
+        border-top: 1px solid #ccc;
+      }
+      .input-area input {
+        width: 70%;
+        padding: 8px;
+      }
+      .input-area button {
+        width: 25%;
+        padding: 8px;
+        margin-left: 10px;
+      }
+      .conversations {
+        border: 1px solid #ccc;
+        height: 200px;
+        overflow-y: auto;
+        margin: 20px 0;
+      }
+      .conversation {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+        cursor: pointer;
+      }
+      .conversation:hover {
+        background: #f0f0f0;
+      }
+      .conversation.active {
+        background: #e3f2fd;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔧 Simple Chat Test</h1>
+
+      <div>
+        <h3>Current User</h3>
+        <input
+          type="text"
+          id="currentUserEmail"
+          placeholder="Enter your email"
+          value="reggie@medishure.com"
+        />
+        <button onclick="setCurrentUser()">Set User</button>
+        <span id="currentUserDisplay"></span>
+      </div>
+
+      <div>
+        <h3>Available Users</h3>
+        <button
+          onclick="createConversation('juan@gmail.com', 'Juan Dela Cruz')"
+        >
+          Chat with Juan
+        </button>
+        <button
+          onclick="createConversation('admin@nexttrack.com', 'Admin User')"
+        >
+          Chat with Admin
+        </button>
+        <button
+          onclick="createConversation('support@nexttrack.com', 'Support Agent')"
+        >
+          Chat with Support
+        </button>
+      </div>
+
+      <div class="conversations" id="conversations">
+        <h4>Your Conversations</h4>
+        <div id="conversationList"></div>
+      </div>
+
+      <div class="chat-window">
+        <div id="chatHeader">
+          <h4>Select a conversation to start chatting</h4>
+        </div>
+        <div class="messages" id="messages"></div>
+        <div class="input-area">
+          <input
+            type="text"
+            id="messageInput"
+            placeholder="Type your message..."
+            disabled
+          />
+          <button onclick="sendMessage()" disabled id="sendButton">Send</button>
+        </div>
+      </div>
+
+      <div>
+        <h3>Debug Info</h3>
+        <button onclick="showDebugInfo()">Show localStorage Data</button>
+        <button onclick="clearAllData()">Clear All Data</button>
+        <pre id="debugInfo"></pre>
+      </div>
+    </div>
+
+    <script>
+      let currentUser = null;
+      let selectedConversation = null;
+
+      // Simple storage functions
+      function getConversations() {
+        const data = localStorage.getItem("chat_conversations");
+        return data ? JSON.parse(data) : [];
+      }
+
+      function saveConversations(conversations) {
+        localStorage.setItem(
+          "chat_conversations",
+          JSON.stringify(conversations)
+        );
+      }
+
+      function getMessages() {
+        const data = localStorage.getItem("chat_messages");
+        return data ? JSON.parse(data) : [];
+      }
+
+      function saveMessages(messages) {
+        localStorage.setItem("chat_messages", JSON.stringify(messages));
+      }
+
+      function setCurrentUser() {
+        const email = document.getElementById("currentUserEmail").value;
+        if (email) {
+          currentUser = { email: email, name: email.split("@")[0] };
+          document.getElementById(
+            "currentUserDisplay"
+          ).textContent = `Logged in as: ${email}`;
+          loadConversations();
+        }
+      }
+
+      function createConversation(userEmail, userName) {
+        if (!currentUser) {
+          alert("Please set your current user first");
+          return;
+        }
+
+        const conversations = getConversations();
+
+        // Check if conversation already exists
+        let conversation = conversations.find(
+          (conv) =>
+            (conv.user1Email === currentUser.email &&
+              conv.user2Email === userEmail) ||
+            (conv.user1Email === userEmail &&
+              conv.user2Email === currentUser.email)
+        );
+
+        if (!conversation) {
+          conversation = {
+            id: `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            user1Email: currentUser.email,
+            user2Email: userEmail,
+            user1Name: currentUser.name,
+            user2Name: userName,
+            lastMessage: "Conversation started",
+            lastMessageTime: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+          };
+
+          conversations.push(conversation);
+          saveConversations(conversations);
+          console.log("✅ Created conversation:", conversation);
+        } else {
+          console.log("✅ Found existing conversation:", conversation);
+        }
+
+        loadConversations();
+      }
+
+      function loadConversations() {
+        if (!currentUser) return;
+
+        const conversations = getConversations();
+        const userConversations = conversations.filter(
+          (conv) =>
+            conv.user1Email === currentUser.email ||
+            conv.user2Email === currentUser.email
+        );
+
+        const conversationList = document.getElementById("conversationList");
+        conversationList.innerHTML = "";
+
+        userConversations.forEach((conv) => {
+          const contactName =
+            conv.user1Email === currentUser.email
+              ? conv.user2Name
+              : conv.user1Name;
+          const div = document.createElement("div");
+          div.className = "conversation";
+          div.innerHTML = `
+                    <strong>${contactName}</strong><br>
+                    <small>${conv.lastMessage}</small><br>
+                    <small>${new Date(
+                      conv.lastMessageTime
+                    ).toLocaleString()}</small>
+                `;
+          div.onclick = () => selectConversation(conv);
+          conversationList.appendChild(div);
+        });
+      }
+
+      function selectConversation(conversation) {
+        selectedConversation = conversation;
+
+        // Update UI
+        document
+          .querySelectorAll(".conversation")
+          .forEach((el) => el.classList.remove("active"));
+        event.target.closest(".conversation").classList.add("active");
+
+        // Update chat header
+        const contactName =
+          conversation.user1Email === currentUser.email
+            ? conversation.user2Name
+            : conversation.user1Name;
+        document.getElementById(
+          "chatHeader"
+        ).innerHTML = `<h4>Chat with ${contactName}</h4>`;
+
+        // Enable input
+        document.getElementById("messageInput").disabled = false;
+        document.getElementById("sendButton").disabled = false;
+
+        // Load messages
+        loadMessages();
+      }
+
+      function loadMessages() {
+        if (!selectedConversation) return;
+
+        const allMessages = getMessages();
+        const conversationMessages = allMessages.filter(
+          (msg) => msg.conversationId === selectedConversation.id
+        );
+
+        const messagesDiv = document.getElementById("messages");
+        messagesDiv.innerHTML = "";
+
+        conversationMessages.forEach((msg) => {
+          const div = document.createElement("div");
+          div.className = `message ${
+            msg.senderEmail === currentUser.email ? "sent" : "received"
+          }`;
+          div.innerHTML = `
+                    <strong>${
+                      msg.senderEmail === currentUser.email
+                        ? "You"
+                        : msg.senderEmail
+                    }</strong><br>
+                    ${msg.text}<br>
+                    <small>${new Date(msg.timestamp).toLocaleString()}</small>
+                `;
+          messagesDiv.appendChild(div);
+        });
+
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+
+      function sendMessage() {
+        if (!selectedConversation || !currentUser) return;
+
+        const input = document.getElementById("messageInput");
+        const text = input.value.trim();
+        if (!text) return;
+
+        const message = {
+          id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          conversationId: selectedConversation.id,
+          senderEmail: currentUser.email,
+          text: text,
+          timestamp: new Date().toISOString(),
+          isRead: false,
+        };
+
+        // Save message
+        const allMessages = getMessages();
+        allMessages.push(message);
+        saveMessages(allMessages);
+
+        // Update conversation last message
+        const conversations = getConversations();
+        const convIndex = conversations.findIndex(
+          (conv) => conv.id === selectedConversation.id
+        );
+        if (convIndex !== -1) {
+          conversations[convIndex].lastMessage = text;
+          conversations[convIndex].lastMessageTime = new Date().toISOString();
+          saveConversations(conversations);
+          selectedConversation = conversations[convIndex];
+        }
+
+        // Clear input and reload
+        input.value = "";
+        loadMessages();
+        loadConversations();
+
+        console.log("✅ Message sent:", message);
+      }
+
+      function showDebugInfo() {
+        const conversations = getConversations();
+        const messages = getMessages();
+
+        document.getElementById("debugInfo").textContent = JSON.stringify(
+          {
+            conversations: conversations,
+            messages: messages,
+            currentUser: currentUser,
+            selectedConversation: selectedConversation,
+          },
+          null,
+          2
+        );
+      }
+
+      function clearAllData() {
+        localStorage.removeItem("chat_conversations");
+        localStorage.removeItem("chat_messages");
+        loadConversations();
+        document.getElementById("messages").innerHTML = "";
+        document.getElementById("debugInfo").textContent = "";
+        console.log("🧹 Cleared all data");
+      }
+
+      // Auto-refresh every 3 seconds
+      setInterval(() => {
+        if (currentUser) {
+          loadConversations();
+          if (selectedConversation) {
+            loadMessages();
+          }
+        }
+      }, 3000);
+
+      // Initialize
+      setCurrentUser();
+    </script>
+  </body>
+</html>

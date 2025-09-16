@@ -5,6 +5,7 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
+import { userStorage } from "../utils/userStorage";
 
 // Define the user interface
 interface User {
@@ -44,6 +45,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = () => {
       try {
+        // Initialize user storage with demo users if needed
+        userStorage.initializeWithDemoUsers();
+
+        // Restore from backup if main storage is empty
+        userStorage.restoreFromBackup();
+
         const storedUser = localStorage.getItem("helpdesk_user");
         if (storedUser) {
           const userData = JSON.parse(storedUser);
@@ -73,7 +80,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const isDemoCredentials =
           (email === "admin@nexttrack.com" && password === "password123") ||
           (email === "user@nexttrack.com" && password === "password123") ||
-          (email === "support@nexttrack.com" && password === "password123");
+          (email === "support@nexttrack.com" && password === "password123") ||
+          (email === "reggie@medishure.com" && password === "password123");
 
         if (isDemoCredentials) {
           const role =
@@ -81,6 +89,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               ? "admin"
               : email === "support@nexttrack.com"
               ? "support"
+              : email === "reggie@medishure.com"
+              ? "admin"
               : "user";
 
           const mockUser: User = {
@@ -144,13 +154,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             dbError
           );
 
-          // Fallback to localStorage
-          const localUsers = JSON.parse(
-            localStorage.getItem("nexttrack_users") || "[]"
-          );
-          const foundUser = localUsers.find(
-            (user: any) => user.email.toLowerCase() === email.toLowerCase()
-          );
+          // Fallback to localStorage using userStorage
+          const foundUser = userStorage.getUserByEmail(email);
 
           if (foundUser) {
             // Simple password validation (in production, use proper hashing)

@@ -35,6 +35,17 @@ import {
 import VideoCall from "./VideoCall";
 import EmojiPicker from "./EmojiPicker";
 import { chatService, ChatContact } from "../services/chatService";
+import { useAuth } from "../contexts/AuthContext";
+import {
+  chatStorage,
+  SimpleConversation,
+  SimpleMessage,
+} from "../utils/chatStorage";
+import {
+  realtimeChatService,
+  RealtimeMessage,
+  RealtimeConversation,
+} from "../services/realtimeChatService";
 
 // Type definitions
 interface BaseMessage {
@@ -83,170 +94,46 @@ type Message =
   | ImageMessage
   | UrlMessage;
 
-// Mock data for chat contacts
-const mockContacts = [
-  {
-    id: 1,
-    name: "John Doe",
-    avatar: "https://flowbite.com/docs/images/people/profile-picture-1.jpg",
-    status: "Online",
-    lastMessage: "Thanks for the help!",
-    timestamp: "2 min ago",
-    unreadCount: 2,
-  },
-  {
-    id: 2,
-    name: "Sarah Wilson",
-    avatar: "https://flowbite.com/docs/images/people/profile-picture-2.jpg",
-    status: "Away",
-    lastMessage: "Can you check my ticket?",
-    timestamp: "1 hour ago",
-    unreadCount: 0,
-  },
-  {
-    id: 3,
-    name: "Mike Johnson",
-    avatar: "https://flowbite.com/docs/images/people/profile-picture-3.jpg",
-    status: "Offline",
-    lastMessage: "Issue resolved!",
-    timestamp: "3 hours ago",
-    unreadCount: 0,
-  },
-  {
-    id: 4,
-    name: "Emily Davis",
-    avatar: "https://flowbite.com/docs/images/people/profile-picture-4.jpg",
-    status: "Online",
-    lastMessage: "Need assistance with login",
-    timestamp: "5 min ago",
-    unreadCount: 1,
-  },
-];
+// Mock data for chat contacts - Empty by default
+const mockContacts: ChatContact[] = [];
 
-// Mock messages data
-const mockMessages: { [key: number]: Message[] } = {
-  1: [
-    {
-      id: 1,
-      text: "Hello! How can I help you today?",
-      sender: "agent",
-      timestamp: "10:30 AM",
-      isRead: true,
-    },
-    {
-      id: 2,
-      text: "I'm having trouble with my account login",
-      sender: "customer",
-      timestamp: "10:32 AM",
-      isRead: true,
-    },
-    {
-      id: 3,
-      text: "Let me help you with that. Can you try resetting your password?",
-      sender: "agent",
-      timestamp: "10:33 AM",
-      isRead: true,
-    },
-    {
-      id: 4,
-      text: "",
-      sender: "customer",
-      timestamp: "10:35 AM",
-      isRead: false,
-      type: "voice",
-      duration: 15,
-    },
-    {
-      id: 5,
-      text: "",
-      sender: "customer",
-      timestamp: "10:40 AM",
-      isRead: true,
-      type: "url",
-      url: "https://github.com/themesberg/flowbite",
-      title:
-        "GitHub - themesberg/flowbite: The most popular and open source library of interactive UI components built with Tailwind CSS",
-      description:
-        "Check out this open-source UI component library based on Tailwind CSS:",
-      image: "https://flowbite.com/docs/images/og-image.png",
-    },
-  ],
-  2: [
-    {
-      id: 1,
-      text: "Hi Sarah, how can I assist you?",
-      sender: "agent",
-      timestamp: "9:15 AM",
-      isRead: true,
-    },
-    {
-      id: 2,
-      text: "Can you check my ticket #12345?",
-      sender: "customer",
-      timestamp: "9:16 AM",
-      isRead: true,
-    },
-    {
-      id: 3,
-      text: "",
-      sender: "agent",
-      timestamp: "9:20 AM",
-      isRead: true,
-      type: "url",
-      url: "https://tailwindcss.com",
-      title:
-        "Tailwind CSS - Rapidly build modern websites without ever leaving your HTML",
-      description: "Here's a great resource for styling:",
-      image: "https://flowbite.com/docs/images/og-image.png",
-    },
-  ],
-  3: [
-    {
-      id: 1,
-      text: "Good morning Mike!",
-      sender: "agent",
-      timestamp: "8:00 AM",
-      isRead: true,
-    },
-    {
-      id: 2,
-      text: "The issue is resolved now, thank you!",
-      sender: "customer",
-      timestamp: "8:05 AM",
-      isRead: true,
-    },
-  ],
-  4: [
-    {
-      id: 1,
-      text: "Hi Emily, I see you need help with login",
-      sender: "agent",
-      timestamp: "2:00 PM",
-      isRead: true,
-    },
-    {
-      id: 2,
-      text: "Yes, I can't access my account",
-      sender: "customer",
-      timestamp: "2:01 PM",
-      isRead: false,
-    },
-  ],
-};
+// Mock messages data - Empty by default to start fresh conversations
+const mockMessages: { [key: number]: Message[] } = {};
 
 const ChatApplication: React.FC = () => {
-  const [contacts, setContacts] = useState(mockContacts);
-  const [selectedContact, setSelectedContact] = useState(contacts[0]);
-  const [messages, setMessages] = useState<Message[]>(
-    (mockMessages as any)[selectedContact.id] || []
+  // Get current user from auth context
+  const { user: currentUser } = useAuth();
+
+  const [contacts, setContacts] = useState<ChatContact[]>(mockContacts);
+  const [selectedContact, setSelectedContact] = useState<ChatContact | null>(
+    mockContacts.length > 0 ? mockContacts[0] : null
   );
+  const [messages, setMessages] = useState<Message[]>([]);
+
+  // Real-time chat state
+  const [simpleConversations, setSimpleConversations] = useState<
+    RealtimeConversation[]
+  >([]);
+  const [selectedSimpleConversation, setSelectedSimpleConversation] =
+    useState<RealtimeConversation | null>(null);
+  const [simpleMessages, setSimpleMessages] = useState<RealtimeMessage[]>([]);
+  const [typingIndicator, setTypingIndicator] = useState<{
+    [conversationId: string]: string;
+  }>({});
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Filter contacts based on search term
+  // Filter contacts based on search term (works with both old and new systems)
   const filteredContacts = contacts.filter((contact) =>
     contact.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Filter simple conversations based on search term
+  const filteredSimpleConversations = simpleConversations.filter((conv) => {
+    const contactName =
+      conv.user1Email === currentUser?.email ? conv.user2Name : conv.user1Name;
+    return contactName.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
@@ -323,8 +210,69 @@ const ChatApplication: React.FC = () => {
 
   // Update messages when contact changes
   useEffect(() => {
-    setMessages((mockMessages as any)[selectedContact.id] || []);
+    if (selectedContact) {
+      // Start with empty messages for new conversations
+      setMessages([]);
+    } else {
+      setMessages([]);
+    }
   }, [selectedContact]);
+
+  // Auto-refresh messages every 3 seconds for real-time updates
+  useEffect(() => {
+    if (!selectedContact || !currentUser) return;
+
+    const refreshMessages = async () => {
+      try {
+        console.log("🔄 Auto-refreshing messages for real-time updates");
+
+        // Get conversation ID for this contact
+        const conversationId =
+          selectedContact.conversationId ||
+          `conv_${selectedContact.id}_${currentUser.id}`;
+
+        // Load messages from database
+        const dbMessages = await chatService.getMessages(conversationId);
+
+        if (dbMessages && dbMessages.length > 0) {
+          // Transform database messages to local format
+          const transformedMessages: Message[] = dbMessages.map((msg: any) => ({
+            id: msg._id || Date.now() + Math.random(),
+            text: msg.text || "",
+            sender: msg.sender || "customer",
+            timestamp:
+              msg.timestamp ||
+              new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            isRead: msg.isRead !== false,
+            type: msg.type || "text",
+            ...(msg.type === "voice" && { duration: msg.duration }),
+            ...(msg.type === "url" && {
+              url: msg.url,
+              title: msg.title,
+              description: msg.description,
+              image: msg.image,
+            }),
+          }));
+
+          setMessages(transformedMessages);
+        }
+      } catch (error) {
+        console.error("❌ Error auto-refreshing messages:", error);
+      }
+    };
+
+    const interval = setInterval(() => {
+      // Only refresh if we have a conversation ID
+      if (selectedContact.conversationId) {
+        refreshMessages();
+      }
+    }, 3000); // Refresh every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [selectedContact, currentUser]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -378,25 +326,392 @@ const ChatApplication: React.FC = () => {
   }, []);
 
   // Load contacts from database on component mount
-  useEffect(() => {
-    const loadContacts = async () => {
-      try {
-        const contacts = await chatService.getContacts();
-        if (contacts.length > 0) {
-          setContacts(contacts);
-          // Select the first contact if none is selected
-          if (!selectedContact || selectedContact.id === 0) {
-            setSelectedContact(contacts[0]);
+  // Load simple conversations from localStorage
+  const loadSimpleConversations = () => {
+    if (!currentUser) {
+      console.log("No current user, using empty conversation list");
+      setSimpleConversations([]);
+      setSelectedSimpleConversation(null);
+      return;
+    }
+
+    try {
+      console.log(
+        "🔄 Loading simple conversations for user:",
+        currentUser.email
+      );
+      const userConversations = realtimeChatService.getUserConversations(
+        currentUser.email
+      );
+      console.log(
+        "📊 User conversations from real-time storage:",
+        userConversations
+      );
+
+      setSimpleConversations(userConversations);
+
+      if (userConversations.length > 0 && !selectedSimpleConversation) {
+        setSelectedSimpleConversation(userConversations[0]);
+      }
+    } catch (error) {
+      console.error("❌ Error loading simple conversations:", error);
+      setSimpleConversations([]);
+      setSelectedSimpleConversation(null);
+    }
+  };
+
+  // Initialize real-time chat
+  const initializeRealtimeChat = async () => {
+    if (!currentUser) return;
+
+    try {
+      console.log("🚀 Initializing real-time chat for:", currentUser.email);
+
+      // Initialize real-time chat service
+      await realtimeChatService.initialize(currentUser.email);
+
+      // Set up event handlers
+      const handlerId = `chat-app-${currentUser.email}`;
+
+      // Handle new messages
+      realtimeChatService.onNewMessage(
+        handlerId,
+        (message: RealtimeMessage) => {
+          console.log("📨 New real-time message received:", message);
+
+          // Add message to current conversation if it matches
+          if (
+            selectedSimpleConversation &&
+            message.conversationId === selectedSimpleConversation.id
+          ) {
+            setSimpleMessages((prev) => [...prev, message]);
           }
+
+          // Update conversations list
+          loadSimpleConversations();
+        }
+      );
+
+      // Handle conversation updates
+      realtimeChatService.onConversationUpdate(
+        handlerId,
+        (conversation: RealtimeConversation) => {
+          console.log("🔄 Conversation updated:", conversation);
+          loadSimpleConversations();
+        }
+      );
+
+      // Handle typing indicators
+      realtimeChatService.onTypingIndicator(handlerId, (typing) => {
+        console.log("⌨️ Typing indicator:", typing);
+
+        if (typing.isTyping) {
+          setTypingIndicator((prev) => ({
+            ...prev,
+            [typing.conversationId]: typing.userName,
+          }));
+        } else {
+          setTypingIndicator((prev) => {
+            const newState = { ...prev };
+            delete newState[typing.conversationId];
+            return newState;
+          });
+        }
+      });
+
+      console.log("✅ Real-time chat initialized successfully");
+    } catch (error) {
+      console.error("❌ Failed to initialize real-time chat:", error);
+    }
+  };
+
+  // Load user-specific conversations
+  const loadUserConversations = async () => {
+    if (!currentUser) {
+      console.log("No current user, using empty contact list");
+      setContacts(mockContacts);
+      setSelectedContact(null);
+      return;
+    }
+
+    try {
+      console.log("🔄 Loading conversations for user:", currentUser.email);
+
+      // Get conversations specific to the current user
+      const conversations = await chatService.getConversations();
+      console.log("📊 All conversations from localStorage:", conversations);
+      console.log("📊 Current user email:", currentUser.email);
+      console.log("📊 Current user ID:", currentUser.id);
+
+      // If no conversations found or database not connected, use empty contact list
+      if (!conversations || conversations.length === 0) {
+        console.log(
+          "ℹ️ No conversations found in database or database not connected, using empty contact list"
+        );
+        setContacts(mockContacts);
+        setSelectedContact(null);
+        return;
+      }
+
+      // Filter conversations for the current user
+      // For localStorage fallback, show all conversations where the user is either agent or contact
+      const userConversations = conversations.filter((conv) => {
+        const isAgent =
+          conv.agentId === currentUser.id ||
+          conv.agentEmail === currentUser.email;
+        const isContact = conv.contactEmail === currentUser.email;
+        console.log(`🔍 Checking conversation:`, {
+          convId: conv._id,
+          agentId: conv.agentId,
+          agentEmail: conv.agentEmail,
+          contactEmail: conv.contactEmail,
+          currentUserEmail: currentUser.email,
+          currentUserId: currentUser.id,
+          isAgent,
+          isContact,
+          matches: isAgent || isContact,
+        });
+        return isAgent || isContact;
+      });
+
+      console.log("👤 User-specific conversations:", userConversations);
+      console.log(
+        "👤 Total user conversations found:",
+        userConversations.length
+      );
+
+      // If no user-specific conversations found, use empty contact list
+      if (!userConversations || userConversations.length === 0) {
+        console.log(
+          "ℹ️ No user-specific conversations found, using empty contact list"
+        );
+        setContacts(mockContacts);
+        setSelectedContact(null);
+        return;
+      }
+
+      // Convert conversations to contacts format
+      const userContacts = userConversations.map((conv) => {
+        // Determine the correct contact name and email based on who is the current user
+        const isCurrentUserAgent = conv.agentId === currentUser.id;
+
+        // For better sender name display, we need to get the actual sender name
+        // If current user is the agent, show the customer name
+        // If current user is the customer, show the agent name (we need to get this from user data)
+        let contactName, contactEmail;
+
+        if (isCurrentUserAgent) {
+          // Current user is the agent, show customer info
+          contactName = conv.contactName;
+          contactEmail = conv.contactEmail;
+        } else {
+          // Current user is the customer, show agent info
+          // Try to get agent name from the conversation or use a default
+          contactName = conv.agentName || "Support Agent";
+          contactEmail = conv.agentEmail || "support@nexttrack.com";
+        }
+
+        return {
+          id: conv.contactId,
+          name: contactName,
+          email: contactEmail,
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(
+            contactName
+          )}&background=8b5cf6&color=fff`,
+          status: "Online",
+          lastMessage: conv.lastMessage || "No messages yet",
+          timestamp: conv.lastMessageTime
+            ? new Date(conv.lastMessageTime).toLocaleTimeString()
+            : "now",
+          unreadCount: conv.unreadCount || 0,
+          conversationId: conv._id,
+        };
+      });
+
+      if (userContacts.length > 0) {
+        // Remove duplicate contacts based on email
+        const uniqueContacts = userContacts.reduce((acc, contact) => {
+          const existingContact = acc.find((c) => c.email === contact.email);
+          if (!existingContact) {
+            acc.push(contact);
+          } else {
+            // If duplicate found, keep the one with more recent timestamp or higher unread count
+            const existingIndex = acc.findIndex(
+              (c) => c.email === contact.email
+            );
+            if (
+              contact.unreadCount > existingContact.unreadCount ||
+              (contact.unreadCount === existingContact.unreadCount &&
+                contact.timestamp > existingContact.timestamp)
+            ) {
+              acc[existingIndex] = contact;
+            }
+          }
+          return acc;
+        }, [] as typeof userContacts);
+
+        // Ensure we have at least some contacts
+        if (uniqueContacts.length > 0) {
+          setContacts(uniqueContacts);
+          if (!selectedContact || selectedContact.id === 0) {
+            setSelectedContact(uniqueContacts[0]);
+          }
+          console.log(
+            "✅ Loaded",
+            uniqueContacts.length,
+            "unique conversations for user"
+          );
+        } else {
+          console.log(
+            "ℹ️ No unique conversations found for user, using empty contact list"
+          );
+          setContacts(mockContacts);
+          setSelectedContact(null);
+        }
+      } else {
+        console.log(
+          "ℹ️ No conversations found for user, using empty contact list"
+        );
+        setContacts(mockContacts);
+        setSelectedContact(null);
+      }
+    } catch (error) {
+      console.error("❌ Error loading user conversations:", error);
+      // Fallback to empty contact list
+      setContacts(mockContacts);
+      setSelectedContact(null);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      loadUserConversations();
+      loadSimpleConversations();
+      initializeRealtimeChat();
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (currentUser) {
+        const handlerId = `chat-app-${currentUser.email}`;
+        realtimeChatService.offNewMessage(handlerId);
+        realtimeChatService.offConversationUpdate(handlerId);
+        realtimeChatService.offTypingIndicator(handlerId);
+        realtimeChatService.cleanup();
+      }
+    };
+  }, [currentUser]);
+
+  // Load messages when selected conversation changes
+  useEffect(() => {
+    if (selectedSimpleConversation && currentUser) {
+      console.log(
+        "🔄 Loading messages for conversation:",
+        selectedSimpleConversation.id
+      );
+      const messages = realtimeChatService.getConversationMessages(
+        selectedSimpleConversation.id
+      );
+      setSimpleMessages(messages);
+      console.log("📨 Loaded messages:", messages);
+    } else {
+      setSimpleMessages([]);
+    }
+  }, [selectedSimpleConversation, currentUser]);
+
+  // Real-time updates are now handled by the WebSocket service
+  // No need for auto-refresh intervals
+
+  // Listen for localStorage changes from other windows
+  useEffect(() => {
+    const handleStorageUpdate = (event: CustomEvent) => {
+      console.log("🔄 localStorage updated from another window:", event.detail);
+      // Refresh conversations when localStorage changes
+      loadUserConversations();
+      loadSimpleConversations();
+    };
+
+    window.addEventListener(
+      "localStorageUpdated",
+      handleStorageUpdate as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        "localStorageUpdated",
+        handleStorageUpdate as EventListener
+      );
+    };
+  }, [currentUser]);
+
+  // Load messages when selected contact changes
+  useEffect(() => {
+    const loadMessagesForContact = async () => {
+      if (!selectedContact || !currentUser) {
+        console.log(
+          "No selected contact or current user, using empty messages"
+        );
+        setMessages([]);
+        return;
+      }
+
+      try {
+        console.log("🔄 Loading messages for contact:", selectedContact.name);
+
+        // Get conversation ID for this contact
+        const conversationId =
+          selectedContact.conversationId ||
+          `conv_${selectedContact.id}_${currentUser.id}`;
+
+        // Load messages from database
+        const dbMessages = await chatService.getMessages(conversationId);
+        console.log("📨 Messages from database:", dbMessages);
+
+        if (dbMessages && dbMessages.length > 0) {
+          // Transform database messages to local format
+          const transformedMessages: Message[] = dbMessages.map((msg: any) => ({
+            id: msg._id || Date.now() + Math.random(),
+            text: msg.text || "",
+            sender: msg.sender || "customer",
+            timestamp:
+              msg.timestamp ||
+              new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            isRead: msg.isRead !== false,
+            type: msg.type || "text",
+            ...(msg.type === "voice" && { duration: msg.duration }),
+            ...(msg.type === "url" && {
+              url: msg.url,
+              title: msg.title,
+              description: msg.description,
+              image: msg.image,
+            }),
+          }));
+
+          setMessages(transformedMessages);
+          console.log(
+            "✅ Loaded",
+            transformedMessages.length,
+            "messages for contact"
+          );
+        } else {
+          // No messages in database, start with empty conversation
+          console.log(
+            "ℹ️ No messages in database, starting with empty conversation"
+          );
+          setMessages([]);
         }
       } catch (error) {
-        console.error("Error loading contacts from database:", error);
-        // Continue with mock data if database fails
+        console.error("❌ Error loading messages:", error);
+        // Fallback to empty messages for fresh start
+        setMessages([]);
       }
     };
 
-    loadContacts();
-  }, []);
+    loadMessagesForContact();
+  }, [selectedContact, currentUser]);
 
   // Restart monitoring when micStream changes
   useEffect(() => {
@@ -426,30 +741,113 @@ const ChatApplication: React.FC = () => {
   }, [isVoiceCallOpen]);
 
   const handleSendMessage = async () => {
-    if (newMessage.trim()) {
-      const message: Message = {
-        id: messages.length + 1,
-        text: newMessage,
-        sender: "agent",
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        isRead: false,
-      };
+    if (newMessage.trim() && currentUser) {
+      // Use real-time chat service if we have a selected simple conversation
+      if (selectedSimpleConversation) {
+        try {
+          const message = await realtimeChatService.sendMessage(
+            selectedSimpleConversation.id,
+            newMessage
+          );
 
-      // Add message to local state immediately for better UX
-      setMessages([...messages, message]);
-      setNewMessage("");
+          // Add to local state
+          setSimpleMessages((prev) => [...prev, message]);
+          setNewMessage("");
 
-      // Save message to database if connected
-      try {
-        // For now, we'll skip database saving for messages since we need to implement
-        // proper conversation ID mapping. This will be enhanced in future iterations.
-        // The message is already saved in local state for immediate user experience.
-      } catch (error) {
-        console.error("Error saving message to database:", error);
-        // Message is already in local state, so user experience is not affected
+          // Mark messages as read
+          realtimeChatService.markMessagesAsRead(selectedSimpleConversation.id);
+
+          console.log("✅ Message sent using real-time service:", message);
+          return;
+        } catch (error) {
+          console.error("❌ Error sending real-time message:", error);
+          // Fallback to simple storage
+          const message = chatStorage.addMessage(
+            selectedSimpleConversation.id,
+            currentUser.email,
+            newMessage
+          );
+          setSimpleMessages((prev) => [...prev, message]);
+          setNewMessage("");
+          loadSimpleConversations();
+          return;
+        }
+      }
+
+      // Fallback to original logic for selectedContact
+      if (selectedContact) {
+        const message: Message = {
+          id: Date.now() + Math.random(), // More unique ID generation
+          text: newMessage,
+          sender: "agent",
+          timestamp: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          isRead: false,
+        };
+
+        // Add message to local state immediately for better UX
+        setMessages([...messages, message]);
+        setNewMessage("");
+
+        // Save message to database with proper conversation linking
+        try {
+          console.log(
+            "💬 Saving message to database for user:",
+            currentUser.email
+          );
+
+          // Get the conversation ID for this contact
+          const conversationId =
+            selectedContact.conversationId ||
+            `conv_${selectedContact.id}_${currentUser.id}`;
+
+          console.log(
+            "💾 Saving message with conversation ID:",
+            conversationId
+          );
+
+          // Save message to database
+          const savedMessage = await chatService.createMessage(
+            {
+              text: newMessage,
+              sender: "agent",
+              timestamp: message.timestamp,
+              isRead: false,
+            },
+            conversationId
+          );
+
+          console.log("✅ Message saved to database:", savedMessage);
+
+          // Update the contact's last message and conversation ID if it was generated
+          setContacts((prevContacts) =>
+            prevContacts.map((contact) =>
+              contact.id === selectedContact.id
+                ? {
+                    ...contact,
+                    lastMessage: newMessage,
+                    timestamp: message.timestamp,
+                    conversationId: conversationId, // Ensure conversation ID is set
+                  }
+                : contact
+            )
+          );
+
+          // Update selectedContact with the conversation ID
+          setSelectedContact((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  conversationId: conversationId,
+                }
+              : null
+          );
+        } catch (error) {
+          console.error("❌ Error saving message to database:", error);
+          // Message is still in local state, so user experience is not affected
+        }
       }
     }
   };
@@ -458,6 +856,19 @@ const ChatApplication: React.FC = () => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+    }
+  };
+
+  // Handle typing indicator
+  const handleTyping = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setNewMessage(e.target.value);
+
+    if (selectedSimpleConversation && currentUser) {
+      // Send typing indicator
+      realtimeChatService.sendTypingIndicator(
+        selectedSimpleConversation.id,
+        e.target.value.length > 0
+      );
     }
   };
 
@@ -753,29 +1164,40 @@ const ChatApplication: React.FC = () => {
 
   // Function to start chat with selected user
   const startChatWithUser = async (user: any) => {
+    if (!currentUser) {
+      alert("Please log in to start a chat");
+      return;
+    }
+
     try {
-      // Create new contact using chat service
-      const newContact = await chatService.createContact({
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        status: "Online",
-        lastMessage: "New conversation started",
-        timestamp: "now",
-        unreadCount: 0,
-      });
+      console.log(
+        "🔄 Creating chat with user:",
+        user.name,
+        "for current user:",
+        currentUser.email
+      );
 
-      // Create conversation for the new contact
-      await chatService.createConversation(newContact);
+      // Use real-time chat service to create conversation
+      const conversation = realtimeChatService.getOrCreateConversation(
+        currentUser.email,
+        currentUser.name || currentUser.email,
+        user.email,
+        user.name
+      );
 
-      // Add new contact to the local state
-      setContacts((prevContacts) => [...prevContacts, newContact]);
+      console.log("✅ Created/found conversation:", conversation);
 
-      // Select the new contact
-      setSelectedContact(newContact);
+      // Refresh simple conversations
+      loadSimpleConversations();
 
-      // Initialize empty messages for the new chat
-      setMessages([]);
+      // Select the conversation
+      setSelectedSimpleConversation(conversation);
+
+      // Load messages for this conversation
+      const conversationMessages = realtimeChatService.getConversationMessages(
+        conversation.id
+      );
+      setSimpleMessages(conversationMessages);
 
       // Close the user selection modal
       setIsUserSelectionOpen(false);
@@ -784,25 +1206,11 @@ const ChatApplication: React.FC = () => {
       alert(`New chat created with ${user.name}!`);
     } catch (error) {
       console.error("Error creating new chat:", error);
-
-      // Fallback to local creation if database fails
-      const newContact: ChatContact = {
-        id: Math.max(...contacts.map((c) => c.id)) + 1,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        status: "Online",
-        lastMessage: "New conversation started",
-        timestamp: "now",
-        unreadCount: 0,
-      };
-
-      setContacts((prevContacts) => [...prevContacts, newContact]);
-      setSelectedContact(newContact);
-      setMessages([]);
-      setIsUserSelectionOpen(false);
-
-      alert(`New chat created with ${user.name}! (Offline mode)`);
+      alert(
+        `Error creating chat with ${user.name}: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   };
 
@@ -2012,12 +2420,13 @@ const ChatApplication: React.FC = () => {
   };
 
   const renderMessage = (message: Message) => {
+    if (!selectedContact) return null;
+
     const isAgent = message.sender === "agent";
     const isEmoji = isEmojiOnly(message.text);
 
     return (
       <div
-        key={message.id}
         className={`flex items-center gap-2.5 ${
           isAgent ? "justify-end" : "justify-start"
         }`}
@@ -2147,7 +2556,7 @@ const ChatApplication: React.FC = () => {
         )}
 
         {/* Avatar for customer messages */}
-        {!isAgent && (
+        {!isAgent && selectedContact && (
           <img
             className="w-8 h-8 rounded-full"
             src={selectedContact.avatar}
@@ -2160,7 +2569,7 @@ const ChatApplication: React.FC = () => {
           <div className="flex flex-col gap-1 w-full max-w-[320px]">
             <div className="flex items-center space-x-2 rtl:space-x-reverse">
               <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                {selectedContact.name}
+                {selectedContact?.name || "Unknown"}
               </span>
               <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
                 {message.timestamp}
@@ -2190,7 +2599,7 @@ const ChatApplication: React.FC = () => {
                   isAgent ? "text-white" : "text-gray-900 dark:text-white"
                 }`}
               >
-                {isAgent ? "You" : selectedContact.name}
+                {isAgent ? "You" : selectedContact?.name || "Unknown"}
               </span>
               <span
                 className={`text-sm font-normal ${
@@ -2677,7 +3086,10 @@ const ChatApplication: React.FC = () => {
                 ) : (
                   <div className="grid gap-4 grid-cols-2 my-2.5">
                     {message.images.slice(0, 4).map((image, index) => (
-                      <div key={index} className="group relative">
+                      <div
+                        key={`image-${message.id}-${index}`}
+                        className="group relative"
+                      >
                         {index === 3 && message.images.length > 4 ? (
                           <button
                             className="absolute w-full h-full bg-gray-900/90 hover:bg-gray-900/50 transition-all duration-300 rounded-lg flex items-center justify-center"
@@ -3091,54 +3503,88 @@ const ChatApplication: React.FC = () => {
         {/* Contact List */}
         {isInboxOpen && (
           <div className="flex-1 overflow-y-auto scrollbar-hide">
-            {filteredContacts.map((contact) => (
-              <div
-                key={contact.id}
-                onClick={() => setSelectedContact(contact)}
-                className={`p-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                  selectedContact.id === contact.id
-                    ? "bg-violet-50/60 dark:bg-violet-900/30/20"
-                    : ""
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <img
-                      src={contact.avatar}
-                      alt={contact.name}
-                      className="w-12 h-12 rounded-full"
-                    />
-                    <div
-                      className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 ${
-                        contact.status === "Online"
-                          ? "bg-green-500"
-                          : contact.status === "Away"
-                          ? "bg-yellow-500"
-                          : "bg-gray-400"
-                      }`}
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                        {contact.name}
-                      </h3>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {contact.timestamp}
-                      </span>
+            {filteredSimpleConversations.length > 0 ? (
+              filteredSimpleConversations.map((conversation) => {
+                const contactName =
+                  conversation.user1Email === currentUser?.email
+                    ? conversation.user2Name
+                    : conversation.user1Name;
+                const contactEmail =
+                  conversation.user1Email === currentUser?.email
+                    ? conversation.user2Email
+                    : conversation.user1Email;
+
+                return (
+                  <div
+                    key={conversation.id}
+                    onClick={() => {
+                      console.log("🖱️ Clicked on conversation:", conversation);
+                      setSelectedSimpleConversation(conversation);
+                    }}
+                    className={`p-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                      selectedSimpleConversation?.id === conversation.id
+                        ? "bg-violet-50/60 dark:bg-violet-900/30/20"
+                        : ""
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="relative">
+                        <img
+                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
+                            contactName
+                          )}&background=8b5cf6&color=fff`}
+                          alt={contactName}
+                          className="w-12 h-12 rounded-full"
+                        />
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 bg-green-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {contactName}
+                          </h3>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {new Date(
+                              conversation.lastMessageTime
+                            ).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                          {conversation.lastMessage}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                      {contact.lastMessage}
-                    </p>
                   </div>
-                  {contact.unreadCount > 0 && (
-                    <div className="bg-violet-300/40 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {contact.unreadCount}
-                    </div>
-                  )}
+                );
+              })
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
+                  <svg
+                    className="w-8 h-8 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
                 </div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  No conversations yet
+                </h3>
+                <p className="text-gray-500 dark:text-gray-400 mb-4">
+                  Start a new conversation by clicking the "New Chat" button
+                </p>
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>
@@ -3159,19 +3605,45 @@ const ChatApplication: React.FC = () => {
                   <PanelLeftClose className="w-5 h-5 rotate-180" />
                 </button>
               )}
-              <img
-                src={selectedContact.avatar}
-                alt={selectedContact.name}
-                className="w-10 h-10 rounded-full"
-              />
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {selectedContact.name}
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {selectedContact.status}
-                </p>
-              </div>
+              {selectedSimpleConversation ? (
+                <>
+                  <img
+                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
+                      selectedSimpleConversation.user1Email ===
+                        currentUser?.email
+                        ? selectedSimpleConversation.user2Name
+                        : selectedSimpleConversation.user1Name
+                    )}&background=8b5cf6&color=fff`}
+                    alt={
+                      selectedSimpleConversation.user1Email ===
+                      currentUser?.email
+                        ? selectedSimpleConversation.user2Name
+                        : selectedSimpleConversation.user1Name
+                    }
+                    className="w-10 h-10 rounded-full"
+                  />
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {selectedSimpleConversation.user1Email ===
+                      currentUser?.email
+                        ? selectedSimpleConversation.user2Name
+                        : selectedSimpleConversation.user1Name}
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Online
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    No conversation selected
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Select a contact to start chatting
+                  </p>
+                </div>
+              )}
             </div>
             <div className="flex items-center space-x-2">
               <button
@@ -3251,15 +3723,33 @@ const ChatApplication: React.FC = () => {
               </button>
               <button
                 onClick={() => setIsVoiceCallOpen(true)}
-                className="p-2 text-gray-500 dark:text-gray-400 hover:text-violet-500 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
-                title="Voice Call"
+                disabled={!selectedSimpleConversation}
+                className={`p-2 rounded-lg transition-colors ${
+                  selectedSimpleConversation
+                    ? "text-gray-500 dark:text-gray-400 hover:text-violet-500 hover:bg-gray-100 dark:hover:bg-dark-700"
+                    : "text-gray-300 dark:text-gray-600 cursor-not-allowed"
+                }`}
+                title={
+                  selectedSimpleConversation
+                    ? "Voice Call"
+                    : "Select a conversation first"
+                }
               >
                 <Phone className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setIsVideoCallOpen(true)}
-                className="p-2 text-gray-500 dark:text-gray-400 hover:text-violet-500 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
-                title="Video Call"
+                disabled={!selectedSimpleConversation}
+                className={`p-2 rounded-lg transition-colors ${
+                  selectedSimpleConversation
+                    ? "text-gray-500 dark:text-gray-400 hover:text-violet-500 hover:bg-gray-100 dark:hover:bg-dark-700"
+                    : "text-gray-300 dark:text-gray-600 cursor-not-allowed"
+                }`}
+                title={
+                  selectedSimpleConversation
+                    ? "Video Call"
+                    : "Select a conversation first"
+                }
               >
                 <Video className="w-5 h-5" />
               </button>
@@ -3272,8 +3762,120 @@ const ChatApplication: React.FC = () => {
 
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
-          {messages.map(renderMessage)}
-          <div ref={messagesEndRef} />
+          {selectedSimpleConversation ? (
+            <>
+              {/* Debug info */}
+              {console.log(
+                "🔍 Debug - selectedSimpleConversation:",
+                selectedSimpleConversation
+              )}
+              {console.log("🔍 Debug - simpleMessages:", simpleMessages)}
+              {console.log(
+                "🔍 Debug - simpleMessages.length:",
+                simpleMessages.length
+              )}
+
+              {simpleMessages.length > 0 ? (
+                simpleMessages.map((message, index) => {
+                  const isCurrentUser =
+                    message.senderEmail === currentUser?.email;
+                  return (
+                    <div
+                      key={`simple-message-${message.id}-${index}`}
+                      className={`flex ${
+                        isCurrentUser ? "justify-end" : "justify-start"
+                      }`}
+                    >
+                      <div
+                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                          isCurrentUser
+                            ? "bg-violet-600 text-white"
+                            : "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white"
+                        }`}
+                      >
+                        <p className="text-sm">{message.text}</p>
+                        <p
+                          className={`text-xs mt-1 ${
+                            isCurrentUser
+                              ? "text-violet-100"
+                              : "text-gray-500 dark:text-gray-400"
+                          }`}
+                        >
+                          {new Date(message.timestamp).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
+                    <svg
+                      className="w-8 h-8 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    No messages yet
+                  </h3>
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">
+                    Start the conversation by sending a message
+                  </p>
+                </div>
+              )}
+
+              {/* Typing Indicator */}
+              {selectedSimpleConversation &&
+                typingIndicator[selectedSimpleConversation.id] && (
+                  <div className="flex justify-start">
+                    <div className="max-w-xs lg:max-w-md px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                        {typingIndicator[selectedSimpleConversation.id]} is
+                        typing...
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+              <div ref={messagesEndRef} />
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <div className="w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
+                <svg
+                  className="w-10 h-10 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-xl font-medium text-gray-900 dark:text-white mb-2">
+                Welcome to your inbox
+              </h3>
+              <p className="text-gray-500 dark:text-gray-400 mb-4">
+                Select a conversation from the sidebar to start chatting
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Recording Status */}
@@ -3318,7 +3920,7 @@ const ChatApplication: React.FC = () => {
             <div className="flex-1 relative">
               <textarea
                 value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
+                onChange={handleTyping}
                 onKeyPress={handleKeyPress}
                 placeholder="Type a message..."
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
@@ -3442,7 +4044,13 @@ const ChatApplication: React.FC = () => {
       <VideoCall
         isOpen={isVideoCallOpen}
         onClose={() => setIsVideoCallOpen(false)}
-        contactName={selectedContact.name}
+        contactName={
+          selectedSimpleConversation
+            ? selectedSimpleConversation.user1Email === currentUser?.email
+              ? selectedSimpleConversation.user2Name
+              : selectedSimpleConversation.user1Name
+            : "Unknown"
+        }
       />
 
       {/* Voice Call Modal */}
@@ -3466,7 +4074,11 @@ const ChatApplication: React.FC = () => {
                 <Phone className="w-10 h-10 text-blue-600 dark:text-blue-400" />
               </div>
               <h4 className="text-xl font-medium text-gray-900 dark:text-white mb-2">
-                {selectedContact.name}
+                {selectedSimpleConversation
+                  ? selectedSimpleConversation.user1Email === currentUser?.email
+                    ? selectedSimpleConversation.user2Name
+                    : selectedSimpleConversation.user1Name
+                  : "Unknown"}
               </h4>
               <p className="text-gray-500 dark:text-gray-400 animate-pulse">
                 🔔 Calling...
