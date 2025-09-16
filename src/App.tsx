@@ -9,8 +9,8 @@ import Login from "./components/Login";
 const Dashboard = lazy(() => import("./components/Dashboard"));
 const TicketGallery = lazy(() => import("./components/TicketGallery"));
 const ChatApplication = lazy(() => import("./components/ChatApplication"));
+const UserDirectory = lazy(() => import("./components/UserDirectory"));
 const ITSupportDemo = lazy(() => import("./components/ITSupportDemo"));
-const RegisterForm = lazy(() => import("./components/RegisterForm"));
 
 // Authenticated App Component
 function AuthenticatedApp() {
@@ -73,7 +73,7 @@ function AuthenticatedApp() {
               {activeTab === "Dashboard" && <Dashboard />}
               {activeTab === "Tickets" && <TicketGallery />}
               {activeTab === "Customers" && <ChatApplication />}
-              {activeTab === "Register User" && <RegisterForm />}
+              {activeTab === "User Directory" && <UserDirectory />}
               {activeTab === "IT Support Demo" && <ITSupportDemo />}
             </Suspense>
           </div>

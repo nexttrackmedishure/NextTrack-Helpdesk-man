@@ -358,6 +358,12 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 <strong>User:</strong> user@nexttrack.com / password123
               </p>
             </div>
+            <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
+              <p className="text-xs text-blue-600 dark:text-blue-400">
+                <strong>Or use any account you created</strong> through the User
+                Directory registration form!
+              </p>
+            </div>
           </div>
 
           {/* Footer */}

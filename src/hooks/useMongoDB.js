@@ -1,6 +1,6 @@
 // Custom hook for MongoDB integration in your chat app
-import { useState, useEffect } from 'react';
-import { databaseService } from '../services/databaseService.js';
+import { useState, useEffect } from "react";
+import { databaseService } from "../services/databaseService.js";
 
 export const useMongoDB = () => {
   const [isConnected, setIsConnected] = useState(false);
@@ -12,20 +12,20 @@ export const useMongoDB = () => {
       try {
         setIsLoading(true);
         const result = await databaseService.healthCheck();
-        
-        if (result.status === 'healthy') {
+
+        if (result.status === "healthy") {
           setIsConnected(true);
           setError(null);
-          console.log('✅ MongoDB connected successfully');
+          console.log("✅ MongoDB connected successfully");
         } else {
           setIsConnected(false);
           setError(result.error);
-          console.error('❌ MongoDB connection failed:', result.error);
+          console.error("❌ MongoDB connection failed:", result.error);
         }
       } catch (err) {
         setIsConnected(false);
         setError(err.message);
-        console.error('❌ MongoDB connection error:', err);
+        console.error("❌ MongoDB connection error:", err);
       } finally {
         setIsLoading(false);
       }
@@ -38,7 +38,7 @@ export const useMongoDB = () => {
     isConnected,
     isLoading,
     error,
-    databaseService
+    databaseService,
   };
 };
 
@@ -51,16 +51,18 @@ export const useMessages = (conversationId) => {
 
   const loadMessages = async () => {
     if (!conversationId) return;
-    
+
     try {
       setIsLoading(true);
       setError(null);
-      
-      const messagesData = await databaseService.getMessagesByConversation(conversationId);
+
+      const messagesData = await databaseService.getMessagesByConversation(
+        conversationId
+      );
       setMessages(messagesData.reverse()); // Show oldest first
     } catch (err) {
       setError(err.message);
-      console.error('Error loading messages:', err);
+      console.error("Error loading messages:", err);
     } finally {
       setIsLoading(false);
     }
@@ -69,15 +71,15 @@ export const useMessages = (conversationId) => {
   const saveMessage = async (messageData) => {
     try {
       const result = await databaseService.createMessage(messageData);
-      console.log('Message saved to MongoDB:', result);
-      
+      console.log("Message saved to MongoDB:", result);
+
       // Reload messages to show the new one
       await loadMessages();
-      
+
       return result;
     } catch (err) {
       setError(err.message);
-      console.error('Error saving message:', err);
+      console.error("Error saving message:", err);
       throw err;
     }
   };
@@ -91,7 +93,7 @@ export const useMessages = (conversationId) => {
     isLoading,
     error,
     loadMessages,
-    saveMessage
+    saveMessage,
   };
 };
 
@@ -106,15 +108,14 @@ export const useUsers = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
-      // This would need to be implemented in your database service
-      // const usersData = await databaseService.getAllUsers();
-      // setUsers(usersData);
-      
-      console.log('Users loaded from MongoDB');
+
+      const usersData = await databaseService.getAllUsers();
+      setUsers(usersData);
+
+      console.log("Users loaded from MongoDB");
     } catch (err) {
       setError(err.message);
-      console.error('Error loading users:', err);
+      console.error("Error loading users:", err);
     } finally {
       setIsLoading(false);
     }
@@ -123,15 +124,47 @@ export const useUsers = () => {
   const createUser = async (userData) => {
     try {
       const result = await databaseService.createUser(userData);
-      console.log('User created in MongoDB:', result);
-      
+      console.log("User created in MongoDB:", result);
+
       // Reload users
       await loadUsers();
-      
+
       return result;
     } catch (err) {
       setError(err.message);
-      console.error('Error creating user:', err);
+      console.error("Error creating user:", err);
+      throw err;
+    }
+  };
+
+  const updateUser = async (userId, updateData) => {
+    try {
+      const result = await databaseService.updateUser(userId, updateData);
+      console.log("User updated in MongoDB:", result);
+
+      // Reload users
+      await loadUsers();
+
+      return result;
+    } catch (err) {
+      setError(err.message);
+      console.error("Error updating user:", err);
+      throw err;
+    }
+  };
+
+  const deleteUser = async (userId) => {
+    try {
+      const result = await databaseService.deleteUser(userId);
+      console.log("User deleted from MongoDB:", result);
+
+      // Reload users
+      await loadUsers();
+
+      return result;
+    } catch (err) {
+      setError(err.message);
+      console.error("Error deleting user:", err);
       throw err;
     }
   };
@@ -145,6 +178,8 @@ export const useUsers = () => {
     isLoading,
     error,
     loadUsers,
-    createUser
+    createUser,
+    updateUser,
+    deleteUser,
   };
 };

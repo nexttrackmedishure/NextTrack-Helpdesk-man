@@ -1,4 +1,8 @@
-import { getDatabase, getCollections, checkConnection } from '../config/database.js';
+import {
+  getDatabase,
+  getCollections,
+  checkConnection,
+} from "../config/database.js";
 
 // Database service for chat application
 export class DatabaseService {
@@ -10,7 +14,7 @@ export class DatabaseService {
   async init() {
     this.isConnected = await checkConnection();
     if (this.isConnected) {
-      console.log('🗄️ Database service initialized successfully');
+      console.log("🗄️ Database service initialized successfully");
     }
   }
 
@@ -21,11 +25,11 @@ export class DatabaseService {
       const result = await users.insertOne({
         ...userData,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
       return result;
     } catch (error) {
-      console.error('Error creating user:', error);
+      console.error("Error creating user:", error);
       throw error;
     }
   }
@@ -35,7 +39,27 @@ export class DatabaseService {
       const { users } = await getCollections();
       return await users.findOne({ _id: userId });
     } catch (error) {
-      console.error('Error getting user:', error);
+      console.error("Error getting user:", error);
+      throw error;
+    }
+  }
+
+  async getUserByEmail(email) {
+    try {
+      const { users } = await getCollections();
+      return await users.findOne({ email: email.toLowerCase() });
+    } catch (error) {
+      console.error("Error getting user by email:", error);
+      throw error;
+    }
+  }
+
+  async getAllUsers() {
+    try {
+      const { users } = await getCollections();
+      return await users.find({}).sort({ createdAt: -1 }).toArray();
+    } catch (error) {
+      console.error("Error getting all users:", error);
       throw error;
     }
   }
@@ -48,7 +72,17 @@ export class DatabaseService {
         { $set: { ...updateData, updatedAt: new Date() } }
       );
     } catch (error) {
-      console.error('Error updating user:', error);
+      console.error("Error updating user:", error);
+      throw error;
+    }
+  }
+
+  async deleteUser(userId) {
+    try {
+      const { users } = await getCollections();
+      return await users.deleteOne({ _id: userId });
+    } catch (error) {
+      console.error("Error deleting user:", error);
       throw error;
     }
   }
@@ -60,11 +94,11 @@ export class DatabaseService {
       const result = await messages.insertOne({
         ...messageData,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
       return result;
     } catch (error) {
-      console.error('Error creating message:', error);
+      console.error("Error creating message:", error);
       throw error;
     }
   }
@@ -79,7 +113,7 @@ export class DatabaseService {
         .skip(skip)
         .toArray();
     } catch (error) {
-      console.error('Error getting messages:', error);
+      console.error("Error getting messages:", error);
       throw error;
     }
   }
@@ -92,7 +126,7 @@ export class DatabaseService {
         { $set: { ...updateData, updatedAt: new Date() } }
       );
     } catch (error) {
-      console.error('Error updating message:', error);
+      console.error("Error updating message:", error);
       throw error;
     }
   }
@@ -104,11 +138,11 @@ export class DatabaseService {
       const result = await conversations.insertOne({
         ...conversationData,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
       return result;
     } catch (error) {
-      console.error('Error creating conversation:', error);
+      console.error("Error creating conversation:", error);
       throw error;
     }
   }
@@ -117,16 +151,13 @@ export class DatabaseService {
     try {
       const { conversations } = await getCollections();
       return await conversations
-        .find({ 
-          $or: [
-            { userId1: userId },
-            { userId2: userId }
-          ]
+        .find({
+          $or: [{ userId1: userId }, { userId2: userId }],
         })
         .sort({ updatedAt: -1 })
         .toArray();
     } catch (error) {
-      console.error('Error getting conversations:', error);
+      console.error("Error getting conversations:", error);
       throw error;
     }
   }
@@ -139,7 +170,7 @@ export class DatabaseService {
         { $set: { ...updateData, updatedAt: new Date() } }
       );
     } catch (error) {
-      console.error('Error updating conversation:', error);
+      console.error("Error updating conversation:", error);
       throw error;
     }
   }
@@ -151,11 +182,11 @@ export class DatabaseService {
       const result = await contacts.insertOne({
         ...contactData,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
       return result;
     } catch (error) {
-      console.error('Error creating contact:', error);
+      console.error("Error creating contact:", error);
       throw error;
     }
   }
@@ -163,12 +194,9 @@ export class DatabaseService {
   async getContactsByUser(userId) {
     try {
       const { contacts } = await getCollections();
-      return await contacts
-        .find({ userId })
-        .sort({ name: 1 })
-        .toArray();
+      return await contacts.find({ userId }).sort({ name: 1 }).toArray();
     } catch (error) {
-      console.error('Error getting contacts:', error);
+      console.error("Error getting contacts:", error);
       throw error;
     }
   }
@@ -179,13 +207,13 @@ export class DatabaseService {
       const { tickets } = await getCollections();
       const result = await tickets.insertOne({
         ...ticketData,
-        status: 'open',
+        status: "open",
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
       return result;
     } catch (error) {
-      console.error('Error creating ticket:', error);
+      console.error("Error creating ticket:", error);
       throw error;
     }
   }
@@ -193,12 +221,9 @@ export class DatabaseService {
   async getTicketsByUser(userId) {
     try {
       const { tickets } = await getCollections();
-      return await tickets
-        .find({ userId })
-        .sort({ createdAt: -1 })
-        .toArray();
+      return await tickets.find({ userId }).sort({ createdAt: -1 }).toArray();
     } catch (error) {
-      console.error('Error getting tickets:', error);
+      console.error("Error getting tickets:", error);
       throw error;
     }
   }
@@ -211,7 +236,7 @@ export class DatabaseService {
         { $set: { ...updateData, updatedAt: new Date() } }
       );
     } catch (error) {
-      console.error('Error updating ticket:', error);
+      console.error("Error updating ticket:", error);
       throw error;
     }
   }
@@ -221,16 +246,16 @@ export class DatabaseService {
     try {
       const { messages } = await getCollections();
       const changeStream = messages.watch([
-        { $match: { 'fullDocument.conversationId': conversationId } }
+        { $match: { "fullDocument.conversationId": conversationId } },
       ]);
-      
-      changeStream.on('change', (change) => {
+
+      changeStream.on("change", (change) => {
         callback(change);
       });
 
       return changeStream;
     } catch (error) {
-      console.error('Error watching messages:', error);
+      console.error("Error watching messages:", error);
       throw error;
     }
   }
@@ -241,15 +266,15 @@ export class DatabaseService {
       const db = await getDatabase();
       const result = await db.admin().ping();
       return {
-        status: 'healthy',
+        status: "healthy",
         timestamp: new Date(),
-        result
+        result,
       };
     } catch (error) {
       return {
-        status: 'unhealthy',
+        status: "unhealthy",
         timestamp: new Date(),
-        error: error.message
+        error: error.message,
       };
     }
   }

@@ -1,12 +1,18 @@
-// User Service for handling user registration
-// This is a client-side service that would typically call a backend API
+// User Service for handling user registration and management
+// This service handles user operations with MongoDB integration
 
 export interface User {
+  _id?: string;
+  idNumber: string;
   fullName: string;
+  nickname: string;
+  department: string;
+  branch: string;
+  contactNumber: string;
   email: string;
   password: string;
-  department?: string;
-  role?: string;
+  role: "Administrator" | "IT Support" | "Member";
+  profileImage?: string;
   createdAt?: Date;
   isActive?: boolean;
   lastLogin?: Date;
@@ -18,18 +24,13 @@ export interface RegisterResponse {
   user?: Omit<User, "password">;
 }
 
-// Mock user storage (in a real app, this would be replaced with API calls)
-let mockUsers: User[] = [];
+export interface UserDirectoryUser extends Omit<User, "password"> {
+  id: string;
+  status: "active" | "inactive";
+}
 
 // Simulate API delay
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-// Check if email already exists
-const emailExists = (email: string): boolean => {
-  return mockUsers.some(
-    (user) => user.email.toLowerCase() === email.toLowerCase()
-  );
-};
 
 // Hash password (in a real app, this would be done on the server)
 const hashPassword = async (password: string): Promise<string> => {
@@ -39,19 +40,11 @@ const hashPassword = async (password: string): Promise<string> => {
 
 // Register new user
 export const registerUser = async (
-  userData: Omit<User, "createdAt" | "isActive" | "lastLogin">
+  userData: Omit<User, "createdAt" | "isActive" | "lastLogin" | "_id">
 ): Promise<RegisterResponse> => {
   try {
     // Simulate API delay
     await delay(1000);
-
-    // Check if email already exists
-    if (emailExists(userData.email)) {
-      return {
-        success: false,
-        message: "User with this email already exists",
-      };
-    }
 
     // Hash password
     const hashedPassword = await hashPassword(userData.password);
@@ -64,8 +57,30 @@ export const registerUser = async (
       isActive: true,
     };
 
-    // Add to mock storage
-    mockUsers.push(newUser);
+    try {
+      // Try to save to MongoDB first
+      const { DatabaseService } = await import("./databaseService.js");
+      const dbService = new DatabaseService();
+      const result = await dbService.createUser(newUser);
+      console.log("User registered in MongoDB:", result);
+    } catch (dbError) {
+      console.warn(
+        "MongoDB not available, using localStorage fallback:",
+        dbError
+      );
+
+      // Fallback to localStorage
+      const existingUsers = JSON.parse(
+        localStorage.getItem("nexttrack_users") || "[]"
+      );
+      const newUserWithId = {
+        ...newUser,
+        _id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      };
+      existingUsers.push(newUserWithId);
+      localStorage.setItem("nexttrack_users", JSON.stringify(existingUsers));
+      console.log("User saved to localStorage:", newUserWithId);
+    }
 
     // Return success response (without password)
     const { password, ...userWithoutPassword } = newUser;
@@ -84,24 +99,97 @@ export const registerUser = async (
   }
 };
 
-// Get all users (for testing)
-export const getAllUsers = (): User[] => {
-  return mockUsers.map((user) => {
-    const { password, ...userWithoutPassword } = user;
-    return userWithoutPassword as User;
-  });
+// Get all users (for user directory)
+export const getAllUsers = async (): Promise<UserDirectoryUser[]> => {
+  try {
+    await delay(500);
+
+    try {
+      // Try to fetch from MongoDB first
+      const { DatabaseService } = await import("./databaseService.js");
+      const dbService = new DatabaseService();
+      const users = await dbService.getAllUsers();
+      console.log("Fetched users from MongoDB:", users);
+
+      // Transform database users to UserDirectoryUser format
+      const transformedUsers: UserDirectoryUser[] = users.map((user: any) => ({
+        id: user._id?.toString() || Math.random().toString(),
+        idNumber: user.idNumber || "",
+        fullName: user.fullName || "",
+        nickname: user.nickname || "",
+        department: user.department || "",
+        branch: user.branch || "",
+        contactNumber: user.contactNumber || "",
+        email: user.email || "",
+        role: user.role || "Member",
+        profileImage: user.profileImage || null,
+        createdAt: user.createdAt || new Date(),
+        isActive: user.isActive !== false, // Default to true if not specified
+        lastLogin: user.lastLogin || null,
+        status: user.isActive !== false ? "active" : "inactive",
+      }));
+
+      return transformedUsers;
+    } catch (dbError) {
+      console.warn(
+        "MongoDB not available, using localStorage fallback:",
+        dbError
+      );
+
+      // Fallback to localStorage
+      const localUsers = JSON.parse(
+        localStorage.getItem("nexttrack_users") || "[]"
+      );
+      console.log("Fetched users from localStorage:", localUsers);
+
+      // Transform localStorage users to UserDirectoryUser format
+      const transformedUsers: UserDirectoryUser[] = localUsers.map(
+        (user: any) => ({
+          id: user._id || Math.random().toString(),
+          idNumber: user.idNumber || "",
+          fullName: user.fullName || "",
+          nickname: user.nickname || "",
+          department: user.department || "",
+          branch: user.branch || "",
+          contactNumber: user.contactNumber || "",
+          email: user.email || "",
+          role: user.role || "Member",
+          profileImage: user.profileImage || null,
+          createdAt: user.createdAt ? new Date(user.createdAt) : new Date(),
+          isActive: user.isActive !== false, // Default to true if not specified
+          lastLogin: user.lastLogin ? new Date(user.lastLogin) : null,
+          status: user.isActive !== false ? "active" : "inactive",
+        })
+      );
+
+      return transformedUsers;
+    }
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    // Return empty array if both database and localStorage fail
+    return [];
+  }
 };
 
 // Get user by email
-export const getUserByEmail = (email: string): User | null => {
-  const user = mockUsers.find(
-    (user) => user.email.toLowerCase() === email.toLowerCase()
-  );
-  if (user) {
-    const { password, ...userWithoutPassword } = user;
-    return userWithoutPassword as User;
+export const getUserByEmail = async (email: string): Promise<User | null> => {
+  try {
+    await delay(300);
+
+    // Mock implementation - in real app, this would query the database
+    const users = await getAllUsers();
+    const user = users.find(
+      (u) => u.email.toLowerCase() === email.toLowerCase()
+    );
+
+    if (user) {
+      return user as User;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error getting user by email:", error);
+    return null;
   }
-  return null;
 };
 
 // Validate user data
@@ -110,8 +198,28 @@ export const validateUserData = (
 ): { isValid: boolean; errors: string[] } => {
   const errors: string[] = [];
 
+  if (!userData.idNumber || userData.idNumber.trim().length < 3) {
+    errors.push("ID Number must be at least 3 characters");
+  }
+
   if (!userData.fullName || userData.fullName.trim().length < 2) {
     errors.push("Full name must be at least 2 characters");
+  }
+
+  if (!userData.nickname || userData.nickname.trim().length < 2) {
+    errors.push("Nickname must be at least 2 characters");
+  }
+
+  if (!userData.department || userData.department.trim().length < 2) {
+    errors.push("Department is required");
+  }
+
+  if (!userData.branch || userData.branch.trim().length < 2) {
+    errors.push("Branch is required");
+  }
+
+  if (!userData.contactNumber || userData.contactNumber.trim().length < 8) {
+    errors.push("Contact number must be at least 8 characters");
   }
 
   if (!userData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userData.email)) {
@@ -131,6 +239,10 @@ export const validateUserData = (
     errors.push("Password must contain uppercase, lowercase, and number");
   }
 
+  if (!userData.role) {
+    errors.push("Role is required");
+  }
+
   return {
     isValid: errors.length === 0,
     errors,
@@ -139,7 +251,7 @@ export const validateUserData = (
 
 // For MongoDB integration (when backend is ready)
 export const registerUserWithMongoDB = async (
-  userData: Omit<User, "createdAt" | "isActive" | "lastLogin">
+  userData: Omit<User, "createdAt" | "isActive" | "lastLogin" | "_id">
 ): Promise<RegisterResponse> => {
   try {
     const response = await fetch("/api/users/register", {

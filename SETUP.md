@@ -77,46 +77,12 @@ The application will automatically create these collections:
 - **categories** - Ticket categories
 - **assignees** - IT support assignees
 
-### 5. User Registration
+### 5. API Endpoints
 
-The registration form includes:
-
-- **Full Name** (required)
-- **Email** (required, validated)
-- **Department** (dropdown selection)
-- **Password** (required, strong validation)
-- **Confirm Password** (required)
-- **Terms Agreement** (required)
-
-### 6. Password Requirements
-
-- Minimum 8 characters
-- At least 1 uppercase letter
-- At least 1 lowercase letter
-- At least 1 number
-- Special characters allowed: @$!%\*?&
-
-### 7. API Endpoints
-
-- `POST /api/users/register` - Register new user
-- `GET /api/users` - Get all users (admin only)
 - `POST /api/tickets` - Create new ticket
 - `GET /api/tickets` - Get all tickets
 
-### 8. Testing the Registration
-
-1. Start your development server:
-
-   ```bash
-   npm run dev
-   ```
-
-2. Navigate to the registration page
-3. Fill out the form with valid data
-4. Submit the form
-5. Check your MongoDB database for the new user
-
-### 9. MongoDB Queries for Testing
+### 6. MongoDB Queries for Testing
 
 ```javascript
 // Connect to MongoDB shell
@@ -125,28 +91,23 @@ mongosh
 // Use the database
 use nextrack-helpdesk
 
-// View all users
-db.users.find().pretty()
+// View all tickets
+db.tickets.find().pretty()
 
-// View users by department
-db.users.find({department: "IT"}).pretty()
+// View tickets by status
+db.tickets.find({status: "open"}).pretty()
 
-// Count total users
-db.users.countDocuments()
-
-// Find user by email
-db.users.findOne({email: "user@example.com"})
+// Count total tickets
+db.tickets.countDocuments()
 ```
 
-### 10. Security Notes
+### 7. Security Notes
 
-- Passwords are hashed using bcryptjs with 12 salt rounds
-- Email addresses are stored in lowercase
 - Input validation is performed on both client and server
 - CORS is configured for API endpoints
 - Environment variables are used for sensitive data
 
-### 11. Production Deployment
+### 8. Production Deployment
 
 For production deployment:
 
@@ -158,7 +119,7 @@ For production deployment:
 6. Configure email service for notifications
 7. Set up database backups
 
-### 12. Troubleshooting
+### 9. Troubleshooting
 
 #### Common Issues:
 
@@ -168,23 +129,13 @@ For production deployment:
    - Verify connection string
    - Check firewall settings
 
-2. **Password Validation Error**
-
-   - Ensure password meets requirements
-   - Check for special characters
-
-3. **Email Already Exists**
-
-   - Check if user already registered
-   - Verify email format
-
-4. **API Route Not Found**
+2. **API Route Not Found**
    - Ensure API routes are in `pages/api/` directory
    - Check file naming conventions
 
-### 13. Next Steps
+### 10. Next Steps
 
-After setting up the registration:
+After setting up the system:
 
 1. Implement user authentication
 2. Add user login functionality

@@ -194,8 +194,7 @@ const mockMessages: { [key: number]: Message[] } = {
       title:
         "Tailwind CSS - Rapidly build modern websites without ever leaving your HTML",
       description: "Here's a great resource for styling:",
-      image:
-        "https://tailwindcss.com/_next/static/media/social-card-large.a6e71726.jpg",
+      image: "https://flowbite.com/docs/images/og-image.png",
     },
   ],
   3: [

@@ -11,7 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Monitor,
-  UserPlus,
+  UserCheck,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -31,7 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { icon: LayoutDashboard, label: "Dashboard" },
     { icon: MessageSquare, label: "Tickets" },
     { icon: Users, label: "Customers" },
-    { icon: UserPlus, label: "Register User" },
+    { icon: UserCheck, label: "User Directory" },
     { icon: Monitor, label: "IT Support Demo" },
     { icon: FileText, label: "Knowledge Base" },
     { icon: BarChart3, label: "Analytics" },

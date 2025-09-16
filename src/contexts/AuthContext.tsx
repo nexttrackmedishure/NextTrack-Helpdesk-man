@@ -65,19 +65,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
 
     try {
-      // Simulate API call - replace with actual authentication logic
+      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Mock authentication - replace with real validation
-      // Demo credentials: admin@nexttrack.com / password123
       if (email && password) {
-        // Simple demo validation
-        const isValidCredentials =
+        // First check demo credentials
+        const isDemoCredentials =
           (email === "admin@nexttrack.com" && password === "password123") ||
           (email === "user@nexttrack.com" && password === "password123") ||
           (email === "support@nexttrack.com" && password === "password123");
 
-        if (isValidCredentials) {
+        if (isDemoCredentials) {
           const role =
             email === "admin@nexttrack.com"
               ? "admin"
@@ -100,6 +98,84 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setUser(mockUser);
           localStorage.setItem("helpdesk_user", JSON.stringify(mockUser));
           return true;
+        }
+
+        // Check against registered users
+        try {
+          // Try to get users from MongoDB first
+          const { DatabaseService } = await import(
+            "../services/databaseService.js"
+          );
+          const dbService = new DatabaseService();
+          const users = await dbService.getAllUsers();
+
+          // Find user by email
+          const foundUser = users.find(
+            (user: any) => user.email.toLowerCase() === email.toLowerCase()
+          );
+
+          if (foundUser) {
+            // Simple password validation (in production, use proper hashing)
+            const hashedPassword = btoa(password + "_hashed");
+            if (foundUser.password === hashedPassword) {
+              const authUser: User = {
+                id: foundUser._id?.toString() || Math.random().toString(),
+                email: foundUser.email,
+                name: foundUser.fullName,
+                role: foundUser.role.toLowerCase() as
+                  | "admin"
+                  | "user"
+                  | "support",
+                avatar:
+                  foundUser.profileImage ||
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                    foundUser.fullName
+                  )}&background=6366f1&color=fff`,
+              };
+
+              setUser(authUser);
+              localStorage.setItem("helpdesk_user", JSON.stringify(authUser));
+              return true;
+            }
+          }
+        } catch (dbError) {
+          console.warn(
+            "MongoDB not available, checking localStorage:",
+            dbError
+          );
+
+          // Fallback to localStorage
+          const localUsers = JSON.parse(
+            localStorage.getItem("nexttrack_users") || "[]"
+          );
+          const foundUser = localUsers.find(
+            (user: any) => user.email.toLowerCase() === email.toLowerCase()
+          );
+
+          if (foundUser) {
+            // Simple password validation (in production, use proper hashing)
+            const hashedPassword = btoa(password + "_hashed");
+            if (foundUser.password === hashedPassword) {
+              const authUser: User = {
+                id: foundUser._id || Math.random().toString(),
+                email: foundUser.email,
+                name: foundUser.fullName,
+                role: foundUser.role.toLowerCase() as
+                  | "admin"
+                  | "user"
+                  | "support",
+                avatar:
+                  foundUser.profileImage ||
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                    foundUser.fullName
+                  )}&background=6366f1&color=fff`,
+              };
+
+              setUser(authUser);
+              localStorage.setItem("helpdesk_user", JSON.stringify(authUser));
+              return true;
+            }
+          }
         }
       }
 
