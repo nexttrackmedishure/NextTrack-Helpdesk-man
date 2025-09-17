@@ -1063,22 +1063,7 @@ const TicketGallery: React.FC<TicketGalleryProps> = () => {
           },
         ];
 
-        // Add main countries with orange markers
-        mainCountries.forEach((country) => {
-          const marker = window.L.circleMarker(country.latlng, {
-            radius: 10,
-            weight: 3,
-            opacity: 1,
-            fillOpacity: 0.9,
-            color: "#f97316", // Orange color
-            fillColor: "#f97316",
-          }).addTo(map);
-
-          marker.bindPopup(`
-              <strong style="font-size: 16px; color: #f97316;">${country.name}</strong><br/>
-              <small style="color: #6b7280;">Capital: ${country.capital}</small>
-          `);
-        });
+        // Main countries markers removed as requested
 
         // Add additional countries with blue markers
         additionalCountries.forEach((country) => {

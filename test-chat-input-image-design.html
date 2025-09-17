@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Input Image Design Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #2563eb;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        .info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+        }
+        .instructions {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .feature-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 5px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .feature-list li:before {
+            content: "✅ ";
+            color: #10b981;
+        }
+        .demo-area {
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .chat-input-demo {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .input-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .left-buttons {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .right-buttons {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .text-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 20px;
+            background: #f3f4f6;
+            font-size: 16px;
+            resize: none;
+            min-height: 40px;
+            max-height: 120px;
+            box-sizing: border-box;
+        }
+        .text-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+        .action-button {
+            padding: 8px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: #3b82f6;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+        }
+        .action-button:hover {
+            background: rgba(59, 130, 246, 0.1);
+            color: #2563eb;
+        }
+        .action-button.send {
+            background: #3b82f6;
+            color: white;
+        }
+        .action-button.send:hover {
+            background: #2563eb;
+        }
+        .action-button.like {
+            color: #3b82f6;
+        }
+        .action-button.like:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+        .icon {
+            width: 20px;
+            height: 20px;
+        }
+        .gif-button {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .comparison-item {
+            padding: 15px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+        .old-layout {
+            background: #fef2f2;
+            border-color: #fecaca;
+        }
+        .new-layout {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+        .responsive-demo {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .screen-size {
+            padding: 15px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+        }
+        .screen-size h4 {
+            margin: 0 0 15px 0;
+            color: #374151;
+            font-size: 14px;
+        }
+        .mobile {
+            max-width: 320px;
+        }
+        .tablet {
+            max-width: 768px;
+        }
+        .desktop {
+            max-width: 1024px;
+        }
+    </style>
+</head>
+<body>
+    <h1>💬 Chat Input Image Design Test</h1>
+    
+    <div class="instructions">
+        <h3>📋 Test Instructions</h3>
+        <p>This page demonstrates the new chat input design that matches the image you provided. The design features buttons positioned horizontally alongside the text input field, similar to popular messaging apps.</p>
+        <ol>
+            <li>Open your chat application in one browser window/tab</li>
+            <li>Open this test page in another browser window/tab</li>
+            <li>Compare the old vs new layout</li>
+            <li>Test the responsive behavior on different screen sizes</li>
+        </ol>
+    </div>
+
+    <div class="test-container">
+        <h3>🎯 New Design Features (Matching Image)</h3>
+        <ul class="feature-list">
+            <li>Horizontal button layout alongside text input</li>
+            <li>Blue color scheme for buttons (#3b82f6)</li>
+            <li>Rounded text input field with gray background</li>
+            <li>Left side: Mic, Photo, Emoji, GIF buttons</li>
+            <li>Right side: Emoji and Send/Like buttons</li>
+            <li>Consistent button sizing (40x40px)</li>
+            <li>Hover effects with blue background</li>
+            <li>Responsive design for all screen sizes</li>
+        </ul>
+    </div>
+
+    <div class="comparison">
+        <div class="comparison-item old-layout">
+            <h4>❌ Old Layout (Centered Below)</h4>
+            <div class="chat-input-demo">
+                <textarea class="text-input" placeholder="Type a message..." style="margin-bottom: 12px;"></textarea>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+                    <button class="action-button">😊</button>
+                    <button class="action-button">📎</button>
+                    <button class="action-button">🎤</button>
+                    <button class="action-button send">📤</button>
+                </div>
+            </div>
+            <p style="font-size: 12px; color: #6b7280; margin-top: 10px;">
+                Buttons were centered below the textarea
+            </p>
+        </div>
+        
+        <div class="comparison-item new-layout">
+            <h4>✅ New Layout (Horizontal Like Image)</h4>
+            <div class="chat-input-demo">
+                <div class="input-container">
+                    <div class="left-buttons">
+                        <button class="action-button" title="Voice message">🎤</button>
+                        <button class="action-button" title="Add photo">📷</button>
+                        <button class="action-button" title="Add emoji">😊</button>
+                        <button class="action-button gif-button" title="Add GIF">GIF</button>
+                    </div>
+                    <textarea class="text-input" placeholder="Aa"></textarea>
+                    <div class="right-buttons">
+                        <button class="action-button" title="Add emoji">😊</button>
+                        <button class="action-button like" title="Send like">👍</button>
+                    </div>
+                </div>
+            </div>
+            <p style="font-size: 12px; color: #6b7280; margin-top: 10px;">
+                Buttons are now positioned horizontally like in the image
+            </p>
+        </div>
+    </div>
+
+    <div class="demo-area">
+        <h4>🎨 Live Demo - New Horizontal Layout (Matching Image)</h4>
+        
+        <div class="chat-input-demo">
+            <div class="input-container">
+                <div class="left-buttons">
+                    <button class="action-button" title="Voice message">🎤</button>
+                    <button class="action-button" title="Add photo">📷</button>
+                    <button class="action-button" title="Add emoji">😊</button>
+                    <button class="action-button gif-button" title="Add GIF">GIF</button>
+                </div>
+                <textarea class="text-input" placeholder="Aa"></textarea>
+                <div class="right-buttons">
+                    <button class="action-button" title="Add emoji">😊</button>
+                    <button class="action-button like" title="Send like">👍</button>
+                </div>
+            </div>
+        </div>
+        
+        <p style="color: #6b7280; font-size: 14px; margin-top: 10px;">
+            ↑ This matches the design from your image with horizontal button layout
+        </p>
+    </div>
+
+    <div class="responsive-demo">
+        <div class="screen-size mobile">
+            <h4>📱 Mobile (320px)</h4>
+            <div class="chat-input-demo">
+                <div class="input-container">
+                    <div class="left-buttons">
+                        <button class="action-button">🎤</button>
+                        <button class="action-button">📷</button>
+                        <button class="action-button">😊</button>
+                        <button class="action-button gif-button">GIF</button>
+                    </div>
+                    <textarea class="text-input" placeholder="Aa"></textarea>
+                    <div class="right-buttons">
+                        <button class="action-button">😊</button>
+                        <button class="action-button like">👍</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="screen-size tablet">
+            <h4>📱 Tablet (768px)</h4>
+            <div class="chat-input-demo">
+                <div class="input-container">
+                    <div class="left-buttons">
+                        <button class="action-button">🎤</button>
+                        <button class="action-button">📷</button>
+                        <button class="action-button">😊</button>
+                        <button class="action-button gif-button">GIF</button>
+                    </div>
+                    <textarea class="text-input" placeholder="Aa"></textarea>
+                    <div class="right-buttons">
+                        <button class="action-button">😊</button>
+                        <button class="action-button like">👍</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="screen-size desktop">
+            <h4>🖥️ Desktop (1024px+)</h4>
+            <div class="chat-input-demo">
+                <div class="input-container">
+                    <div class="left-buttons">
+                        <button class="action-button">🎤</button>
+                        <button class="action-button">📷</button>
+                        <button class="action-button">😊</button>
+                        <button class="action-button gif-button">GIF</button>
+                    </div>
+                    <textarea class="text-input" placeholder="Aa"></textarea>
+                    <div class="right-buttons">
+                        <button class="action-button">😊</button>
+                        <button class="action-button like">👍</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h3>🧪 Test Functions</h3>
+        <p>Use these buttons to test the new layout:</p>
+        
+        <button class="test-button" onclick="testButtonLayout()">
+            🎯 Test Button Layout
+        </button>
+        
+        <button class="test-button" onclick="testResponsiveDesign()">
+            📱 Test Responsive Design
+        </button>
+        
+        <button class="test-button" onclick="showDesignInfo()">
+            📊 Show Design Information
+        </button>
+    </div>
+
+    <div id="status" class="test-container" style="display: none;">
+        <h3>📊 Current Status</h3>
+        <div id="status-content"></div>
+    </div>
+
+    <div class="test-container">
+        <h3>🔍 What to Look For</h3>
+        <ul>
+            <li><strong>Horizontal Layout:</strong> Buttons positioned alongside the text input</li>
+            <li><strong>Blue Color Scheme:</strong> All buttons use blue (#3b82f6) color</li>
+            <li><strong>Rounded Input:</strong> Text input has rounded corners and gray background</li>
+            <li><strong>Left Buttons:</strong> Mic, Photo, Emoji, GIF buttons on the left</li>
+            <li><strong>Right Buttons:</strong> Emoji and Send/Like buttons on the right</li>
+            <li><strong>Consistent Sizing:</strong> All buttons are 40x40px</li>
+            <li><strong>Hover Effects:</strong> Blue background on button hover</li>
+            <li><strong>Responsive:</strong> Layout adapts to different screen sizes</li>
+        </ul>
+    </div>
+
+    <script>
+        // Test button layout
+        function testButtonLayout() {
+            const buttons = document.querySelectorAll('.action-button');
+            let layoutInfo = '<h4>Button Layout Test Results:</h4>';
+            
+            buttons.forEach((button, index) => {
+                const rect = button.getBoundingClientRect();
+                layoutInfo += `<p>Button ${index + 1}: Position (${Math.round(rect.left)}, ${Math.round(rect.top)})</p>`;
+            });
+            
+            showStatus('success', layoutInfo);
+        }
+        
+        // Test responsive design
+        function testResponsiveDesign() {
+            const screenWidth = window.innerWidth;
+            let layoutType = 'Desktop';
+            
+            if (screenWidth < 640) {
+                layoutType = 'Mobile';
+            } else if (screenWidth < 1024) {
+                layoutType = 'Tablet';
+            }
+            
+            showStatus('info', `📱 Current screen size: ${screenWidth}px (${layoutType} layout)`);
+        }
+        
+        // Show design information
+        function showDesignInfo() {
+            const statusDiv = document.getElementById('status');
+            const contentDiv = document.getElementById('status-content');
+            
+            const info = `
+                <h4>Design Information (Matching Image):</h4>
+                <p><strong>Layout:</strong> Horizontal button arrangement</p>
+                <p><strong>Color Scheme:</strong> Blue (#3b82f6) for buttons</p>
+                <p><strong>Text Input:</strong> Rounded with gray background</p>
+                <p><strong>Left Buttons:</strong> Mic, Photo, Emoji, GIF</p>
+                <p><strong>Right Buttons:</strong> Emoji, Send/Like</p>
+                <p><strong>Button Size:</strong> 40x40px each</p>
+                <p><strong>Spacing:</strong> 8px gap between buttons</p>
+                <p><strong>Responsive:</strong> Adapts to all screen sizes</p>
+            `;
+            
+            contentDiv.innerHTML = info;
+            statusDiv.style.display = 'block';
+        }
+        
+        // Show status message
+        function showStatus(type, message) {
+            const statusDiv = document.getElementById('status');
+            const contentDiv = document.getElementById('status-content');
+            
+            contentDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+            statusDiv.style.display = 'block';
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Test responsive behavior on window resize
+        window.addEventListener('resize', () => {
+            if (document.getElementById('status').style.display === 'block') {
+                testResponsiveDesign();
+            }
+        });
+    </script>
+</body>
+</html>

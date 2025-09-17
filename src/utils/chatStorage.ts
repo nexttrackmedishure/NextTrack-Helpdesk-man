@@ -17,6 +17,16 @@ export interface SimpleMessage {
   text: string;
   timestamp: string;
   isRead: boolean;
+  type?: "text" | "image" | "file";
+  images?: Array<{
+    name: string;
+    url: string;
+    size: number;
+  }>;
+  fileName?: string;
+  fileSize?: number;
+  fileType?: string;
+  fileUrl?: string;
 }
 
 class ChatStorage {
@@ -100,7 +110,15 @@ class ChatStorage {
   addMessage(
     conversationId: string,
     senderEmail: string,
-    text: string
+    text: string,
+    type: "text" | "image" | "file" = "text",
+    additionalData?: {
+      images?: Array<{ name: string; url: string; size: number }>;
+      fileName?: string;
+      fileSize?: number;
+      fileType?: string;
+      fileUrl?: string;
+    }
   ): SimpleMessage {
     const message: SimpleMessage = {
       id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -109,6 +127,8 @@ class ChatStorage {
       text,
       timestamp: new Date().toISOString(),
       isRead: false,
+      type,
+      ...additionalData,
     };
 
     // Add message to storage
@@ -117,7 +137,10 @@ class ChatStorage {
     localStorage.setItem(this.messagesKey, JSON.stringify(allMessages));
 
     // Update conversation's last message
-    this.updateConversationLastMessage(conversationId, text);
+    const lastMessageText = type === "image" ? "📷 Image" : 
+                           type === "file" ? `📎 ${additionalData?.fileName || "File"}` : 
+                           text;
+    this.updateConversationLastMessage(conversationId, lastMessageText);
 
     console.log("✅ Added message:", message);
     return message;
@@ -181,6 +204,41 @@ class ChatStorage {
     return conversation.user1Email === currentUserEmail
       ? conversation.user2Email
       : conversation.user1Email;
+  }
+
+  // Mark messages as read for a conversation
+  markMessagesAsRead(conversationId: string, currentUserEmail: string): void {
+    try {
+      const allMessages = this.getAllMessages();
+      let hasUpdates = false;
+
+      // Mark all unread messages from other users as read
+      allMessages.forEach((message) => {
+        if (
+          message.conversationId === conversationId &&
+          message.senderEmail !== currentUserEmail &&
+          !message.isRead
+        ) {
+          message.isRead = true;
+          hasUpdates = true;
+        }
+      });
+
+      // Save updated messages if there were changes
+      if (hasUpdates) {
+        localStorage.setItem(this.messagesKey, JSON.stringify(allMessages));
+        console.log("✅ Marked messages as read for conversation:", conversationId);
+        
+        // Trigger storage event for cross-window synchronization
+        window.dispatchEvent(
+          new CustomEvent("localStorageUpdated", {
+            detail: { key: this.messagesKey, conversationId },
+          })
+        );
+      }
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+    }
   }
 }
 

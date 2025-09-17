@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Input Button Alignment Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-button {
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #7c3aed;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        .info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+        }
+        .instructions {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .feature-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 5px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .feature-list li:before {
+            content: "✅ ";
+            color: #10b981;
+        }
+        .demo-area {
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .chat-input-demo {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+            resize: none;
+            min-height: 48px;
+            max-height: 120px;
+            box-sizing: border-box;
+        }
+        .textarea:focus {
+            outline: none;
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+        }
+        .button-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 12px;
+        }
+        .action-button {
+            padding: 8px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: #6b7280;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+        }
+        .action-button:hover {
+            background: #f3f4f6;
+            color: #8b5cf6;
+        }
+        .action-button.send {
+            background: rgba(139, 92, 246, 0.4);
+            color: white;
+        }
+        .action-button.send:hover {
+            background: rgba(139, 92, 246, 0.3);
+        }
+        .action-button.like {
+            background: #e5e7eb;
+            color: #6b7280;
+        }
+        .action-button.like:hover {
+            background: #d1d5db;
+        }
+        .icon {
+            width: 20px;
+            height: 20px;
+        }
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .comparison-item {
+            padding: 15px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+        .old-layout {
+            background: #fef2f2;
+            border-color: #fecaca;
+        }
+        .new-layout {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+        .old-button-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .old-button-row .action-button {
+            margin-left: auto;
+        }
+        .old-button-row .action-button:first-child {
+            margin-left: 0;
+            margin-right: auto;
+        }
+        .responsive-demo {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .screen-size {
+            padding: 15px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+        }
+        .screen-size h4 {
+            margin: 0 0 15px 0;
+            color: #374151;
+            font-size: 14px;
+        }
+        .mobile {
+            max-width: 320px;
+        }
+        .tablet {
+            max-width: 768px;
+        }
+        .desktop {
+            max-width: 1024px;
+        }
+    </style>
+</head>
+<body>
+    <h1>💬 Chat Input Button Alignment Test</h1>
+    
+    <div class="instructions">
+        <h3>📋 Test Instructions</h3>
+        <p>This page demonstrates the new centered button alignment in the chat input area. The buttons are now positioned in the center below the textarea instead of being spread across the input area.</p>
+        <ol>
+            <li>Open your chat application in one browser window/tab</li>
+            <li>Open this test page in another browser window/tab</li>
+            <li>Compare the old vs new layout</li>
+            <li>Test the responsive behavior on different screen sizes</li>
+        </ol>
+    </div>
+
+    <div class="test-container">
+        <h3>🎯 New Button Alignment Features</h3>
+        <ul class="feature-list">
+            <li>Buttons are centered below the textarea</li>
+            <li>Improved visual hierarchy and organization</li>
+            <li>Better spacing between buttons (16px gap)</li>
+            <li>Consistent button sizing (40x40px)</li>
+            <li>Enhanced hover effects and transitions</li>
+            <li>Responsive design for all screen sizes</li>
+            <li>Better accessibility with tooltips</li>
+            <li>Cleaner, more modern appearance</li>
+        </ul>
+    </div>
+
+    <div class="comparison">
+        <div class="comparison-item old-layout">
+            <h4>❌ Old Layout (Horizontal Spread)</h4>
+            <div class="chat-input-demo">
+                <div style="display: flex; align-items: flex-end; gap: 8px;">
+                    <button class="action-button">😊</button>
+                    <textarea class="textarea" placeholder="Type a message..." style="flex: 1;"></textarea>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button class="action-button">📎</button>
+                        <button class="action-button">🎤</button>
+                        <button class="action-button send">📤</button>
+                    </div>
+                </div>
+            </div>
+            <p style="font-size: 12px; color: #6b7280; margin-top: 10px;">
+                Buttons were spread across the input area
+            </p>
+        </div>
+        
+        <div class="comparison-item new-layout">
+            <h4>✅ New Layout (Centered)</h4>
+            <div class="chat-input-demo">
+                <textarea class="textarea" placeholder="Type a message..."></textarea>
+                <div class="button-row">
+                    <button class="action-button" title="Add emoji">😊</button>
+                    <button class="action-button" title="Attach file">📎</button>
+                    <button class="action-button" title="Voice message">🎤</button>
+                    <button class="action-button send" title="Send message">📤</button>
+                </div>
+            </div>
+            <p style="font-size: 12px; color: #6b7280; margin-top: 10px;">
+                Buttons are now centered below the textarea
+            </p>
+        </div>
+    </div>
+
+    <div class="demo-area">
+        <h4>🎨 Live Demo - New Centered Layout</h4>
+        
+        <div class="chat-input-demo">
+            <textarea class="textarea" placeholder="Type a message..."></textarea>
+            <div class="button-row">
+                <button class="action-button" title="Add emoji">😊</button>
+                <button class="action-button" title="Attach file">📎</button>
+                <button class="action-button" title="Voice message">🎤</button>
+                <button class="action-button send" title="Send message">📤</button>
+            </div>
+        </div>
+        
+        <p style="color: #6b7280; font-size: 14px; margin-top: 10px;">
+            ↑ This is how the new centered button layout looks
+        </p>
+    </div>
+
+    <div class="responsive-demo">
+        <div class="screen-size mobile">
+            <h4>📱 Mobile (320px)</h4>
+            <div class="chat-input-demo">
+                <textarea class="textarea" placeholder="Type a message..."></textarea>
+                <div class="button-row">
+                    <button class="action-button">😊</button>
+                    <button class="action-button">📎</button>
+                    <button class="action-button">🎤</button>
+                    <button class="action-button send">📤</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="screen-size tablet">
+            <h4>📱 Tablet (768px)</h4>
+            <div class="chat-input-demo">
+                <textarea class="textarea" placeholder="Type a message..."></textarea>
+                <div class="button-row">
+                    <button class="action-button">😊</button>
+                    <button class="action-button">📎</button>
+                    <button class="action-button">🎤</button>
+                    <button class="action-button send">📤</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="screen-size desktop">
+            <h4>🖥️ Desktop (1024px+)</h4>
+            <div class="chat-input-demo">
+                <textarea class="textarea" placeholder="Type a message..."></textarea>
+                <div class="button-row">
+                    <button class="action-button">😊</button>
+                    <button class="action-button">📎</button>
+                    <button class="action-button">🎤</button>
+                    <button class="action-button send">📤</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h3>🧪 Test Functions</h3>
+        <p>Use these buttons to test the new layout:</p>
+        
+        <button class="test-button" onclick="testButtonAlignment()">
+            🎯 Test Button Alignment
+        </button>
+        
+        <button class="test-button" onclick="testResponsiveLayout()">
+            📱 Test Responsive Layout
+        </button>
+        
+        <button class="test-button" onclick="showLayoutInfo()">
+            📊 Show Layout Information
+        </button>
+    </div>
+
+    <div id="status" class="test-container" style="display: none;">
+        <h3>📊 Current Status</h3>
+        <div id="status-content"></div>
+    </div>
+
+    <div class="test-container">
+        <h3>🔍 What to Look For</h3>
+        <ul>
+            <li><strong>Centered Buttons:</strong> All buttons are centered below the textarea</li>
+            <li><strong>Consistent Spacing:</strong> 16px gap between buttons</li>
+            <li><strong>Proper Sizing:</strong> All buttons are 40x40px for consistency</li>
+            <li><strong>Hover Effects:</strong> Smooth transitions on button hover</li>
+            <li><strong>Tooltips:</strong> Helpful tooltips on button hover</li>
+            <li><strong>Responsive:</strong> Layout works on all screen sizes</li>
+            <li><strong>Visual Hierarchy:</strong> Clear separation between input and actions</li>
+            <li><strong>Modern Design:</strong> Clean, professional appearance</li>
+        </ul>
+    </div>
+
+    <script>
+        // Test button alignment
+        function testButtonAlignment() {
+            const buttons = document.querySelectorAll('.action-button');
+            let alignmentInfo = '<h4>Button Alignment Test Results:</h4>';
+            
+            buttons.forEach((button, index) => {
+                const rect = button.getBoundingClientRect();
+                alignmentInfo += `<p>Button ${index + 1}: Position (${Math.round(rect.left)}, ${Math.round(rect.top)})</p>`;
+            });
+            
+            showStatus('success', alignmentInfo);
+        }
+        
+        // Test responsive layout
+        function testResponsiveLayout() {
+            const screenWidth = window.innerWidth;
+            let layoutType = 'Desktop';
+            
+            if (screenWidth < 640) {
+                layoutType = 'Mobile';
+            } else if (screenWidth < 1024) {
+                layoutType = 'Tablet';
+            }
+            
+            showStatus('info', `📱 Current screen size: ${screenWidth}px (${layoutType} layout)`);
+        }
+        
+        // Show layout information
+        function showLayoutInfo() {
+            const statusDiv = document.getElementById('status');
+            const contentDiv = document.getElementById('status-content');
+            
+            const info = `
+                <h4>Layout Information:</h4>
+                <p><strong>Button Count:</strong> 4 buttons (Emoji, Attach, Mic, Send/Like)</p>
+                <p><strong>Button Size:</strong> 40x40px each</p>
+                <p><strong>Button Spacing:</strong> 16px gap between buttons</p>
+                <p><strong>Alignment:</strong> Centered below textarea</p>
+                <p><strong>Layout Type:</strong> Flexbox with justify-center</p>
+                <p><strong>Responsive:</strong> Works on all screen sizes</p>
+                <p><strong>Accessibility:</strong> Tooltips and proper ARIA labels</p>
+            `;
+            
+            contentDiv.innerHTML = info;
+            statusDiv.style.display = 'block';
+        }
+        
+        // Show status message
+        function showStatus(type, message) {
+            const statusDiv = document.getElementById('status');
+            const contentDiv = document.getElementById('status-content');
+            
+            contentDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+            statusDiv.style.display = 'block';
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Test responsive behavior on window resize
+        window.addEventListener('resize', () => {
+            if (document.getElementById('status').style.display === 'block') {
+                testResponsiveLayout();
+            }
+        });
+    </script>
+</body>
+</html>

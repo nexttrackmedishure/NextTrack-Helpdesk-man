@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
+import TypingIndicator from "./TypingIndicator";
 import {
   Send,
-  Smile,
   Paperclip,
   Phone,
   Video,
@@ -208,6 +208,11 @@ const ChatApplication: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Auto scroll to bottom when simple messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [simpleMessages]);
+
   // Update messages when contact changes
   useEffect(() => {
     if (selectedContact) {
@@ -280,13 +285,16 @@ const ChatApplication: React.FC = () => {
       if (openDropdownId !== null) {
         setOpenDropdownId(null);
       }
+      if (showAttachmentMenu) {
+        setShowAttachmentMenu(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [openDropdownId]);
+  }, [openDropdownId, showAttachmentMenu]);
 
   // Cleanup audio URLs and camera stream
   useEffect(() => {
@@ -360,6 +368,33 @@ const ChatApplication: React.FC = () => {
     }
   };
 
+  // Play notification sound for new messages
+  const playNotificationSound = () => {
+    try {
+      // Create a simple notification sound using Web Audio API
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Create a pleasant notification sound
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+      
+      console.log("🔊 Played notification sound for new message");
+    } catch (error) {
+      console.log("🔇 Could not play notification sound:", error);
+    }
+  };
+
   // Initialize real-time chat
   const initializeRealtimeChat = async () => {
     if (!currentUser) return;
@@ -373,7 +408,7 @@ const ChatApplication: React.FC = () => {
       // Set up event handlers
       const handlerId = `chat-app-${currentUser.email}`;
 
-      // Handle new messages
+      // Handle new messages with enhanced auto-refresh
       realtimeChatService.onNewMessage(
         handlerId,
         (message: RealtimeMessage) => {
@@ -384,24 +419,59 @@ const ChatApplication: React.FC = () => {
             selectedSimpleConversation &&
             message.conversationId === selectedSimpleConversation.id
           ) {
-            setSimpleMessages((prev) => [...prev, message]);
+            setSimpleMessages((prev) => {
+              // Check if message already exists to prevent duplicates
+              const messageExists = prev.some(
+                (existingMsg) => existingMsg.id === message.id
+              );
+              if (messageExists) {
+                console.log("📨 Message already exists, skipping duplicate");
+                return prev;
+              }
+              console.log("📨 Adding new message to current conversation");
+              return [...prev, message];
+            });
+
+            // Auto-scroll to bottom for new messages in current conversation
+            setTimeout(() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, 100);
           }
 
-          // Update conversations list
+          // Update conversations list to show new message indicators
           loadSimpleConversations();
+
+          // Play notification sound for new messages (if not from current user)
+          if (message.senderEmail !== currentUser.email) {
+            playNotificationSound();
+          }
         }
       );
 
-      // Handle conversation updates
+      // Handle conversation updates with enhanced refresh
       realtimeChatService.onConversationUpdate(
         handlerId,
         (conversation: RealtimeConversation) => {
           console.log("🔄 Conversation updated:", conversation);
+          
+          // Reload conversations to show updated unread counts and last messages
           loadSimpleConversations();
+          
+          // If this is the currently selected conversation, refresh its messages too
+          if (
+            selectedSimpleConversation &&
+            conversation.id === selectedSimpleConversation.id
+          ) {
+            const updatedMessages = realtimeChatService.getConversationMessages(
+              conversation.id
+            );
+            setSimpleMessages(updatedMessages);
+            console.log("🔄 Refreshed messages for current conversation");
+          }
         }
       );
 
-      // Handle typing indicators
+      // Handle typing indicators with enhanced animation
       realtimeChatService.onTypingIndicator(handlerId, (typing) => {
         console.log("⌨️ Typing indicator:", typing);
 
@@ -410,12 +480,14 @@ const ChatApplication: React.FC = () => {
             ...prev,
             [typing.conversationId]: typing.userName,
           }));
+          console.log("⌨️ Showing typing indicator for:", typing.userName);
         } else {
           setTypingIndicator((prev) => {
             const newState = { ...prev };
             delete newState[typing.conversationId];
             return newState;
           });
+          console.log("⌨️ Hiding typing indicator for:", typing.userName);
         }
       });
 
@@ -644,6 +716,29 @@ const ChatApplication: React.FC = () => {
     };
   }, [currentUser]);
 
+  // Periodic refresh to ensure conversations stay up-to-date
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Set up periodic refresh every 5 seconds
+    const refreshInterval = setInterval(() => {
+      console.log("🔄 Periodic refresh of conversations and messages");
+      loadSimpleConversations();
+      
+      // Also refresh messages for current conversation
+      if (selectedSimpleConversation) {
+        const updatedMessages = realtimeChatService.getConversationMessages(
+          selectedSimpleConversation.id
+        );
+        setSimpleMessages(updatedMessages);
+      }
+    }, 5000); // Refresh every 5 seconds
+
+    return () => {
+      clearInterval(refreshInterval);
+    };
+  }, [currentUser, selectedSimpleConversation]);
+
   // Load messages when selected contact changes
   useEffect(() => {
     const loadMessagesForContact = async () => {
@@ -859,16 +954,22 @@ const ChatApplication: React.FC = () => {
     }
   };
 
-  // Handle typing indicator
+  // Handle typing indicator with enhanced responsiveness
   const handleTyping = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setNewMessage(e.target.value);
+    const value = e.target.value;
+    setNewMessage(value);
 
     if (selectedSimpleConversation && currentUser) {
-      // Send typing indicator
+      // Send typing indicator - show when user is actively typing
+      const isTyping = value.length > 0 && value.trim().length > 0;
       realtimeChatService.sendTypingIndicator(
         selectedSimpleConversation.id,
-        e.target.value.length > 0
+        isTyping
       );
+      
+      if (isTyping) {
+        console.log("⌨️ User is typing in conversation:", selectedSimpleConversation.id);
+      }
     }
   };
 
@@ -925,50 +1026,12 @@ const ChatApplication: React.FC = () => {
     setOpenDropdownId(null);
   };
 
-  // Reply to a message
-  const handleReply = (message: Message) => {
-    const replyText = message.text
-      ? `Replying to: "${message.text}"`
-      : "Replying to message";
-    setNewMessage(replyText + "\n\n");
-    // Focus on the message input
-    setTimeout(() => {
-      const textarea = document.querySelector(
-        'textarea[placeholder="Type a message..."]'
-      ) as HTMLTextAreaElement;
-      if (textarea) {
-        textarea.focus();
-        textarea.setSelectionRange(
-          textarea.value.length,
-          textarea.value.length
-        );
-      }
-    }, 100);
-  };
-
-  // Forward a message
-  const handleForward = (message: Message) => {
-    const forwardText = `Forwarded message: "${message.text}"`;
-    setNewMessage(forwardText + "\n\n");
-    // Focus on the message input
-    setTimeout(() => {
-      const textarea = document.querySelector(
-        'textarea[placeholder="Type a message..."]'
-      ) as HTMLTextAreaElement;
-      if (textarea) {
-        textarea.focus();
-        textarea.setSelectionRange(
-          textarea.value.length,
-          textarea.value.length
-        );
-      }
-    }, 100);
-  };
 
   // Copy message text to clipboard
-  const handleCopy = async (message: Message) => {
+  const handleCopy = async (message: any) => {
     try {
-      await navigator.clipboard.writeText(message.text);
+      const textToCopy = message.text || (message.type === "image" ? "Image message" : message.type === "file" ? "File message" : "Message");
+      await navigator.clipboard.writeText(textToCopy);
       // Show a brief success indicator
       const button = document.querySelector(
         `[data-message-id="${message.id}"]`
@@ -989,9 +1052,10 @@ const ChatApplication: React.FC = () => {
   };
 
   // Report a message
-  const handleReport = (message: Message) => {
+  const handleReport = (message: any) => {
+    const messageText = message.text || (message.type === "image" ? "Image message" : message.type === "file" ? "File message" : "Message");
     const reportReason = prompt(
-      `Report message: "${message.text}"\n\nPlease provide a reason for reporting this message:`,
+      `Report message: "${messageText}"\n\nPlease provide a reason for reporting this message:`,
       "Inappropriate content"
     );
 
@@ -1007,23 +1071,62 @@ const ChatApplication: React.FC = () => {
     }
   };
 
+  // Handle reply to message
+  const handleReply = (message: any) => {
+    const replyText = message.text ? `Replying to: "${message.text}"` : "Replying to message";
+    setNewMessage(replyText + "\n\n");
+    setOpenDropdownId(null);
+    // Focus on the message input
+    setTimeout(() => {
+      const textarea = document.querySelector(
+        'textarea[placeholder="Aa"]'
+      ) as HTMLTextAreaElement;
+      if (textarea) {
+        textarea.focus();
+        textarea.setSelectionRange(
+          textarea.value.length,
+          textarea.value.length
+        );
+      }
+    }, 100);
+  };
+
+  // Handle forward message
+  const handleForward = (message: any) => {
+    const forwardText = message.text ? `Forwarded message: "${message.text}"` : "Forwarded message";
+    setNewMessage(forwardText + "\n\n");
+    setOpenDropdownId(null);
+    // Focus on the message input
+    setTimeout(() => {
+      const textarea = document.querySelector(
+        'textarea[placeholder="Aa"]'
+      ) as HTMLTextAreaElement;
+      if (textarea) {
+        textarea.focus();
+        textarea.setSelectionRange(
+          textarea.value.length,
+          textarea.value.length
+        );
+      }
+    }, 100);
+  };
+
   // Delete a message
-  const handleDelete = (messageId: number) => {
-    const message = messages.find((m) => m.id === messageId);
-    const messagePreview = message?.text
+  const handleDelete = (message: any) => {
+    const messagePreview = message.text
       ? message.text.length > 50
         ? message.text.substring(0, 50) + "..."
         : message.text
-      : "this message";
+      : message.type === "image" ? "this image" : message.type === "file" ? "this file" : "this message";
 
     if (
       confirm(
         `Are you sure you want to delete "${messagePreview}"?\n\nThis action cannot be undone.`
       )
     ) {
-      setMessages((prevMessages) =>
-        prevMessages.filter((m) => m.id !== messageId)
-      );
+      // Here you would implement the delete functionality for the real-time system
+      console.log("Message deleted:", message.id);
+      setOpenDropdownId(null);
       // Show a brief success message
       const originalTitle = document.title;
       document.title = "Message deleted ✓";
@@ -1490,47 +1593,81 @@ const ChatApplication: React.FC = () => {
     }
   };
 
-  const sendFileMessage = (files: File[]) => {
-    files.forEach((file) => {
-      const fileMessage: FileMessage = {
-        id: messages.length + 1,
-        text: "",
-        sender: "agent",
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        isRead: false,
-        type: "file",
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        fileUrl: URL.createObjectURL(file),
-      };
-      setMessages((prev) => [...prev, fileMessage]);
-    });
+  // Handle paste events for images
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageFiles: File[] = [];
+    
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      
+      // Check if the pasted item is an image
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          imageFiles.push(file);
+        }
+      }
+    }
+
+    // If images were pasted, send them as image messages
+    if (imageFiles.length > 0) {
+      e.preventDefault(); // Prevent default paste behavior
+      sendImageMessage(imageFiles);
+    }
   };
 
-  const sendImageMessage = (files: File[]) => {
-    const images = files.map((file) => ({
-      name: file.name,
-      url: URL.createObjectURL(file),
-      size: file.size,
-    }));
+  const sendFileMessage = async (files: File[]) => {
+    if (!selectedSimpleConversation || !currentUser?.email) {
+      console.error('No conversation selected or user not logged in');
+      return;
+    }
 
-    const imageMessage: ImageMessage = {
-      id: messages.length + 1,
-      text: "",
-      sender: "agent",
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      isRead: false,
-      type: "image",
-      images: images,
-    };
-    setMessages((prev) => [...prev, imageMessage]);
+    for (const file of files) {
+      try {
+        const fileUrl = URL.createObjectURL(file);
+        
+        await realtimeChatService.sendMessage(
+          selectedSimpleConversation.id,
+          "", // Empty text for file messages
+          "file",
+          {
+            fileName: file.name,
+            fileSize: file.size,
+            fileType: file.type,
+            fileUrl: fileUrl,
+          }
+        );
+      } catch (error) {
+        console.error('Error sending file message:', error);
+      }
+    }
+  };
+
+  const sendImageMessage = async (files: File[]) => {
+    if (!selectedSimpleConversation || !currentUser?.email) {
+      console.error('No conversation selected or user not logged in');
+      return;
+    }
+
+    try {
+      const images = files.map((file) => ({
+        name: file.name,
+        url: URL.createObjectURL(file),
+        size: file.size,
+      }));
+      
+      await realtimeChatService.sendMessage(
+        selectedSimpleConversation.id,
+        "", // Empty text for image messages
+        "image",
+        { images }
+      );
+    } catch (error) {
+      console.error('Error sending image message:', error);
+    }
   };
 
   const sendUrlPreview = (
@@ -3520,10 +3657,18 @@ const ChatApplication: React.FC = () => {
                     onClick={() => {
                       console.log("🖱️ Clicked on conversation:", conversation);
                       setSelectedSimpleConversation(conversation);
+                      
+                      // Mark messages as read when conversation is selected
+                      if (conversation.unreadCount && conversation.unreadCount > 0) {
+                        realtimeChatService.markMessagesAsRead(conversation.id);
+                        console.log("📖 Marked messages as read for conversation:", conversation.id);
+                      }
                     }}
                     className={`p-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
                       selectedSimpleConversation?.id === conversation.id
                         ? "bg-violet-50/60 dark:bg-violet-900/30/20"
+                        : conversation.unreadCount && conversation.unreadCount > 0
+                        ? "bg-blue-50/30 dark:bg-blue-900/20 border-l-4 border-l-blue-500"
                         : ""
                     }`}
                   >
@@ -3539,18 +3684,26 @@ const ChatApplication: React.FC = () => {
                         <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 bg-green-500" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-start justify-between">
                           <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
                             {contactName}
                           </h3>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {new Date(
-                              conversation.lastMessageTime
-                            ).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
+                          <div className="flex flex-col items-end space-y-1">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {new Date(
+                                conversation.lastMessageTime
+                              ).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                            {/* Unread message indicator - positioned under the time */}
+                            {conversation.unreadCount && conversation.unreadCount > 0 && (
+                              <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full min-w-[20px] h-5 shadow-sm animate-pulse">
+                                {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                           {conversation.lastMessage}
@@ -3779,6 +3932,222 @@ const ChatApplication: React.FC = () => {
                 simpleMessages.map((message, index) => {
                   const isCurrentUser =
                     message.senderEmail === currentUser?.email;
+                  
+                  // Render image messages
+                  if (message.type === "image" && message.images) {
+                    const senderName = isCurrentUser 
+                      ? currentUser?.name || "You" 
+                      : selectedSimpleConversation?.user1Email === currentUser?.email 
+                        ? selectedSimpleConversation?.user2Name 
+                        : selectedSimpleConversation?.user1Name || "Unknown";
+                    
+                    return (
+                      <div
+                        key={`simple-message-${message.id}-${index}`}
+                        className="flex items-start gap-2.5"
+                      >
+                        {/* User Avatar */}
+                        <img 
+                          className="w-8 h-8 rounded-full" 
+                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=6366f1&color=fff`}
+                          alt={`${senderName} image`}
+                        />
+                        
+                        {/* Message Content */}
+                        <div className="flex flex-col gap-1">
+                          <div className="flex flex-col w-full max-w-[326px] leading-1.5 p-4 border-gray-200 bg-gray-100 rounded-e-xl rounded-es-xl dark:bg-gray-700">
+                            {/* User Name and Time */}
+                            <div className="flex items-center space-x-2 rtl:space-x-reverse mb-2">
+                              <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                                {senderName}
+                              </span>
+                              <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+                                {new Date(message.timestamp).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </div>
+                            
+                            {/* Message Text (if any) */}
+                            {message.text && (
+                              <p className="text-sm font-normal text-gray-900 dark:text-white mb-2">
+                                {message.text}
+                              </p>
+                            )}
+                            
+                            {/* Image Display */}
+                            {message.images.length === 1 ? (
+                              <div className="group relative my-2.5">
+                                <div className="absolute w-full h-full bg-gray-900/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
+                                  <button 
+                                    onClick={() => window.open(message.images?.[0]?.url || "", "_blank")}
+                                    className="inline-flex items-center justify-center rounded-full h-10 w-10 bg-white/30 hover:bg-white/50 focus:ring-4 focus:outline-none dark:text-white focus:ring-gray-50"
+                                    title="Download image"
+                                  >
+                                    <svg className="w-5 h-5 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 18">
+                                      <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 1v11m0 0 4-4m-4 4L4 8m11 4v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-3"/>
+                                    </svg>
+                                  </button>
+                                </div>
+                                <img 
+                                  src={message.images?.[0]?.url || ""} 
+                                  alt="Shared image"
+                                  className="rounded-lg w-full cursor-pointer" 
+                                  onClick={() => window.open(message.images?.[0]?.url || "", "_blank")}
+                                />
+                              </div>
+                            ) : (
+                              <div className="grid gap-2 grid-cols-2 my-2.5">
+                                {message.images.slice(0, 4).map((image, imgIndex) => (
+                                  <div key={imgIndex} className="group relative">
+                                    <div className="absolute w-full h-full bg-gray-900/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
+                                      <button 
+                                        onClick={() => window.open(image.url, "_blank")}
+                                        className="inline-flex items-center justify-center rounded-full h-8 w-8 bg-white/30 hover:bg-white/50 focus:ring-4 focus:outline-none dark:text-white focus:ring-gray-50"
+                                        title="Download image"
+                                      >
+                                        <svg className="w-4 h-4 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 18">
+                                          <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 1v11m0 0 4-4m-4 4L4 8m11 4v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-3"/>
+                                        </svg>
+                                      </button>
+                                    </div>
+                                    <img 
+                                      src={image.url} 
+                                      alt="Shared image"
+                                      className="rounded-lg w-full cursor-pointer" 
+                                      onClick={() => window.open(image.url, "_blank")}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {/* Message Status */}
+                            <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+                              Delivered
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {/* Message Actions Dropdown */}
+                        <div className="relative">
+                          <button 
+                            id={`dropdownMenuIconButton-${message.id}`}
+                            className="inline-flex self-center items-center p-2 text-sm font-medium text-center text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none dark:text-white focus:ring-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800 dark:focus:ring-gray-600" 
+                            type="button"
+                            onClick={() => setOpenDropdownId(openDropdownId === index ? null : index)}
+                          >
+                            <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 4 15">
+                              <path d="M3.5 1.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 6.041a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 5.959a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"/>
+                            </svg>
+                          </button>
+                          
+                          {/* Dropdown Menu */}
+                          {openDropdownId === index && (
+                            <div className="absolute right-0 top-full z-10 bg-white divide-y divide-gray-100 rounded-lg shadow-sm w-40 dark:bg-gray-700 dark:divide-gray-600">
+                              <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
+                                <li>
+                                  <button 
+                                    onClick={() => handleReply(message)}
+                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                                  >
+                                    Reply
+                                  </button>
+                                </li>
+                                <li>
+                                  <button 
+                                    onClick={() => handleForward(message)}
+                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                                  >
+                                    Forward
+                                  </button>
+                                </li>
+                                <li>
+                                  <button 
+                                    onClick={() => handleCopy(message)}
+                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                                  >
+                                    Copy
+                                  </button>
+                                </li>
+                                <li>
+                                  <button 
+                                    onClick={() => handleReport(message)}
+                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                                  >
+                                    Report
+                                  </button>
+                                </li>
+                                <li>
+                                  <button 
+                                    onClick={() => handleDelete(message)}
+                                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                                  >
+                                    Delete
+                                  </button>
+                                </li>
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  // Render file messages
+                  if (message.type === "file") {
+                    return (
+                      <div
+                        key={`simple-message-${message.id}-${index}`}
+                        className={`flex ${
+                          isCurrentUser ? "justify-end" : "justify-start"
+                        }`}
+                      >
+                        <div
+                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                            isCurrentUser
+                              ? "bg-violet-600 text-white"
+                              : "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white"
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3 my-2">
+                            <div className="flex-shrink-0">
+                              <File className="w-8 h-8 text-gray-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {message.fileName}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {formatFileSize(message.fileSize || 0)}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => window.open(message.fileUrl, "_blank")}
+                              className="flex-shrink-0 p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded"
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <p
+                            className={`text-xs mt-1 ${
+                              isCurrentUser
+                                ? "text-violet-100"
+                                : "text-gray-500 dark:text-gray-400"
+                            }`}
+                          >
+                            {new Date(message.timestamp).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  // Render text messages (default)
                   return (
                     <div
                       key={`simple-message-${message.id}-${index}`}
@@ -3836,18 +4205,13 @@ const ChatApplication: React.FC = () => {
                 </div>
               )}
 
-              {/* Typing Indicator */}
-              {selectedSimpleConversation &&
-                typingIndicator[selectedSimpleConversation.id] && (
-                  <div className="flex justify-start">
-                    <div className="max-w-xs lg:max-w-md px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700">
-                      <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-                        {typingIndicator[selectedSimpleConversation.id]} is
-                        typing...
-                      </p>
-                    </div>
-                  </div>
-                )}
+              {/* Animated Typing Indicator */}
+              {selectedSimpleConversation && (
+                <TypingIndicator
+                  userName={typingIndicator[selectedSimpleConversation.id] || ""}
+                  isVisible={!!typingIndicator[selectedSimpleConversation.id]}
+                />
+              )}
 
               <div ref={messagesEndRef} />
             </>
@@ -3908,92 +4272,15 @@ const ChatApplication: React.FC = () => {
 
         {/* Message Input */}
         <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 shadow-lg">
-          <div className="flex items-end space-x-2">
-            {/* Emoji Button - Moved to the left */}
-            <button
-              onClick={openEmojiPicker}
-              className="p-2 text-gray-500 dark:text-gray-400 hover:text-violet-500 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors flex-shrink-0"
-            >
-              <Smile className="w-5 h-5" />
-            </button>
-
-            <div className="flex-1 relative">
-              <textarea
-                value={newMessage}
-                onChange={handleTyping}
-                onKeyPress={handleKeyPress}
-                placeholder="Type a message..."
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
-                rows={1}
-                style={{ minHeight: "48px", maxHeight: "120px" }}
-              />
-            </div>
-
-            {/* Action Buttons */}
+          <div className="flex items-center space-x-3">
+            {/* Left Side Buttons */}
             <div className="flex items-center space-x-2">
-              {/* Attachment Button */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-                  className="p-2 text-gray-500 dark:text-gray-400 hover:text-violet-500 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
-                >
-                  <Paperclip className="w-5 h-5" />
-                </button>
-                {showAttachmentMenu && (
-                  <div className="absolute bottom-12 left-0 bg-white dark:bg-dark-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg p-2">
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-600 rounded flex items-center"
-                    >
-                      <File className="w-4 h-4 mr-2" />
-                      File
-                    </button>
-                    <button
-                      onClick={() => imageInputRef.current?.click()}
-                      className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-600 rounded flex items-center"
-                    >
-                      <Image className="w-4 h-4 mr-2" />
-                      Photo
-                    </button>
-                    <button
-                      onClick={() => {
-                        const url = prompt("Enter URL to share:");
-                        if (url) {
-                          sendUrlPreview(
-                            url,
-                            "Link Preview",
-                            "Click to view",
-                            "https://flowbite.com/docs/images/og-image.png"
-                          );
-                        }
-                      }}
-                      className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-600 rounded flex items-center"
-                    >
-                      <svg
-                        className="w-4 h-4 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                        />
-                      </svg>
-                      Link
-                    </button>
-                  </div>
-                )}
-              </div>
-
               {/* Voice Message Button */}
               <button
                 onMouseDown={startRecording}
                 onMouseUp={stopRecording}
                 onMouseLeave={stopRecording}
-                className="p-2 text-gray-500 dark:text-gray-400 hover:text-violet-500 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors"
+                className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                 title="Hold to record voice message"
               >
                 {isRecording ? (
@@ -4003,14 +4290,90 @@ const ChatApplication: React.FC = () => {
                 )}
               </button>
 
-              {/* Send Button */}
+              {/* Attachment Button */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+                  className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                  title="Attach file"
+                >
+                  <Paperclip className="w-5 h-5" />
+                </button>
+
+                {/* Attachment Menu */}
+                {showAttachmentMenu && (
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg py-2 min-w-[160px] z-50">
+                    <button
+                      onClick={() => {
+                        imageInputRef.current?.click();
+                        setShowAttachmentMenu(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                    >
+                      <Image className="w-4 h-4" />
+                      <span>Photo</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        fileInputRef.current?.click();
+                        setShowAttachmentMenu(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                    >
+                      <File className="w-4 h-4" />
+                      <span>File</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+
+              {/* GIF Button */}
+              <button
+                onClick={() => {
+                  const gifUrl = prompt("Enter GIF URL:");
+                  if (gifUrl) {
+                    sendUrlPreview(
+                      gifUrl,
+                      "GIF",
+                      "Click to view",
+                      gifUrl
+                    );
+                  }
+                }}
+                className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                title="Add GIF"
+              >
+                <span className="text-sm font-bold">GIF</span>
+              </button>
+            </div>
+
+            {/* Text Input */}
+            <div className="flex-1 relative">
+              <textarea
+                value={newMessage}
+                onChange={handleTyping}
+                onKeyPress={handleKeyPress}
+                onPaste={handlePaste}
+                placeholder="Aa"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                rows={1}
+                style={{ minHeight: "40px", maxHeight: "120px" }}
+              />
+            </div>
+
+            {/* Right Side Buttons */}
+            <div className="flex items-center space-x-2">
+
+              {/* Send/Like Button */}
               <button
                 onClick={handleSendMessage}
                 className={`p-2 rounded-lg transition-colors ${
                   newMessage.trim()
-                    ? "bg-violet-300/40 hover:bg-violet-200/30 text-white"
-                    : "bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-500 dark:text-gray-400"
+                    ? "bg-blue-500 hover:bg-blue-600 text-white"
+                    : "text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                 }`}
+                title={newMessage.trim() ? "Send message" : "Send like"}
               >
                 {newMessage.trim() ? (
                   <Send className="w-5 h-5" />

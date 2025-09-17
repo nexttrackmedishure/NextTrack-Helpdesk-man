@@ -141,7 +141,15 @@ class RealtimeChatService {
   // Send a message
   async sendMessage(
     conversationId: string,
-    text: string
+    text: string,
+    type: "text" | "image" | "file" = "text",
+    additionalData?: {
+      images?: Array<{ name: string; url: string; size: number }>;
+      fileName?: string;
+      fileSize?: number;
+      fileType?: string;
+      fileUrl?: string;
+    }
   ): Promise<RealtimeMessage> {
     if (!this.currentUserEmail) {
       throw new Error("User not initialized");
@@ -151,7 +159,9 @@ class RealtimeChatService {
     const message = chatStorage.addMessage(
       conversationId,
       this.currentUserEmail,
-      text
+      text,
+      type,
+      additionalData
     );
 
     // Create real-time message
@@ -259,13 +269,10 @@ class RealtimeChatService {
   markMessagesAsRead(conversationId: string): void {
     if (!this.currentUserEmail) return;
 
-    const messages = chatStorage.getConversationMessages(conversationId);
-    const unreadMessages = messages.filter(
-      (msg) => msg.senderEmail !== this.currentUserEmail && !msg.isRead
-    );
+    // Use the chatStorage method to mark messages as read
+    chatStorage.markMessagesAsRead(conversationId, this.currentUserEmail);
 
-    // Update messages in storage (this would need to be implemented in chatStorage)
-    // For now, we'll just trigger a conversation update
+    // Trigger a conversation update to refresh the UI
     websocketService.sendMessage({
       type: "conversation_update",
       data: { conversationId, action: "mark_read" },
@@ -273,6 +280,8 @@ class RealtimeChatService {
       senderEmail: this.currentUserEmail,
       conversationId,
     });
+
+    console.log("📖 Marked messages as read for conversation:", conversationId);
   }
 
   // Subscribe to new messages

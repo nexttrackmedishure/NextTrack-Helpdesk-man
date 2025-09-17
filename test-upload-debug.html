@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #2563eb;
+        }
+        .textarea {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: Arial, sans-serif;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Upload Functionality Debug Test</h1>
+    
+    <div class="test-section">
+        <h2>📁 File Upload Test</h2>
+        <p>Test the file input functionality:</p>
+        <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt,.zip,.rar" style="display: none;">
+        <button class="button" onclick="document.getElementById('fileInput').click()">Select File</button>
+        <button class="button" onclick="testFileInput()">Test File Input Programmatically</button>
+    </div>
+
+    <div class="test-section">
+        <h2>🖼️ Image Upload Test</h2>
+        <p>Test the image input functionality:</p>
+        <input type="file" id="imageInput" accept="image/*" multiple style="display: none;">
+        <button class="button" onclick="document.getElementById('imageInput').click()">Select Images</button>
+        <button class="button" onclick="testImageInput()">Test Image Input Programmatically</button>
+    </div>
+
+    <div class="test-section">
+        <h2>📋 Paste Test</h2>
+        <p>Test pasting images into the textarea:</p>
+        <textarea id="pasteArea" class="textarea" placeholder="Try pasting an image here (Ctrl+V)"></textarea>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Debug Log</h2>
+        <div id="debugLog" class="log">Debug messages will appear here...\n</div>
+        <button class="button" onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <script>
+        let logCount = 0;
+        
+        function log(message) {
+            const logElement = document.getElementById('debugLog');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.textContent += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLog() {
+            document.getElementById('debugLog').textContent = 'Debug messages will appear here...\n';
+        }
+
+        // File input test
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            log(`File input changed: ${e.target.files.length} files selected`);
+            Array.from(e.target.files).forEach((file, index) => {
+                log(`File ${index + 1}: ${file.name} (${file.size} bytes, ${file.type})`);
+            });
+        });
+
+        // Image input test
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            log(`Image input changed: ${e.target.files.length} images selected`);
+            Array.from(e.target.files).forEach((file, index) => {
+                log(`Image ${index + 1}: ${file.name} (${file.size} bytes, ${file.type})`);
+            });
+        });
+
+        // Paste test
+        document.getElementById('pasteArea').addEventListener('paste', function(e) {
+            log('Paste event triggered');
+            const items = e.clipboardData?.items;
+            if (items) {
+                log(`Clipboard items: ${items.length}`);
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    log(`Item ${i + 1}: ${item.type}`);
+                    if (item.type.startsWith('image/')) {
+                        const file = item.getAsFile();
+                        if (file) {
+                            log(`Image file: ${file.name} (${file.size} bytes)`);
+                        }
+                    }
+                }
+            }
+        });
+
+        function testFileInput() {
+            const fileInput = document.getElementById('fileInput');
+            log('Testing file input programmatically...');
+            log(`File input element: ${fileInput}`);
+            log(`File input type: ${fileInput.type}`);
+            log(`File input accept: ${fileInput.accept}`);
+            fileInput.click();
+        }
+
+        function testImageInput() {
+            const imageInput = document.getElementById('imageInput');
+            log('Testing image input programmatically...');
+            log(`Image input element: ${imageInput}`);
+            log(`Image input type: ${imageInput.type}`);
+            log(`Image input accept: ${imageInput.accept}`);
+            imageInput.click();
+        }
+
+        // Initial log
+        log('Upload debug test initialized');
+        log('Try the buttons above to test upload functionality');
+    </script>
+</body>
+</html>

@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zero Hide Behavior Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-button {
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #7c3aed;
+        }
+        .test-button.danger {
+            background: #ef4444;
+        }
+        .test-button.danger:hover {
+            background: #dc2626;
+        }
+        .test-button.success {
+            background: #10b981;
+        }
+        .test-button.success:hover {
+            background: #059669;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        .info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+        }
+        .warning {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        .instructions {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .feature-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 5px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .feature-list li:before {
+            content: "✅ ";
+            color: #10b981;
+        }
+        .demo-area {
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .conversation-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid #e5e7eb;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            background: white;
+        }
+        .conversation-item:hover {
+            background-color: #f8fafc;
+        }
+        .avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #8b5cf6;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 12px;
+        }
+        .conversation-content {
+            flex: 1;
+            min-width: 0;
+        }
+        .conversation-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .contact-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: #1f2937;
+            margin: 0;
+        }
+        .time-indicator {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+        }
+        .time {
+            font-size: 12px;
+            color: #6b7280;
+        }
+        .unread-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2px 8px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            background: #ef4444;
+            border-radius: 12px;
+            min-width: 20px;
+            height: 20px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            animation: pulse 2s infinite;
+        }
+        .unread-badge.hidden {
+            display: none !important;
+        }
+        .last-message {
+            font-size: 14px;
+            color: #6b7280;
+            margin: 0;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+        .test-scenario {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .test-scenario h4 {
+            margin: 0 0 10px 0;
+            color: #0c4a6e;
+        }
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .scenario-item {
+            padding: 15px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .scenario-item.zero {
+            background: #fef2f2;
+            border-color: #fecaca;
+        }
+        .scenario-item.positive {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+        .scenario-item.undefined {
+            background: #fef3c7;
+            border-color: #fde68a;
+        }
+        .count-display {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .zero-count {
+            color: #6b7280;
+        }
+        .positive-count {
+            color: #ef4444;
+        }
+        .undefined-count {
+            color: #f59e0b;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔢 Zero Hide Behavior Test</h1>
+    
+    <div class="instructions">
+        <h3>📋 Test Instructions</h3>
+        <p>This page tests the zero-hiding behavior of the unread message indicator. The indicator should:</p>
+        <ul>
+            <li><strong>Hide completely</strong> when unread count is 0</li>
+            <li><strong>Show</strong> when unread count is greater than 0</li>
+            <li><strong>Hide</strong> when unread count is undefined or null</li>
+        </ul>
+    </div>
+
+    <div class="test-container">
+        <h3>🎯 Zero Hide Behavior Rules</h3>
+        <ul class="feature-list">
+            <li>Indicator is completely hidden when count = 0</li>
+            <li>Indicator shows when count > 0</li>
+            <li>Indicator hides when count is undefined/null</li>
+            <li>Indicator hides when count is negative</li>
+            <li>Indicator shows "99+" when count > 99</li>
+            <li>Automatic hiding when messages are marked as read</li>
+        </ul>
+    </div>
+
+    <div class="scenario-grid">
+        <div class="scenario-item zero">
+            <h4>Count = 0</h4>
+            <div class="count-display zero-count">0</div>
+            <p>Indicator: <strong>HIDDEN</strong></p>
+            <div class="unread-badge hidden">0</div>
+        </div>
+        
+        <div class="scenario-item positive">
+            <h4>Count = 3</h4>
+            <div class="count-display positive-count">3</div>
+            <p>Indicator: <strong>VISIBLE</strong></p>
+            <div class="unread-badge">3</div>
+        </div>
+        
+        <div class="scenario-item undefined">
+            <h4>Count = undefined</h4>
+            <div class="count-display undefined-count">undefined</div>
+            <p>Indicator: <strong>HIDDEN</strong></p>
+            <div class="unread-badge hidden">undefined</div>
+        </div>
+        
+        <div class="scenario-item positive">
+            <h4>Count = 99+</h4>
+            <div class="count-display positive-count">150</div>
+            <p>Indicator: <strong>VISIBLE</strong></p>
+            <div class="unread-badge">99+</div>
+        </div>
+    </div>
+
+    <div class="demo-area">
+        <h4>🎨 Live Demo - Different Count Scenarios</h4>
+        
+        <!-- Count = 0 (Hidden) -->
+        <div class="conversation-item">
+            <div class="avatar">A</div>
+            <div class="conversation-content">
+                <div class="conversation-header">
+                    <h3 class="contact-name">Alice (Count: 0)</h3>
+                    <div class="time-indicator">
+                        <span class="time">2:30 PM</span>
+                        <!-- No badge - hidden when count is 0 -->
+                    </div>
+                </div>
+                <p class="last-message">All messages read</p>
+            </div>
+        </div>
+
+        <!-- Count = 1 (Visible) -->
+        <div class="conversation-item">
+            <div class="avatar">B</div>
+            <div class="conversation-content">
+                <div class="conversation-header">
+                    <h3 class="contact-name">Bob (Count: 1)</h3>
+                    <div class="time-indicator">
+                        <span class="time">2:25 PM</span>
+                        <span class="unread-badge">1</span>
+                    </div>
+                </div>
+                <p class="last-message">New message received</p>
+            </div>
+        </div>
+
+        <!-- Count = 5 (Visible) -->
+        <div class="conversation-item">
+            <div class="avatar">C</div>
+            <div class="conversation-content">
+                <div class="conversation-header">
+                    <h3 class="contact-name">Charlie (Count: 5)</h3>
+                    <div class="time-indicator">
+                        <span class="time">2:20 PM</span>
+                        <span class="unread-badge">5</span>
+                    </div>
+                </div>
+                <p class="last-message">Multiple messages waiting</p>
+            </div>
+        </div>
+
+        <!-- Count = undefined (Hidden) -->
+        <div class="conversation-item">
+            <div class="avatar">D</div>
+            <div class="conversation-content">
+                <div class="conversation-header">
+                    <h3 class="contact-name">Diana (Count: undefined)</h3>
+                    <div class="time-indicator">
+                        <span class="time">2:15 PM</span>
+                        <!-- No badge - hidden when count is undefined -->
+                    </div>
+                </div>
+                <p class="last-message">No unread count set</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h3>🧪 Test Functions</h3>
+        <p>Use these buttons to test the zero-hiding behavior:</p>
+        
+        <button class="test-button success" onclick="setUnreadCount(0)">
+            🔢 Set Count to 0 (Should Hide)
+        </button>
+        
+        <button class="test-button" onclick="setUnreadCount(1)">
+            🔢 Set Count to 1 (Should Show)
+        </button>
+        
+        <button class="test-button" onclick="setUnreadCount(5)">
+            🔢 Set Count to 5 (Should Show)
+        </button>
+        
+        <button class="test-button" onclick="setUnreadCount(150)">
+            🔢 Set Count to 150 (Should Show 99+)
+        </button>
+        
+        <button class="test-button danger" onclick="setUnreadCount(null)">
+            🔢 Set Count to null (Should Hide)
+        </button>
+        
+        <button class="test-button" onclick="setUnreadCount(undefined)">
+            🔢 Set Count to undefined (Should Hide)
+        </button>
+        
+        <button class="test-button" onclick="markAllAsRead()">
+            📖 Mark All as Read (Should Hide All)
+        </button>
+        
+        <button class="test-button" onclick="showCurrentStatus()">
+            📊 Show Current Status
+        </button>
+    </div>
+
+    <div id="status" class="test-container" style="display: none;">
+        <h3>📊 Current Status</h3>
+        <div id="status-content"></div>
+    </div>
+
+    <div class="test-container">
+        <h3>🔍 What to Look For</h3>
+        <ul>
+            <li><strong>Count = 0:</strong> No red badge visible</li>
+            <li><strong>Count > 0:</strong> Red badge shows with count</li>
+            <li><strong>Count = undefined/null:</strong> No red badge visible</li>
+            <li><strong>Count > 99:</strong> Badge shows "99+"</li>
+            <li><strong>Mark as Read:</strong> Badge disappears immediately</li>
+            <li><strong>New Message:</strong> Badge appears with correct count</li>
+        </ul>
+    </div>
+
+    <script>
+        // Test data
+        let testConversations = [
+            { id: 'conv1', name: 'Alice', unreadCount: 0 },
+            { id: 'conv2', name: 'Bob', unreadCount: 1 },
+            { id: 'conv3', name: 'Charlie', unreadCount: 5 },
+            { id: 'conv4', name: 'Diana', unreadCount: undefined }
+        ];
+
+        // Set unread count for testing
+        function setUnreadCount(count) {
+            const conversations = JSON.parse(localStorage.getItem('chat_conversations') || '[]');
+            
+            if (conversations.length === 0) {
+                alert('No conversations found. Please create a conversation in the chat app first.');
+                return;
+            }
+            
+            // Set count for first conversation
+            conversations[0].unreadCount = count;
+            localStorage.setItem('chat_conversations', JSON.stringify(conversations));
+            
+            // Trigger storage event
+            window.dispatchEvent(new CustomEvent('localStorageUpdated', {
+                detail: { key: 'chat_conversations' }
+            }));
+            
+            let message = `✅ Set unread count to ${count}`;
+            let statusClass = 'success';
+            
+            if (count === 0 || count === null || count === undefined) {
+                message += ' (Indicator should be HIDDEN)';
+            } else {
+                message += ' (Indicator should be VISIBLE)';
+            }
+            
+            showStatus(statusClass, message);
+        }
+        
+        // Mark all messages as read
+        function markAllAsRead() {
+            const conversations = JSON.parse(localStorage.getItem('chat_conversations') || '[]');
+            
+            conversations.forEach(conv => {
+                conv.unreadCount = 0;
+            });
+            
+            localStorage.setItem('chat_conversations', JSON.stringify(conversations));
+            
+            // Trigger storage event
+            window.dispatchEvent(new CustomEvent('localStorageUpdated', {
+                detail: { key: 'chat_conversations' }
+            }));
+            
+            showStatus('success', '📖 Marked all messages as read (All indicators should be HIDDEN)');
+        }
+        
+        // Show current status
+        function showCurrentStatus() {
+            const conversations = JSON.parse(localStorage.getItem('chat_conversations') || '[]');
+            const statusDiv = document.getElementById('status');
+            const contentDiv = document.getElementById('status-content');
+            
+            let content = '<h4>Current Unread Counts:</h4>';
+            
+            if (conversations.length === 0) {
+                content += '<p>No conversations found</p>';
+            } else {
+                conversations.forEach((conv, index) => {
+                    const unreadCount = conv.unreadCount;
+                    let indicatorStatus = 'HIDDEN';
+                    let statusClass = 'zero-count';
+                    
+                    if (unreadCount && unreadCount > 0) {
+                        indicatorStatus = 'VISIBLE';
+                        statusClass = 'positive-count';
+                    }
+                    
+                    content += `<p>• Conversation ${index + 1}: Count = <span class="${statusClass}">${unreadCount}</span> (${indicatorStatus})</p>`;
+                });
+            }
+            
+            contentDiv.innerHTML = content;
+            statusDiv.style.display = 'block';
+        }
+        
+        // Show status message
+        function showStatus(type, message) {
+            const statusDiv = document.getElementById('status');
+            const contentDiv = document.getElementById('status-content');
+            
+            contentDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+            statusDiv.style.display = 'block';
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Auto-refresh status every 5 seconds
+        setInterval(() => {
+            if (document.getElementById('status').style.display === 'block') {
+                showCurrentStatus();
+            }
+        }, 5000);
+        
+        // Initialize test data
+        if (localStorage.getItem('chat_conversations') === null) {
+            const testData = [
+                {
+                    _id: 'test_conv_1',
+                    contactName: 'Test User',
+                    contactEmail: 'test@example.com',
+                    lastMessage: 'Test message',
+                    lastMessageTime: new Date().toISOString(),
+                    unreadCount: 0
+                }
+            ];
+            localStorage.setItem('chat_conversations', JSON.stringify(testData));
+        }
+    </script>
+</body>
+</html>
