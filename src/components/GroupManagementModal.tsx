@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X, Users, Crown, UserMinus, UserPlus, Settings } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { userService } from "../services/userService";
+import { getAllUsers } from "../services/userService";
 import { realtimeChatService } from "../services/realtimeChatService";
 import { SimpleConversation } from "../utils/chatStorage";
 
@@ -44,7 +44,7 @@ const GroupManagementModal: React.FC<GroupManagementModalProps> = ({
     
     try {
       setLoading(true);
-      const users = await userService.getAllUsers();
+      const users = await getAllUsers();
       // Filter out current group members
       const groupMemberEmails = conversation.groupMembers?.map(m => m.email) || [];
       const filteredUsers = users.filter(

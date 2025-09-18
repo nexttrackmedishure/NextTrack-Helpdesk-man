@@ -394,13 +394,21 @@ const ChatApplication: React.FC = () => {
     try {
       // Create a simple notification sound using Web Audio API
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Resume audio context if it's suspended (required by some browsers)
+      if (audioContext.state === 'suspended') {
+        audioContext.resume().then(() => {
+          console.log("🔊 Audio context resumed");
+        });
+      }
+      
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
       
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
       
-      // Create a pleasant notification sound
+      // Create a pleasant notification sound (two-tone beep)
       oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
       oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
       
@@ -413,8 +421,29 @@ const ChatApplication: React.FC = () => {
       console.log("🔊 Played notification sound for new message");
     } catch (error) {
       console.log("🔇 Could not play notification sound:", error);
+      // Fallback: try using HTML5 Audio API
+      try {
+        const audio = new Audio();
+        audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
+        audio.volume = 0.3;
+        audio.play().catch(e => console.log("🔇 Fallback audio also failed:", e));
+      } catch (fallbackError) {
+        console.log("🔇 All audio methods failed:", fallbackError);
+      }
     }
   };
+
+  // Test sound function (for debugging)
+  const testNotificationSound = () => {
+    console.log("🧪 Testing notification sound...");
+    playNotificationSound();
+  };
+
+  // Make test function globally available for debugging
+  React.useEffect(() => {
+    (window as any).testChatSound = testNotificationSound;
+    console.log("🔧 Sound test function available: window.testChatSound()");
+  }, []);
 
   // Initialize real-time chat
   const initializeRealtimeChat = async () => {
@@ -464,7 +493,10 @@ const ChatApplication: React.FC = () => {
 
           // Play notification sound for new messages (if not from current user)
           if (message.senderEmail !== currentUser.email) {
+            console.log("🔊 Playing notification sound for message from:", message.senderEmail);
             playNotificationSound();
+          } else {
+            console.log("🔇 Not playing sound for own message from:", message.senderEmail);
           }
         }
       );
@@ -1037,6 +1069,22 @@ const ChatApplication: React.FC = () => {
     }
   };
 
+
+  // Toast notification functions
+  const showSuccessToast = (message: string) => {
+    setToast({ show: true, message, type: 'success' });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+  };
+
+  const showErrorToast = (message: string) => {
+    setToast({ show: true, message, type: 'error' });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 4000);
+  };
+
+  const showInfoToast = (message: string) => {
+    setToast({ show: true, message, type: 'info' });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+  };
 
   const handleMessageAction = (messageId: number, action: string) => {
     const message = messages.find((m) => m.id === messageId);
@@ -2586,39 +2634,6 @@ const ChatApplication: React.FC = () => {
     setNewMessage((prev) => prev + emoji);
   };
 
-  // Toast notification functions
-  const showSuccessToast = (message: string) => {
-    setToast({
-      show: true,
-      message,
-      type: 'success'
-    });
-    setTimeout(() => {
-      setToast(prev => ({ ...prev, show: false }));
-    }, 3000);
-  };
-
-  const showErrorToast = (message: string) => {
-    setToast({
-      show: true,
-      message,
-      type: 'error'
-    });
-    setTimeout(() => {
-      setToast(prev => ({ ...prev, show: false }));
-    }, 4000);
-  };
-
-  const showInfoToast = (message: string) => {
-    setToast({
-      show: true,
-      message,
-      type: 'info'
-    });
-    setTimeout(() => {
-      setToast(prev => ({ ...prev, show: false }));
-    }, 3000);
-  };
 
   // Delete conversation function
   const deleteConversation = async (conversationId: string, contactName: string) => {

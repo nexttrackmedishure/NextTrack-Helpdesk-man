@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X, Users, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { userService } from "../services/userService";
+import { getAllUsers } from "../services/userService";
 
 interface CreateGroupModalProps {
   isOpen: boolean;
@@ -39,7 +39,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const users = await userService.getAllUsers();
+      const users = await getAllUsers();
       // Filter out current user and already selected members
       const filteredUsers = users.filter(
         (u) => 
