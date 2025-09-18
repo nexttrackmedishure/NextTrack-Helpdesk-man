@@ -45,49 +45,50 @@ export const registerUser = async (
   userData: Omit<User, "createdAt" | "isActive" | "lastLogin" | "_id">
 ): Promise<RegisterResponse> => {
   try {
-    // Simulate API delay
-    await delay(1000);
+    // Use MongoDB API directly
+    const response = await fetch("/api/users/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(userData),
+    });
 
-    // Hash password
-    const hashedPassword = await hashPassword(userData.password);
+    const result = await response.json();
 
-    // Create user object
-    const newUser: User = {
-      ...userData,
-      password: hashedPassword,
-      createdAt: new Date(),
-      isActive: true,
-    };
+    if (response.ok) {
+      console.log("✅ User registered in MongoDB:", result.user);
+      return {
+        success: true,
+        message: result.message,
+        user: result.user,
+      };
+    } else {
+      console.warn("MongoDB registration failed, using localStorage fallback:", result.message);
+      
+      // Fallback to localStorage
+      const hashedPassword = await hashPassword(userData.password);
+      const newUser: User = {
+        ...userData,
+        password: hashedPassword,
+        createdAt: new Date(),
+        isActive: true,
+      };
 
-    try {
-      // Try to save to MongoDB first
-      const { DatabaseService } = await import("./databaseService.js");
-      const dbService = new DatabaseService();
-      const result = await dbService.createUser(newUser);
-      console.log("User registered in MongoDB:", result);
-    } catch (dbError) {
-      console.warn(
-        "MongoDB not available, using localStorage fallback:",
-        dbError
-      );
-
-      // Fallback to localStorage using userStorage
       const newUserWithId = {
         ...newUser,
         _id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       };
       userStorage.addUser(newUserWithId);
       console.log("User saved to localStorage:", newUserWithId);
+
+      const { password, ...userWithoutPassword } = newUser;
+      return {
+        success: true,
+        message: "User registered successfully (localStorage)",
+        user: userWithoutPassword,
+      };
     }
-
-    // Return success response (without password)
-    const { password, ...userWithoutPassword } = newUser;
-
-    return {
-      success: true,
-      message: "User registered successfully",
-      user: userWithoutPassword,
-    };
   } catch (error) {
     console.error("Registration error:", error);
     return {
@@ -100,17 +101,20 @@ export const registerUser = async (
 // Get all users (for user directory)
 export const getAllUsers = async (): Promise<UserDirectoryUser[]> => {
   try {
-    await delay(500);
+    // Use MongoDB API directly
+    const response = await fetch("/api/users", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
 
-    try {
-      // Try to fetch from MongoDB first
-      const { DatabaseService } = await import("./databaseService.js");
-      const dbService = new DatabaseService();
-      const users = await dbService.getAllUsers();
-      console.log("Fetched users from MongoDB:", users);
+    if (response.ok) {
+      const result = await response.json();
+      console.log("✅ Fetched users from MongoDB:", result.data.length, "users");
 
       // Transform database users to UserDirectoryUser format
-      const transformedUsers: UserDirectoryUser[] = users.map((user: any) => ({
+      const transformedUsers: UserDirectoryUser[] = result.data.map((user: any) => ({
         id: user._id?.toString() || Math.random().toString(),
         idNumber: user.idNumber || "",
         fullName: user.fullName || "",
@@ -122,21 +126,18 @@ export const getAllUsers = async (): Promise<UserDirectoryUser[]> => {
         role: user.role || "Member",
         profileImage: user.profileImage || null,
         createdAt: user.createdAt || new Date(),
-        isActive: user.isActive !== false, // Default to true if not specified
+        isActive: user.isActive !== false,
         lastLogin: user.lastLogin || null,
         status: user.isActive !== false ? "active" : "inactive",
       }));
 
       return transformedUsers;
-    } catch (dbError) {
-      console.warn(
-        "MongoDB not available, using localStorage fallback:",
-        dbError
-      );
-
+    } else {
+      console.warn("MongoDB not available, using localStorage fallback");
+      
       // Fallback to localStorage using userStorage
       const localUsers = userStorage.getAllUsers();
-      console.log("Fetched users from localStorage:", localUsers);
+      console.log("Fetched users from localStorage:", localUsers.length, "users");
 
       // Transform localStorage users to UserDirectoryUser format
       const transformedUsers: UserDirectoryUser[] = localUsers.map(
@@ -152,7 +153,7 @@ export const getAllUsers = async (): Promise<UserDirectoryUser[]> => {
           role: user.role || "Member",
           profileImage: user.profileImage || null,
           createdAt: user.createdAt ? new Date(user.createdAt) : new Date(),
-          isActive: user.isActive !== false, // Default to true if not specified
+          isActive: user.isActive !== false,
           lastLogin: user.lastLogin ? new Date(user.lastLogin) : null,
           status: user.isActive !== false ? "active" : "inactive",
         })

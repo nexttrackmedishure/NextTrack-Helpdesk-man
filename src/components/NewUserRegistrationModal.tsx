@@ -83,25 +83,63 @@ const NewUserRegistrationModal: React.FC<NewUserRegistrationModalProps> =
     // Dropdown options
     const departmentOptions = [
       "IT",
-      "HR",
-      "Finance",
-      "Marketing",
-      "Sales",
-      "Operations",
-      "Customer Service",
-      "Administration",
+      "Digital Marketing",
+      "Sales and Renewals",
+      "Placement",
+      "Claims",
+      "General Insurance (GI)",
+      "Management",
+      "Administrative",
+      "HR & Accounting",
     ];
 
     const branchOptions = [
-      "Singapore",
-      "Malaysia",
-      "Thailand",
-      "Philippines",
-      "Indonesia",
-      "Vietnam",
+      "Philippines | Manila",
+      "Philippines | Bacolod",
+      "Indonesia | Jakarta",
+      "Indonesia | Bali",
+      "Singapore | Tampines",
     ];
 
     const roleOptions = ["Administrator", "IT Support", "Member"];
+
+    // ID Number format validation and generation
+    const getIDNumberFormat = (branch: string): string => {
+      if (branch.includes("Philippines")) return "JIAI-0000";
+      if (branch.includes("Indonesia")) return "PLMI-0000";
+      if (branch.includes("Singapore")) return "BAPL-0000";
+      return "XXXX-0000";
+    };
+
+    const validateIDNumber = (idNumber: string, branch: string): boolean => {
+      if (branch.includes("Philippines")) {
+        return /^JIAI-\d{4}$/.test(idNumber);
+      }
+      if (branch.includes("Indonesia")) {
+        return /^PLMI-\d{4}$/.test(idNumber);
+      }
+      if (branch.includes("Singapore")) {
+        return /^BAPL-\d{4}$/.test(idNumber);
+      }
+      return false;
+    };
+
+    // Contact number format validation
+    const validateContactNumber = (contactNumber: string, branch: string): boolean => {
+      if (branch.includes("Philippines")) {
+        // Philippines: +63 9XX XXX XXXX or 09XX XXX XXXX
+        return /^(\+63|0)9\d{2}\s?\d{3}\s?\d{4}$/.test(contactNumber.replace(/\s/g, ''));
+      }
+      if (branch.includes("Indonesia")) {
+        // Indonesia: +62 8XX XXXX XXXX or 08XX XXXX XXXX
+        return /^(\+62|0)8\d{2}\s?\d{4}\s?\d{4}$/.test(contactNumber.replace(/\s/g, ''));
+      }
+      if (branch.includes("Singapore")) {
+        // Singapore: +65 9XXX XXXX or 9XXX XXXX
+        return /^(\+65\s?)?9\d{3}\s?\d{4}$/.test(contactNumber.replace(/\s/g, ''));
+      }
+      return false;
+    };
 
     // Handle input changes - optimized with useCallback
     const handleInputChange = useCallback((field: string, value: string) => {
@@ -172,6 +210,8 @@ const NewUserRegistrationModal: React.FC<NewUserRegistrationModalProps> =
       // Required field validations
       if (!formData.idNumber.trim()) {
         newErrors.idNumber = "ID Number is required";
+      } else if (formData.branch && !validateIDNumber(formData.idNumber, formData.branch)) {
+        newErrors.idNumber = `ID Number must follow format: ${getIDNumberFormat(formData.branch)}`;
       }
 
       if (!formData.fullName.trim()) {
@@ -192,6 +232,14 @@ const NewUserRegistrationModal: React.FC<NewUserRegistrationModalProps> =
 
       if (!formData.contactNumber.trim()) {
         newErrors.contactNumber = "Contact Number is required";
+      } else if (formData.branch && !validateContactNumber(formData.contactNumber, formData.branch)) {
+        if (formData.branch.includes("Philippines")) {
+          newErrors.contactNumber = "Contact Number must be in format: +63 9XX XXX XXXX or 09XX XXX XXXX";
+        } else if (formData.branch.includes("Indonesia")) {
+          newErrors.contactNumber = "Contact Number must be in format: +62 8XX XXXX XXXX or 08XX XXXX XXXX";
+        } else if (formData.branch.includes("Singapore")) {
+          newErrors.contactNumber = "Contact Number must be in format: +65 9XXX XXXX or 9XXX XXXX";
+        }
       }
 
       if (!formData.email.trim()) {
@@ -422,7 +470,7 @@ const NewUserRegistrationModal: React.FC<NewUserRegistrationModalProps> =
                               ? "border-red-500"
                               : "border-gray-300"
                           }`}
-                          placeholder="Enter ID Number"
+                          placeholder={formData.branch ? getIDNumberFormat(formData.branch) : "Select branch first"}
                           error={errors.idNumber}
                         />
                       </div>
@@ -560,7 +608,12 @@ const NewUserRegistrationModal: React.FC<NewUserRegistrationModalProps> =
                             ? "border-red-500"
                             : "border-gray-300"
                         }`}
-                        placeholder="Enter Contact Number"
+                        placeholder={
+                          formData.branch?.includes("Philippines") ? "+63 9XX XXX XXXX or 09XX XXX XXXX" :
+                          formData.branch?.includes("Indonesia") ? "+62 8XX XXXX XXXX or 08XX XXXX XXXX" :
+                          formData.branch?.includes("Singapore") ? "+65 9XXX XXXX or 9XXX XXXX" :
+                          "Select branch first"
+                        }
                         error={errors.contactNumber}
                       />
                     </div>

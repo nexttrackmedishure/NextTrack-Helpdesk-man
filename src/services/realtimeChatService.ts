@@ -234,6 +234,26 @@ class RealtimeChatService {
     };
   }
 
+  // Create a new group conversation
+  createGroupConversation(
+    groupName: string,
+    createdByEmail: string,
+    createdByName: string,
+    members: Array<{ email: string; name: string }>
+  ): RealtimeConversation {
+    const conversation = chatStorage.createGroupConversation(
+      groupName,
+      createdByEmail,
+      createdByName,
+      members
+    );
+
+    return {
+      ...conversation,
+      unreadCount: this.getUnreadCount(conversation.id),
+    };
+  }
+
   // Get user conversations
   getUserConversations(userEmail: string): RealtimeConversation[] {
     const conversations = chatStorage.getUserConversations(userEmail);
@@ -282,6 +302,39 @@ class RealtimeChatService {
     });
 
     console.log("📖 Marked messages as read for conversation:", conversationId);
+  }
+
+  // Delete a conversation and all its messages
+  deleteConversation(conversationId: string): void {
+    if (!this.currentUserEmail) return;
+
+    try {
+      // Delete all messages in the conversation
+      chatStorage.deleteMessages(conversationId);
+      
+      // Delete the conversation
+      chatStorage.deleteConversation(this.currentUserEmail, conversationId);
+      
+      console.log("🗑️ Deleted conversation:", conversationId);
+    } catch (error) {
+      console.error("❌ Error deleting conversation:", error);
+      throw error;
+    }
+  }
+
+  // Add member to group
+  addMemberToGroup(conversationId: string, member: { email: string; name: string }): boolean {
+    return chatStorage.addMemberToGroup(conversationId, member);
+  }
+
+  // Remove member from group
+  removeMemberFromGroup(conversationId: string, memberEmail: string): boolean {
+    return chatStorage.removeMemberFromGroup(conversationId, memberEmail);
+  }
+
+  // Check if user is member of group
+  isGroupMember(conversationId: string, userEmail: string): boolean {
+    return chatStorage.isGroupMember(conversationId, userEmail);
   }
 
   // Subscribe to new messages

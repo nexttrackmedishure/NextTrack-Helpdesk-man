@@ -358,7 +358,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 <strong>User:</strong> user@nexttrack.com / password123
               </p>
               <p>
-                <strong>Reggie:</strong> reggie@medishure.com / password123
+                <strong>Reggie:</strong> reggie@medishure.com / MountE2025!
               </p>
             </div>
             <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">

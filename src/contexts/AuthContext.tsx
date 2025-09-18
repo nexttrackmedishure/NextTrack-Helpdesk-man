@@ -45,11 +45,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = () => {
       try {
-        // Initialize user storage with demo users if needed
-        userStorage.initializeWithDemoUsers();
-
-        // Restore from backup if main storage is empty
-        userStorage.restoreFromBackup();
+        // Only initialize demo users if this is the very first time (no users at all)
+        const existingUsers = userStorage.getAllUsers();
+        if (existingUsers.length === 0) {
+          // Check if this is truly a fresh install by looking for any localStorage data
+          const hasAnyData = localStorage.getItem("helpdesk_user") || 
+                            localStorage.getItem("nexttrack_users") || 
+                            localStorage.getItem("nexttrack_users_backup");
+          
+          if (!hasAnyData) {
+            // Only initialize demo users for completely fresh installations
+            userStorage.initializeWithDemoUsers();
+          }
+        }
+        
+        // Remove automatic backup restoration to prevent deleted users from coming back
+        // userStorage.restoreFromBackup();
 
         const storedUser = localStorage.getItem("helpdesk_user");
         if (storedUser) {
@@ -110,43 +121,60 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return true;
         }
 
-        // Check against registered users
+        // Check against registered users using MongoDB API
         try {
-          // Try to get users from MongoDB first
-          const { DatabaseService } = await import(
-            "../services/databaseService.js"
-          );
-          const dbService = new DatabaseService();
-          const users = await dbService.getAllUsers();
+          console.log("🔄 Attempting login via MongoDB API for:", email);
+          
+          // Use MongoDB login API
+          const response = await fetch("/api/users/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email, password }),
+          });
 
-          // Find user by email
-          const foundUser = users.find(
-            (user: any) => user.email.toLowerCase() === email.toLowerCase()
-          );
+          console.log("📡 Login API response status:", response.status);
 
-          if (foundUser) {
-            // Simple password validation (in production, use proper hashing)
-            const hashedPassword = btoa(password + "_hashed");
-            if (foundUser.password === hashedPassword) {
-              const authUser: User = {
-                id: foundUser._id?.toString() || Math.random().toString(),
-                email: foundUser.email,
-                name: foundUser.fullName,
-                role: foundUser.role.toLowerCase() as
-                  | "admin"
-                  | "user"
-                  | "support",
-                avatar:
-                  foundUser.profileImage ||
-                  `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                    foundUser.fullName
-                  )}&background=6366f1&color=fff`,
-              };
+          if (response.ok) {
+            const result = await response.json();
+            const foundUser = result.user;
 
-              setUser(authUser);
-              localStorage.setItem("helpdesk_user", JSON.stringify(authUser));
-              return true;
+            // Map database role to frontend role
+            let mappedRole: "admin" | "user" | "support";
+            switch (foundUser.role.toLowerCase()) {
+              case "administrator":
+                mappedRole = "admin";
+                break;
+              case "it support":
+                mappedRole = "support";
+                break;
+              case "member":
+              default:
+                mappedRole = "user";
+                break;
             }
+
+            const authUser: User = {
+              id: foundUser._id?.toString() || Math.random().toString(),
+              email: foundUser.email,
+              name: foundUser.fullName,
+              role: mappedRole,
+              avatar:
+                foundUser.profileImage ||
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                  foundUser.fullName
+                )}&background=6366f1&color=fff`,
+            };
+
+            setUser(authUser);
+            localStorage.setItem("helpdesk_user", JSON.stringify(authUser));
+            console.log("✅ Login successful via MongoDB API");
+            return true;
+          } else {
+            const errorData = await response.json().catch(() => ({}));
+            console.warn("❌ MongoDB login failed:", response.status, errorData);
+            console.warn("Checking localStorage fallback...");
           }
         } catch (dbError) {
           console.warn(

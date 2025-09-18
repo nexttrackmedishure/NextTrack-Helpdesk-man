@@ -5,7 +5,7 @@ import { apiService as mockApiService } from "./apiService";
 import { realApiService } from "./realApiService";
 
 // Configuration - Use import.meta.env for Vite instead of process.env
-const USE_REAL_API = import.meta.env.VITE_USE_REAL_API === "true" || false;
+const USE_REAL_API = import.meta.env.VITE_USE_REAL_API === "true" || true; // Force real API for message persistence
 
 // Export the appropriate service
 export const apiService = USE_REAL_API ? realApiService : mockApiService;

@@ -14,7 +14,7 @@ app.use(express.json());
 // MongoDB connection
 const MONGODB_URI =
   process.env.MONGODB_URI ||
-  "mongodb+srv://<username>:<password>@<cluster>.mongodb.net/nexttrack-helpdesk?retryWrites=true&w=majority";
+  "mongodb+srv://juandelarcr_db_user:p0pgN017t9R6VODJ@cluster0.selxtbr.mongodb.net/nexttrack-helpdesk?retryWrites=true&w=majority&appName=Cluster0";
 
 mongoose
   .connect(MONGODB_URI, {
@@ -65,10 +65,30 @@ const messageSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// User Schema for user management
+const userSchema = new mongoose.Schema(
+  {
+    idNumber: { type: String, required: true, unique: true },
+    fullName: { type: String, required: true },
+    nickname: { type: String, required: true },
+    department: { type: String, required: true },
+    branch: { type: String, required: true },
+    contactNumber: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    role: { type: String, enum: ["Administrator", "IT Support", "Member"], required: true },
+    profileImage: { type: String },
+    isActive: { type: Boolean, default: true },
+    lastLogin: { type: Date },
+  },
+  { timestamps: true }
+);
+
 // Models
 const Contact = mongoose.model("Contact", contactSchema);
 const Conversation = mongoose.model("Conversation", conversationSchema);
 const Message = mongoose.model("Message", messageSchema);
+const User = mongoose.model("User", userSchema);
 
 // API Routes
 
@@ -234,6 +254,190 @@ app.put("/api/chat/messages", async (req, res) => {
 
     res.json({ success: true, data: updatedMessage });
   } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// User Management Routes
+
+// Register new user
+app.post("/api/users/register", async (req, res) => {
+  try {
+    const {
+      idNumber,
+      fullName,
+      nickname,
+      department,
+      branch,
+      contactNumber,
+      email,
+      password,
+      role,
+      profileImage
+    } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({
+      $or: [{ email }, { idNumber }]
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: existingUser.email === email 
+          ? "Email already exists" 
+          : "ID Number already exists"
+      });
+    }
+
+    // Hash password (simple base64 encoding for now)
+    const hashedPassword = Buffer.from(password + "_hashed").toString('base64');
+
+    // Create new user
+    const newUser = new User({
+      idNumber,
+      fullName,
+      nickname,
+      department,
+      branch,
+      contactNumber,
+      email,
+      password: hashedPassword,
+      role,
+      profileImage,
+      isActive: true
+    });
+
+    const savedUser = await newUser.save();
+
+    // Return user without password
+    const { password: _, ...userWithoutPassword } = savedUser.toObject();
+
+    res.status(201).json({
+      success: true,
+      message: "User registered successfully",
+      user: userWithoutPassword
+    });
+  } catch (error) {
+    console.error("User registration error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Registration failed. Please try again.",
+      error: error.message
+    });
+  }
+});
+
+// Get all users
+app.get("/api/users", async (req, res) => {
+  try {
+    const users = await User.find({}, { password: 0 }).sort({ createdAt: -1 });
+    res.json({ success: true, data: users });
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get user by email (for login)
+app.post("/api/users/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password"
+      });
+    }
+
+    // Check password
+    const hashedPassword = Buffer.from(password + "_hashed").toString('base64');
+    if (user.password !== hashedPassword) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password"
+      });
+    }
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Return user without password
+    const { password: _, ...userWithoutPassword } = user.toObject();
+
+    res.json({
+      success: true,
+      message: "Login successful",
+      user: userWithoutPassword
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update user
+app.put("/api/users/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+
+    // Handle password update if provided
+    if (updateData.password) {
+      // Hash the new password
+      const hashedPassword = Buffer.from(updateData.password + "_hashed").toString('base64');
+      updateData.password = hashedPassword;
+    } else {
+      // Remove password from update data if not provided
+      delete updateData.password;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { ...updateData, updatedAt: new Date() },
+      { new: true, select: '-password' }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "User updated successfully",
+      user: updatedUser
+    });
+  } catch (error) {
+    console.error("User update error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete user
+app.delete("/api/users/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deletedUser = await User.findByIdAndDelete(id);
+    if (!deletedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "User deleted successfully"
+    });
+  } catch (error) {
+    console.error("User deletion error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

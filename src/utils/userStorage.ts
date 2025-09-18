@@ -82,6 +82,10 @@ class UserStorage {
     const users = this.getAllUsers();
     const filteredUsers = users.filter((user) => user._id !== userId);
     this.saveUsers(filteredUsers);
+    
+    // Also update the backup to prevent restoration of deleted users
+    localStorage.setItem(this.backupKey, JSON.stringify(filteredUsers));
+    
     console.log("✅ User deleted:", userId);
   }
 

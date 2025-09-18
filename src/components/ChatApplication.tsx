@@ -34,6 +34,8 @@ import {
 } from "lucide-react";
 import VideoCall from "./VideoCall";
 import EmojiPicker from "./EmojiPicker";
+import CreateGroupModal from "./CreateGroupModal";
+import GroupManagementModal from "./GroupManagementModal";
 import { chatService, ChatContact } from "../services/chatService";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -123,6 +125,21 @@ const ChatApplication: React.FC = () => {
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Toast notification state
+  const [toast, setToast] = useState<{
+    show: boolean;
+    message: string;
+    type: 'success' | 'error' | 'info';
+  }>({
+    show: false,
+    message: '',
+    type: 'success'
+  });
+
+  // Group chat state
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [showGroupManagementModal, setShowGroupManagementModal] = useState(false);
+
   // Filter contacts based on search term (works with both old and new systems)
   const filteredContacts = contacts.filter((contact) =>
     contact.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -130,9 +147,13 @@ const ChatApplication: React.FC = () => {
 
   // Filter simple conversations based on search term
   const filteredSimpleConversations = simpleConversations.filter((conv) => {
-    const contactName =
-      conv.user1Email === currentUser?.email ? conv.user2Name : conv.user1Name;
-    return contactName.toLowerCase().includes(searchTerm.toLowerCase());
+    if (conv.type === "group") {
+      return (conv.groupName || "Group Chat").toLowerCase().includes(searchTerm.toLowerCase());
+    } else {
+      const contactName =
+        conv.user1Email === currentUser?.email ? conv.user2Name : conv.user1Name;
+      return contactName.toLowerCase().includes(searchTerm.toLowerCase());
+    }
   });
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -973,6 +994,50 @@ const ChatApplication: React.FC = () => {
     }
   };
 
+  // Group chat functions
+  const handleCreateGroup = async (groupName: string, members: Array<{ email: string; name: string }>) => {
+    if (!currentUser) {
+      showErrorToast("Please log in to create a group");
+      return;
+    }
+
+    try {
+      const groupConversation = realtimeChatService.createGroupConversation(
+        groupName,
+        currentUser.email,
+        currentUser.name || "User",
+        members
+      );
+
+      // Reload conversations to show the new group
+      loadSimpleConversations();
+      
+      // Select the new group conversation
+      setSelectedSimpleConversation(groupConversation);
+      
+      showSuccessToast(`Group "${groupName}" created successfully`);
+      console.log("✅ Created group:", groupConversation);
+    } catch (error) {
+      console.error("❌ Error creating group:", error);
+      showErrorToast("Failed to create group. Please try again.");
+    }
+  };
+
+  const handleGroupUpdated = () => {
+    // Reload conversations to reflect changes
+    loadSimpleConversations();
+    
+    // Reload current conversation if it's a group
+    if (selectedSimpleConversation && selectedSimpleConversation.type === "group") {
+      const conversations = realtimeChatService.getUserConversations(currentUser?.email || "");
+      const updatedConversation = conversations.find(conv => conv.id === selectedSimpleConversation.id);
+      if (updatedConversation) {
+        setSelectedSimpleConversation(updatedConversation);
+      }
+    }
+  };
+
+
   const handleMessageAction = (messageId: number, action: string) => {
     const message = messages.find((m) => m.id === messageId);
     if (!message) return;
@@ -1237,8 +1302,8 @@ const ChatApplication: React.FC = () => {
       console.log("✨ Transformed users for chat selection:", transformedUsers);
 
       if (transformedUsers.length === 0) {
-        alert(
-          "No users found in the MongoDB database. Please create some users first using the User Directory."
+        showInfoToast(
+          "No users found in the database. Please create some users first using the User Directory."
         );
         return;
       }
@@ -1252,8 +1317,8 @@ const ChatApplication: React.FC = () => {
       );
     } catch (error) {
       console.error("❌ Error fetching users from MongoDB:", error);
-      alert(
-        "Error loading users from MongoDB database. Please check your database connection and try again."
+      showErrorToast(
+        "Error loading users from database. Please check your connection and try again."
       );
     } finally {
       setIsLoadingUsers(false);
@@ -1268,7 +1333,7 @@ const ChatApplication: React.FC = () => {
   // Function to start chat with selected user
   const startChatWithUser = async (user: any) => {
     if (!currentUser) {
-      alert("Please log in to start a chat");
+      showErrorToast("Please log in to start a chat");
       return;
     }
 
@@ -1305,11 +1370,11 @@ const ChatApplication: React.FC = () => {
       // Close the user selection modal
       setIsUserSelectionOpen(false);
 
-      // Show success message
-      alert(`New chat created with ${user.name}!`);
+      // Show success toast notification
+      showSuccessToast(`Chat started with ${user.name}`);
     } catch (error) {
       console.error("Error creating new chat:", error);
-      alert(
+      showErrorToast(
         `Error creating chat with ${user.name}: ${
           error instanceof Error ? error.message : "Unknown error"
         }`
@@ -2521,6 +2586,67 @@ const ChatApplication: React.FC = () => {
     setNewMessage((prev) => prev + emoji);
   };
 
+  // Toast notification functions
+  const showSuccessToast = (message: string) => {
+    setToast({
+      show: true,
+      message,
+      type: 'success'
+    });
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, show: false }));
+    }, 3000);
+  };
+
+  const showErrorToast = (message: string) => {
+    setToast({
+      show: true,
+      message,
+      type: 'error'
+    });
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, show: false }));
+    }, 4000);
+  };
+
+  const showInfoToast = (message: string) => {
+    setToast({
+      show: true,
+      message,
+      type: 'info'
+    });
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, show: false }));
+    }, 3000);
+  };
+
+  // Delete conversation function
+  const deleteConversation = async (conversationId: string, contactName: string) => {
+    try {
+      // Delete from real-time chat service
+      realtimeChatService.deleteConversation(conversationId);
+      
+      // Update the conversations list
+      setSimpleConversations(prev => 
+        prev.filter(conv => conv.id !== conversationId)
+      );
+      
+      // If the deleted conversation was selected, clear the selection
+      if (selectedSimpleConversation?.id === conversationId) {
+        setSelectedSimpleConversation(null);
+        setSimpleMessages([]);
+      }
+      
+      // Show success message
+      showSuccessToast(`Conversation with ${contactName} deleted successfully`);
+      
+      console.log("🗑️ Deleted conversation:", conversationId);
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
+      showErrorToast("Failed to delete conversation. Please try again.");
+    }
+  };
+
   // Inbox drawer toggle function
   const toggleInbox = () => {
     setIsInboxOpen(!isInboxOpen);
@@ -3654,17 +3780,7 @@ const ChatApplication: React.FC = () => {
                 return (
                   <div
                     key={conversation.id}
-                    onClick={() => {
-                      console.log("🖱️ Clicked on conversation:", conversation);
-                      setSelectedSimpleConversation(conversation);
-                      
-                      // Mark messages as read when conversation is selected
-                      if (conversation.unreadCount && conversation.unreadCount > 0) {
-                        realtimeChatService.markMessagesAsRead(conversation.id);
-                        console.log("📖 Marked messages as read for conversation:", conversation.id);
-                      }
-                    }}
-                    className={`p-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                    className={`p-4 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
                       selectedSimpleConversation?.id === conversation.id
                         ? "bg-violet-50/60 dark:bg-violet-900/30/20"
                         : conversation.unreadCount && conversation.unreadCount > 0
@@ -3672,43 +3788,73 @@ const ChatApplication: React.FC = () => {
                         : ""
                     }`}
                   >
-                    <div className="flex items-center space-x-3">
-                      <div className="relative">
-                        <img
-                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                            contactName
-                          )}&background=8b5cf6&color=fff`}
-                          alt={contactName}
-                          className="w-12 h-12 rounded-full"
-                        />
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 bg-green-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between">
-                          <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                            {contactName}
-                          </h3>
-                          <div className="flex flex-col items-end space-y-1">
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              {new Date(
-                                conversation.lastMessageTime
-                              ).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
-                            {/* Unread message indicator - positioned under the time */}
-                            {conversation.unreadCount && conversation.unreadCount > 0 && (
-                              <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full min-w-[20px] h-5 shadow-sm animate-pulse">
-                                {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
-                              </span>
-                            )}
-                          </div>
+                    <div className="flex items-center justify-between">
+                      <div 
+                        className="flex items-center space-x-3 flex-1 cursor-pointer"
+                        onClick={() => {
+                          console.log("🖱️ Clicked on conversation:", conversation);
+                          setSelectedSimpleConversation(conversation);
+                          
+                          // Mark messages as read when conversation is selected
+                          if (conversation.unreadCount && conversation.unreadCount > 0) {
+                            realtimeChatService.markMessagesAsRead(conversation.id);
+                            console.log("📖 Marked messages as read for conversation:", conversation.id);
+                          }
+                        }}
+                      >
+                        <div className="relative">
+                          <img
+                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
+                              contactName
+                            )}&background=8b5cf6&color=fff`}
+                            alt={contactName}
+                            className="w-12 h-12 rounded-full"
+                          />
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 bg-green-500" />
                         </div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                          {conversation.lastMessage}
-                        </p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between">
+                            <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                              {contactName}
+                            </h3>
+                            <div className="flex flex-col items-end space-y-1">
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {new Date(
+                                  conversation.lastMessageTime
+                                ).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                              {/* Unread message indicator - positioned under the time */}
+                              {conversation.unreadCount && conversation.unreadCount > 0 && (
+                                <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full min-w-[20px] h-5 shadow-sm animate-pulse">
+                                  {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                            {conversation.lastMessage}
+                          </p>
+                        </div>
                       </div>
+                      
+                      {/* Delete button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Are you sure you want to delete the conversation with ${contactName}?`)) {
+                            deleteConversation(conversation.id, contactName);
+                          }
+                        }}
+                        className="ml-2 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        title="Delete conversation"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
                     </div>
                   </div>
                 );
@@ -4327,6 +4473,16 @@ const ChatApplication: React.FC = () => {
                 )}
               </div>
 
+              {/* Emoji Button */}
+              <button
+                onClick={openEmojiPicker}
+                className="p-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                title="Add emoji"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
 
               {/* GIF Button */}
               <button
@@ -5024,6 +5180,63 @@ const ChatApplication: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Group Modal */}
+      <CreateGroupModal
+        isOpen={showCreateGroupModal}
+        onClose={() => setShowCreateGroupModal(false)}
+        onCreateGroup={handleCreateGroup}
+      />
+
+      {/* Group Management Modal */}
+      <GroupManagementModal
+        isOpen={showGroupManagementModal}
+        onClose={() => setShowGroupManagementModal(false)}
+        conversation={selectedSimpleConversation}
+        onGroupUpdated={handleGroupUpdated}
+      />
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-right duration-300">
+          <div className={`flex items-center p-4 rounded-lg shadow-lg border max-w-sm ${
+            toast.type === 'success' 
+              ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-200'
+              : toast.type === 'error'
+              ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200'
+              : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-200'
+          }`}>
+            <div className="flex-shrink-0">
+              {toast.type === 'success' && (
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              )}
+              {toast.type === 'error' && (
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              )}
+              {toast.type === 'info' && (
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+              )}
+            </div>
+            <div className="ml-3 flex-1">
+              <p className="text-sm font-medium">{toast.message}</p>
+            </div>
+            <button
+              onClick={() => setToast(prev => ({ ...prev, show: false }))}
+              className="ml-4 flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
           </div>
         </div>
       )}
