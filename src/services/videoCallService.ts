@@ -1,8 +1,9 @@
-// Simple video call service for managing call states
-// This is a basic implementation - in a real app you'd use WebRTC
+// Video call service that uses backend API for cross-browser communication
+// This enables video calls between different browser windows/instances
 
 export interface VideoCall {
-  id: string;
+  _id?: string;
+  callId: string;
   callerEmail: string;
   callerName: string;
   receiverEmail: string;
@@ -11,92 +12,143 @@ export interface VideoCall {
   startTime: Date;
   endTime?: Date;
   duration?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 class VideoCallService {
-  private calls: Map<string, VideoCall> = new Map();
-  private callListeners: Map<string, (call: VideoCall) => void> = new Map();
   private userCallListeners: Map<string, (calls: VideoCall[]) => void> = new Map();
+  private pollingIntervals: Map<string, NodeJS.Timeout> = new Map();
 
   // Start a video call
-  startCall(callerEmail: string, callerName: string, receiverEmail: string, receiverName: string): string {
-    const callId = `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    const call: VideoCall = {
-      id: callId,
-      callerEmail,
-      callerName,
-      receiverEmail,
-      receiverName,
-      status: 'ringing',
-      startTime: new Date()
-    };
+  async startCall(callerEmail: string, callerName: string, receiverEmail: string, receiverName: string): Promise<string> {
+    try {
+      const response = await fetch('/api/video-calls', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          callerEmail,
+          callerName,
+          receiverEmail,
+          receiverName
+        })
+      });
 
-    this.calls.set(callId, call);
-    
-    // Simulate sending call notification to receiver
-    this.simulateCallNotification(call);
-    
-    return callId;
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to start call');
+      }
+
+      console.log(`📞 Video call started: ${callerName} calling ${receiverName}`);
+      return result.call.callId;
+    } catch (error) {
+      console.error('Failed to start video call:', error);
+      throw error;
+    }
   }
 
   // Answer a call
-  answerCall(callId: string): boolean {
-    const call = this.calls.get(callId);
-    if (call && call.status === 'ringing') {
-      call.status = 'answered';
-      this.notifyCallUpdate(call);
-      return true;
+  async answerCall(callId: string): Promise<boolean> {
+    try {
+      const response = await fetch(`/api/video-calls/${callId}/answer`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log(`✅ Video call answered: ${callId}`);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Failed to answer call:', error);
+      return false;
     }
-    return false;
   }
 
   // Decline a call
-  declineCall(callId: string): boolean {
-    const call = this.calls.get(callId);
-    if (call && call.status === 'ringing') {
-      call.status = 'declined';
-      call.endTime = new Date();
-      this.notifyCallUpdate(call);
-      return true;
+  async declineCall(callId: string): Promise<boolean> {
+    try {
+      const response = await fetch(`/api/video-calls/${callId}/decline`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log(`❌ Video call declined: ${callId}`);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Failed to decline call:', error);
+      return false;
     }
-    return false;
   }
 
   // End a call
-  endCall(callId: string): boolean {
-    const call = this.calls.get(callId);
-    if (call && (call.status === 'answered' || call.status === 'ringing')) {
-      call.status = 'ended';
-      call.endTime = new Date();
-      call.duration = call.endTime.getTime() - call.startTime.getTime();
-      this.notifyCallUpdate(call);
-      return true;
+  async endCall(callId: string): Promise<boolean> {
+    try {
+      const response = await fetch(`/api/video-calls/${callId}/end`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log(`📞 Video call ended: ${callId}`);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Failed to end call:', error);
+      return false;
     }
-    return false;
   }
 
   // Get call by ID
-  getCall(callId: string): VideoCall | undefined {
-    return this.calls.get(callId);
+  async getCall(callId: string): Promise<VideoCall | null> {
+    try {
+      const response = await fetch(`/api/video-calls/${callId}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        return result.call;
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to get call:', error);
+      return null;
+    }
   }
 
   // Get active calls for a user
-  getActiveCallsForUser(userEmail: string): VideoCall[] {
-    return Array.from(this.calls.values()).filter(call => 
-      (call.callerEmail === userEmail || call.receiverEmail === userEmail) &&
-      (call.status === 'ringing' || call.status === 'answered')
-    );
-  }
-
-  // Subscribe to call updates
-  subscribeToCall(callId: string, callback: (call: VideoCall) => void): () => void {
-    this.callListeners.set(callId, callback);
-    
-    // Return unsubscribe function
-    return () => {
-      this.callListeners.delete(callId);
-    };
+  async getActiveCallsForUser(userEmail: string): Promise<VideoCall[]> {
+    try {
+      const response = await fetch(`/api/video-calls/user/${encodeURIComponent(userEmail)}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        return result.calls;
+      }
+      return [];
+    } catch (error) {
+      console.error('Failed to get active calls:', error);
+      return [];
+    }
   }
 
   // Subscribe to user's call updates
@@ -104,82 +156,42 @@ class VideoCallService {
     // Store the callback for this user
     this.userCallListeners.set(userEmail, callback);
     
-    const checkForUpdates = () => {
-      const userCalls = this.getActiveCallsForUser(userEmail);
-      callback(userCalls);
+    const checkForUpdates = async () => {
+      try {
+        const userCalls = await this.getActiveCallsForUser(userEmail);
+        callback(userCalls);
+      } catch (error) {
+        console.error('Error checking for call updates:', error);
+      }
     };
 
     // Check immediately
     checkForUpdates();
 
-    // Set up interval to check for updates
-    const interval = setInterval(checkForUpdates, 1000);
+    // Set up polling interval to check for updates every 2 seconds
+    const interval = setInterval(checkForUpdates, 2000);
+    this.pollingIntervals.set(userEmail, interval);
 
     // Return unsubscribe function
     return () => {
-      clearInterval(interval);
+      const interval = this.pollingIntervals.get(userEmail);
+      if (interval) {
+        clearInterval(interval);
+        this.pollingIntervals.delete(userEmail);
+      }
       this.userCallListeners.delete(userEmail);
     };
   }
 
-  // Simulate call notification (in a real app, this would be a WebSocket or push notification)
-  private simulateCallNotification(call: VideoCall) {
-    console.log(`📞 Video call notification sent to ${call.receiverEmail}`);
-    
-    // In a real implementation, this would trigger a notification on the receiver's device
-    // For now, we'll simulate the notification by triggering the receiver's callback
-    setTimeout(() => {
-      // Trigger notification for the receiver
-      this.triggerReceiverNotification(call);
-    }, 100);
-    
-    setTimeout(() => {
-      // Simulate auto-decline after 30 seconds if not answered
-      if (call.status === 'ringing') {
-        this.declineCall(call.id);
-        console.log(`📞 Call ${call.id} auto-declined (timeout)`);
-      }
-    }, 30000);
-  }
-
-  // Trigger notification for the receiver
-  private triggerReceiverNotification(call: VideoCall) {
-    // Find any listeners for this user and trigger them
-    for (const [userId, callback] of this.userCallListeners.entries()) {
-      if (userId === call.receiverEmail) {
-        // Get updated calls for this user
-        const userCalls = this.getActiveCallsForUser(userId);
-        callback(userCalls);
-        console.log(`📞 Triggered notification for receiver: ${call.receiverEmail}`);
-      }
+  // Clean up polling intervals
+  cleanup() {
+    for (const [userEmail, interval] of this.pollingIntervals.entries()) {
+      clearInterval(interval);
     }
-  }
-
-  // Notify listeners of call updates
-  private notifyCallUpdate(call: VideoCall) {
-    const listener = this.callListeners.get(call.id);
-    if (listener) {
-      listener(call);
-    }
-  }
-
-  // Clean up old calls
-  cleanupOldCalls() {
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    
-    for (const [callId, call] of this.calls.entries()) {
-      if (call.startTime < oneHourAgo && (call.status === 'ended' || call.status === 'declined')) {
-        this.calls.delete(callId);
-        this.callListeners.delete(callId);
-      }
-    }
+    this.pollingIntervals.clear();
+    this.userCallListeners.clear();
   }
 }
 
 // Create singleton instance
 export const videoCallService = new VideoCallService();
-
-// Clean up old calls every 5 minutes
-setInterval(() => {
-  videoCallService.cleanupOldCalls();
-}, 5 * 60 * 1000);

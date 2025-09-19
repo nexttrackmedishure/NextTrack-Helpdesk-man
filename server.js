@@ -684,6 +684,258 @@ app.delete("/api/upload/image/:publicId", async (req, res) => {
   }
 });
 
+// Video Call Schema
+const videoCallSchema = new mongoose.Schema(
+  {
+    callId: { type: String, required: true, unique: true },
+    callerEmail: { type: String, required: true },
+    callerName: { type: String, required: true },
+    receiverEmail: { type: String, required: true },
+    receiverName: { type: String, required: true },
+    status: { 
+      type: String, 
+      enum: ['ringing', 'answered', 'declined', 'ended'], 
+      default: 'ringing' 
+    },
+    startTime: { type: Date, default: Date.now },
+    endTime: { type: Date },
+    duration: { type: Number }, // in milliseconds
+  },
+  { timestamps: true }
+);
+
+const VideoCall = mongoose.model("VideoCall", videoCallSchema);
+
+// Video Call Routes
+
+// Start a video call
+app.post("/api/video-calls", async (req, res) => {
+  try {
+    const { callerEmail, callerName, receiverEmail, receiverName } = req.body;
+
+    // Check if there's already an active call between these users
+    const existingCall = await VideoCall.findOne({
+      $or: [
+        { callerEmail, receiverEmail, status: 'ringing' },
+        { callerEmail: receiverEmail, receiverEmail: callerEmail, status: 'ringing' }
+      ]
+    });
+
+    if (existingCall) {
+      return res.status(400).json({
+        success: false,
+        message: "There is already an active call between these users"
+      });
+    }
+
+    const callId = `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    const newCall = new VideoCall({
+      callId,
+      callerEmail,
+      callerName,
+      receiverEmail,
+      receiverName,
+      status: 'ringing',
+      startTime: new Date()
+    });
+
+    const savedCall = await newCall.save();
+
+    console.log(`📞 Video call started: ${callerName} calling ${receiverName}`);
+
+    res.status(201).json({
+      success: true,
+      message: "Video call started",
+      call: savedCall
+    });
+  } catch (error) {
+    console.error("Video call start error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to start video call",
+      error: error.message
+    });
+  }
+});
+
+// Get active calls for a user
+app.get("/api/video-calls/user/:userEmail", async (req, res) => {
+  try {
+    const { userEmail } = req.params;
+
+    const activeCalls = await VideoCall.find({
+      $or: [
+        { callerEmail: userEmail },
+        { receiverEmail: userEmail }
+      ],
+      status: { $in: ['ringing', 'answered'] }
+    }).sort({ startTime: -1 });
+
+    res.json({
+      success: true,
+      calls: activeCalls
+    });
+  } catch (error) {
+    console.error("Get video calls error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get video calls",
+      error: error.message
+    });
+  }
+});
+
+// Answer a video call
+app.put("/api/video-calls/:callId/answer", async (req, res) => {
+  try {
+    const { callId } = req.params;
+
+    const call = await VideoCall.findOne({ callId });
+    if (!call) {
+      return res.status(404).json({
+        success: false,
+        message: "Call not found"
+      });
+    }
+
+    if (call.status !== 'ringing') {
+      return res.status(400).json({
+        success: false,
+        message: "Call is not in ringing state"
+      });
+    }
+
+    call.status = 'answered';
+    await call.save();
+
+    console.log(`✅ Video call answered: ${call.callId}`);
+
+    res.json({
+      success: true,
+      message: "Call answered",
+      call
+    });
+  } catch (error) {
+    console.error("Answer video call error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to answer call",
+      error: error.message
+    });
+  }
+});
+
+// Decline a video call
+app.put("/api/video-calls/:callId/decline", async (req, res) => {
+  try {
+    const { callId } = req.params;
+
+    const call = await VideoCall.findOne({ callId });
+    if (!call) {
+      return res.status(404).json({
+        success: false,
+        message: "Call not found"
+      });
+    }
+
+    if (call.status !== 'ringing') {
+      return res.status(400).json({
+        success: false,
+        message: "Call is not in ringing state"
+      });
+    }
+
+    call.status = 'declined';
+    call.endTime = new Date();
+    await call.save();
+
+    console.log(`❌ Video call declined: ${call.callId}`);
+
+    res.json({
+      success: true,
+      message: "Call declined",
+      call
+    });
+  } catch (error) {
+    console.error("Decline video call error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to decline call",
+      error: error.message
+    });
+  }
+});
+
+// End a video call
+app.put("/api/video-calls/:callId/end", async (req, res) => {
+  try {
+    const { callId } = req.params;
+
+    const call = await VideoCall.findOne({ callId });
+    if (!call) {
+      return res.status(404).json({
+        success: false,
+        message: "Call not found"
+      });
+    }
+
+    if (call.status === 'ended') {
+      return res.status(400).json({
+        success: false,
+        message: "Call is already ended"
+      });
+    }
+
+    call.status = 'ended';
+    call.endTime = new Date();
+    call.duration = call.endTime.getTime() - call.startTime.getTime();
+    await call.save();
+
+    console.log(`📞 Video call ended: ${call.callId}, Duration: ${Math.round(call.duration / 1000)}s`);
+
+    res.json({
+      success: true,
+      message: "Call ended",
+      call
+    });
+  } catch (error) {
+    console.error("End video call error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to end call",
+      error: error.message
+    });
+  }
+});
+
+// Get call by ID
+app.get("/api/video-calls/:callId", async (req, res) => {
+  try {
+    const { callId } = req.params;
+
+    const call = await VideoCall.findOne({ callId });
+    if (!call) {
+      return res.status(404).json({
+        success: false,
+        message: "Call not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      call
+    });
+  } catch (error) {
+    console.error("Get video call error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get call",
+      error: error.message
+    });
+  }
+});
+
 // Serve static files in production
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "dist")));

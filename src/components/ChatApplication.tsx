@@ -2048,7 +2048,7 @@ const ChatApplication: React.FC = () => {
   };
 
   // Video call functions
-  const startVideoCall = () => {
+  const startVideoCall = async () => {
     if (!selectedSimpleConversation || !currentUser?.email) {
       showErrorToast('No conversation selected or user not logged in');
       return;
@@ -2065,44 +2065,76 @@ const ChatApplication: React.FC = () => {
       ? selectedSimpleConversation.groupName || 'Group Chat'
       : selectedSimpleConversation.groupMembers?.find((p: any) => p.email !== currentUser.email)?.name || 'Unknown';
 
-    const callId = videoCallService.startCall(
-      currentUser.email,
-      currentUser.name || currentUser.email,
-      receiverEmail,
-      receiverName
-    );
+    try {
+      const callId = await videoCallService.startCall(
+        currentUser.email,
+        currentUser.name || currentUser.email,
+        receiverEmail,
+        receiverName
+      );
 
-    const call = videoCallService.getCall(callId);
-    if (call) {
-      setCurrentCall(call);
-      setIsIncomingCall(false);
-      setShowVideoCallModal(true);
+      const call = await videoCallService.getCall(callId);
+      if (call) {
+        setCurrentCall(call);
+        setIsIncomingCall(false);
+        setShowVideoCallModal(true);
+      }
+    } catch (error) {
+      console.error('Failed to start video call:', error);
+      showErrorToast('Failed to start video call. Please try again.');
     }
   };
 
-  const handleAnswerCall = () => {
+  const handleAnswerCall = async () => {
     if (currentCall) {
-      videoCallService.answerCall(currentCall.id);
-      setIsIncomingCall(false);
-      showSuccessToast('Call answered');
+      try {
+        const success = await videoCallService.answerCall(currentCall.callId);
+        if (success) {
+          setIsIncomingCall(false);
+          showSuccessToast('Call answered');
+        } else {
+          showErrorToast('Failed to answer call');
+        }
+      } catch (error) {
+        console.error('Error answering call:', error);
+        showErrorToast('Failed to answer call');
+      }
     }
   };
 
-  const handleDeclineCall = () => {
+  const handleDeclineCall = async () => {
     if (currentCall) {
-      videoCallService.declineCall(currentCall.id);
-      setShowVideoCallModal(false);
-      setCurrentCall(null);
-      showInfoToast('Call declined');
+      try {
+        const success = await videoCallService.declineCall(currentCall.callId);
+        if (success) {
+          setShowVideoCallModal(false);
+          setCurrentCall(null);
+          showInfoToast('Call declined');
+        } else {
+          showErrorToast('Failed to decline call');
+        }
+      } catch (error) {
+        console.error('Error declining call:', error);
+        showErrorToast('Failed to decline call');
+      }
     }
   };
 
-  const handleEndCall = () => {
+  const handleEndCall = async () => {
     if (currentCall) {
-      videoCallService.endCall(currentCall.id);
-      setShowVideoCallModal(false);
-      setCurrentCall(null);
-      showInfoToast('Call ended');
+      try {
+        const success = await videoCallService.endCall(currentCall.callId);
+        if (success) {
+          setShowVideoCallModal(false);
+          setCurrentCall(null);
+          showInfoToast('Call ended');
+        } else {
+          showErrorToast('Failed to end call');
+        }
+      } catch (error) {
+        console.error('Error ending call:', error);
+        showErrorToast('Failed to end call');
+      }
     }
   };
 
