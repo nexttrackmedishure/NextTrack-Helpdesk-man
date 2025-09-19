@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Call Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .user-info {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .user-card {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .user-card.active {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.ringing {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .status.answered {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status.declined {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .status.ended {
+            background: #f3f4f6;
+            color: #374151;
+        }
+        .log {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>📞 Video Call System Test</h1>
+    <p>This page demonstrates how the video call system works with receiver notifications.</p>
+
+    <div class="test-section">
+        <h2>👥 Test Users</h2>
+        <div class="user-info">
+            <div class="user-card" id="user1">
+                <h3>User 1 (Caller)</h3>
+                <p>Email: user1@example.com</p>
+                <p>Name: Alice Johnson</p>
+                <button onclick="startCall()">📞 Start Video Call</button>
+                <div class="status" id="user1-status">Ready to call</div>
+            </div>
+            <div class="user-card" id="user2">
+                <h3>User 2 (Receiver)</h3>
+                <p>Email: user2@example.com</p>
+                <p>Name: Bob Smith</p>
+                <button onclick="answerCall()" disabled id="answer-btn">✅ Answer Call</button>
+                <button onclick="declineCall()" disabled id="decline-btn">❌ Decline Call</button>
+                <div class="status" id="user2-status">Waiting for call</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>📋 Instructions</h2>
+        <ol>
+            <li><strong>Start Call:</strong> Click "Start Video Call" as User 1</li>
+            <li><strong>Receiver Notification:</strong> User 2 will see an incoming call modal</li>
+            <li><strong>Answer/Decline:</strong> User 2 can answer or decline the call</li>
+            <li><strong>Call Active:</strong> If answered, both users see active call status</li>
+            <li><strong>End Call:</strong> Either user can end the call</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Call Status</h2>
+        <div id="call-status">No active calls</div>
+        <button onclick="endCall()" disabled id="end-call-btn">📞 End Call</button>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 Event Log</h2>
+        <div class="log" id="event-log">
+            <div>System ready. Click "Start Video Call" to begin test.</div>
+        </div>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <script>
+        // Simulate the video call service
+        class TestVideoCallService {
+            constructor() {
+                this.calls = new Map();
+                this.listeners = new Map();
+                this.currentCall = null;
+            }
+
+            startCall(callerEmail, callerName, receiverEmail, receiverName) {
+                const callId = `call_${Date.now()}`;
+                const call = {
+                    id: callId,
+                    callerEmail,
+                    callerName,
+                    receiverEmail,
+                    receiverName,
+                    status: 'ringing',
+                    startTime: new Date()
+                };
+
+                this.calls.set(callId, call);
+                this.currentCall = call;
+                
+                this.log(`📞 Call started: ${callerName} calling ${receiverName}`);
+                this.updateUI();
+                
+                // Simulate notification to receiver
+                setTimeout(() => {
+                    this.notifyReceiver(receiverEmail);
+                }, 500);
+
+                return callId;
+            }
+
+            answerCall(callId) {
+                const call = this.calls.get(callId);
+                if (call && call.status === 'ringing') {
+                    call.status = 'answered';
+                    this.log(`✅ Call answered by ${call.receiverName}`);
+                    this.updateUI();
+                    return true;
+                }
+                return false;
+            }
+
+            declineCall(callId) {
+                const call = this.calls.get(callId);
+                if (call && call.status === 'ringing') {
+                    call.status = 'declined';
+                    call.endTime = new Date();
+                    this.log(`❌ Call declined by ${call.receiverName}`);
+                    this.updateUI();
+                    return true;
+                }
+                return false;
+            }
+
+            endCall(callId) {
+                const call = this.calls.get(callId);
+                if (call && (call.status === 'answered' || call.status === 'ringing')) {
+                    call.status = 'ended';
+                    call.endTime = new Date();
+                    call.duration = call.endTime.getTime() - call.startTime.getTime();
+                    this.log(`📞 Call ended. Duration: ${Math.round(call.duration / 1000)}s`);
+                    this.updateUI();
+                    return true;
+                }
+                return false;
+            }
+
+            notifyReceiver(receiverEmail) {
+                this.log(`🔔 Incoming call notification sent to ${receiverEmail}`);
+                // In the real app, this would trigger the receiver's modal
+                this.showReceiverModal();
+            }
+
+            showReceiverModal() {
+                const call = this.currentCall;
+                if (call && call.status === 'ringing') {
+                    this.log(`📱 Receiver modal would appear for ${call.receiverName}`);
+                    this.log(`   - Caller: ${call.callerName} (${call.callerEmail})`);
+                    this.log(`   - Options: Answer or Decline`);
+                    
+                    // Enable receiver buttons
+                    document.getElementById('answer-btn').disabled = false;
+                    document.getElementById('decline-btn').disabled = false;
+                    
+                    // Update receiver status
+                    document.getElementById('user2-status').textContent = 'Incoming call';
+                    document.getElementById('user2-status').className = 'status ringing';
+                }
+            }
+
+            updateUI() {
+                const call = this.currentCall;
+                if (!call) {
+                    document.getElementById('call-status').textContent = 'No active calls';
+                    document.getElementById('end-call-btn').disabled = true;
+                    return;
+                }
+
+                const statusText = `Call ${call.status}: ${call.callerName} → ${call.receiverName}`;
+                document.getElementById('call-status').textContent = statusText;
+                document.getElementById('call-status').className = `status ${call.status}`;
+
+                // Update user statuses
+                if (call.status === 'ringing') {
+                    document.getElementById('user1-status').textContent = 'Calling...';
+                    document.getElementById('user1-status').className = 'status ringing';
+                    document.getElementById('end-call-btn').disabled = false;
+                } else if (call.status === 'answered') {
+                    document.getElementById('user1-status').textContent = 'Call active';
+                    document.getElementById('user1-status').className = 'status answered';
+                    document.getElementById('user2-status').textContent = 'Call active';
+                    document.getElementById('user2-status').className = 'status answered';
+                    document.getElementById('answer-btn').disabled = true;
+                    document.getElementById('decline-btn').disabled = true;
+                    document.getElementById('end-call-btn').disabled = false;
+                } else if (call.status === 'declined') {
+                    document.getElementById('user1-status').textContent = 'Call declined';
+                    document.getElementById('user1-status').className = 'status declined';
+                    document.getElementById('user2-status').textContent = 'Call declined';
+                    document.getElementById('user2-status').className = 'status declined';
+                    document.getElementById('answer-btn').disabled = true;
+                    document.getElementById('decline-btn').disabled = true;
+                    document.getElementById('end-call-btn').disabled = true;
+                } else if (call.status === 'ended') {
+                    document.getElementById('user1-status').textContent = 'Call ended';
+                    document.getElementById('user1-status').className = 'status ended';
+                    document.getElementById('user2-status').textContent = 'Call ended';
+                    document.getElementById('user2-status').className = 'status ended';
+                    document.getElementById('answer-btn').disabled = true;
+                    document.getElementById('decline-btn').disabled = true;
+                    document.getElementById('end-call-btn').disabled = true;
+                }
+            }
+
+            log(message) {
+                const log = document.getElementById('event-log');
+                const timestamp = new Date().toLocaleTimeString();
+                log.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+                log.scrollTop = log.scrollHeight;
+            }
+        }
+
+        // Initialize the test service
+        const videoCallService = new TestVideoCallService();
+
+        // Test functions
+        function startCall() {
+            videoCallService.startCall(
+                'user1@example.com',
+                'Alice Johnson',
+                'user2@example.com',
+                'Bob Smith'
+            );
+        }
+
+        function answerCall() {
+            if (videoCallService.currentCall) {
+                videoCallService.answerCall(videoCallService.currentCall.id);
+            }
+        }
+
+        function declineCall() {
+            if (videoCallService.currentCall) {
+                videoCallService.declineCall(videoCallService.currentCall.id);
+            }
+        }
+
+        function endCall() {
+            if (videoCallService.currentCall) {
+                videoCallService.endCall(videoCallService.currentCall.id);
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('event-log').innerHTML = '<div>Log cleared.</div>';
+        }
+
+        // Initialize UI
+        videoCallService.log('Video call test system initialized');
+        videoCallService.log('Ready to test incoming call notifications');
+    </script>
+</body>
+</html>
