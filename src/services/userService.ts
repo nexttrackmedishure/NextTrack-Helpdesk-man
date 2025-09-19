@@ -64,29 +64,10 @@ export const registerUser = async (
         user: result.user,
       };
     } else {
-      console.warn("MongoDB registration failed, using localStorage fallback:", result.message);
-      
-      // Fallback to localStorage
-      const hashedPassword = await hashPassword(userData.password);
-      const newUser: User = {
-        ...userData,
-        password: hashedPassword,
-        createdAt: new Date(),
-        isActive: true,
-      };
-
-      const newUserWithId = {
-        ...newUser,
-        _id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      };
-      userStorage.addUser(newUserWithId);
-      console.log("User saved to localStorage:", newUserWithId);
-
-      const { password, ...userWithoutPassword } = newUser;
+      console.warn("MongoDB registration failed:", result.message);
       return {
-        success: true,
-        message: "User registered successfully (localStorage)",
-        user: userWithoutPassword,
+        success: false,
+        message: result.message || "Registration failed. Please check your connection and try again.",
       };
     }
   } catch (error) {
@@ -133,33 +114,8 @@ export const getAllUsers = async (): Promise<UserDirectoryUser[]> => {
 
       return transformedUsers;
     } else {
-      console.warn("MongoDB not available, using localStorage fallback");
-      
-      // Fallback to localStorage using userStorage
-      const localUsers = userStorage.getAllUsers();
-      console.log("Fetched users from localStorage:", localUsers.length, "users");
-
-      // Transform localStorage users to UserDirectoryUser format
-      const transformedUsers: UserDirectoryUser[] = localUsers.map(
-        (user: any) => ({
-          id: user._id || Math.random().toString(),
-          idNumber: user.idNumber || "",
-          fullName: user.fullName || "",
-          nickname: user.nickname || "",
-          department: user.department || "",
-          branch: user.branch || "",
-          contactNumber: user.contactNumber || "",
-          email: user.email || "",
-          role: user.role || "Member",
-          profileImage: user.profileImage || null,
-          createdAt: user.createdAt ? new Date(user.createdAt) : new Date(),
-          isActive: user.isActive !== false,
-          lastLogin: user.lastLogin ? new Date(user.lastLogin) : null,
-          status: user.isActive !== false ? "active" : "inactive",
-        })
-      );
-
-      return transformedUsers;
+      console.warn("MongoDB not available, returning empty array");
+      return [];
     }
   } catch (error) {
     console.error("Error fetching users:", error);
@@ -180,7 +136,7 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
     );
 
     if (user) {
-      return user as User;
+      return user as unknown as User;
     }
     return null;
   } catch (error) {

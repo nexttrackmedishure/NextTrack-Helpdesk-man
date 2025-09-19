@@ -12,6 +12,7 @@ import {
   UserX,
 } from "lucide-react";
 import { getAllUsers, UserDirectoryUser } from "../services/userService";
+import { imageUploadService } from "../services/imageUploadService";
 import NewUserRegistrationModal from "./NewUserRegistrationModal";
 import ViewUserModal from "./ViewUserModal";
 import EditUserModal from "./EditUserModal";
@@ -68,10 +69,13 @@ const UserDirectory: React.FC = () => {
   const loadUsers = async () => {
     try {
       setIsLoading(true);
+      console.log("🔄 UserDirectory: Loading users from MongoDB...");
       const usersData = await getAllUsers();
+      console.log("📊 UserDirectory: Received users data:", usersData);
+      console.log("👥 UserDirectory: Number of users:", usersData.length);
       setUsers(usersData);
     } catch (error) {
-      console.error("Error loading users:", error);
+      console.error("❌ UserDirectory: Error loading users:", error);
     } finally {
       setIsLoading(false);
     }
@@ -261,7 +265,7 @@ const UserDirectory: React.FC = () => {
       // Smart direction selection
       if (collisionDetected) {
         // If collision detected, use preferred direction
-        setDropdownDirection(preferredDirection);
+        setDropdownDirection(preferredDirection as "up" | "down");
       } else if (fitsDown && fitsRight) {
         setDropdownDirection("down");
       } else if (fitsUp && fitsRight) {

@@ -1,6 +1,7 @@
 import React, { useState, useCallback, memo } from "react";
 import { X, User as UserIcon, Eye, EyeOff, Upload } from "lucide-react";
 import { registerUser, validateUserData, User } from "../services/userService";
+import { imageUploadService } from "../services/imageUploadService";
 
 // Memoized input component to prevent unnecessary re-renders
 const MemoizedInput = memo(
@@ -161,45 +162,41 @@ const NewUserRegistrationModal: React.FC<NewUserRegistrationModalProps> =
     }, []);
 
     // Handle profile image upload
-    const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (file) {
-        // Check file size (1MB = 1024 * 1024 bytes)
-        const maxSize = 1024 * 1024; // 1MB
-        if (file.size > maxSize) {
-          setErrors({ submit: "Profile image size must be less than 1MB" });
+        // Validate file using the image upload service
+        const validation = imageUploadService.validateImageFile(file);
+        if (!validation.valid) {
+          setErrors({ submit: validation.error });
           // Clear the file input
           event.target.value = "";
           return;
         }
 
-        // Check file type
-        const allowedTypes = [
-          "image/jpeg",
-          "image/jpg",
-          "image/png",
-          "image/gif",
-          "image/webp",
-        ];
-        if (!allowedTypes.includes(file.type)) {
-          setErrors({
-            submit:
-              "Please select a valid image file (JPEG, PNG, GIF, or WebP)",
-          });
-          // Clear the file input
-          event.target.value = "";
-          return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setProfileImage(e.target?.result as string);
-          // Clear any previous errors
-          if (errors.submit) {
-            setErrors((prev) => ({ ...prev, submit: undefined }));
+        try {
+          // Show loading state
+          setIsLoading(true);
+          
+          // Upload to Cloudinary
+          const uploadResult = await imageUploadService.uploadAvatar(file);
+          
+          if (uploadResult.success && uploadResult.data) {
+            setProfileImage(uploadResult.data.url);
+            // Clear any previous errors
+            if (errors.submit) {
+              setErrors((prev) => ({ ...prev, submit: undefined }));
+            }
+            console.log('✅ Avatar uploaded to Cloudinary:', uploadResult.data.url);
+          } else {
+            setErrors({ submit: uploadResult.message || 'Failed to upload avatar' });
           }
-        };
-        reader.readAsDataURL(file);
+        } catch (error) {
+          console.error('Avatar upload error:', error);
+          setErrors({ submit: 'Failed to upload avatar. Please try again.' });
+        } finally {
+          setIsLoading(false);
+        }
       }
     };
 

@@ -45,22 +45,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = () => {
       try {
-        // Only initialize demo users if this is the very first time (no users at all)
-        const existingUsers = userStorage.getAllUsers();
-        if (existingUsers.length === 0) {
-          // Check if this is truly a fresh install by looking for any localStorage data
-          const hasAnyData = localStorage.getItem("helpdesk_user") || 
-                            localStorage.getItem("nexttrack_users") || 
-                            localStorage.getItem("nexttrack_users_backup");
-          
-          if (!hasAnyData) {
-            // Only initialize demo users for completely fresh installations
-            userStorage.initializeWithDemoUsers();
-          }
-        }
-        
-        // Remove automatic backup restoration to prevent deleted users from coming back
-        // userStorage.restoreFromBackup();
+        // No longer initialize demo users - prioritize MongoDB database
+        // All users should be managed through MongoDB cloud database
 
         const storedUser = localStorage.getItem("helpdesk_user");
         if (storedUser) {
@@ -87,39 +73,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       if (email && password) {
-        // First check demo credentials
-        const isDemoCredentials =
-          (email === "admin@nexttrack.com" && password === "password123") ||
-          (email === "user@nexttrack.com" && password === "password123") ||
-          (email === "support@nexttrack.com" && password === "password123") ||
-          (email === "reggie@medishure.com" && password === "password123");
-
-        if (isDemoCredentials) {
-          const role =
-            email === "admin@nexttrack.com"
-              ? "admin"
-              : email === "support@nexttrack.com"
-              ? "support"
-              : email === "reggie@medishure.com"
-              ? "admin"
-              : "user";
-
-          const mockUser: User = {
-            id: "1",
-            email: email,
-            name:
-              email.split("@")[0].charAt(0).toUpperCase() +
-              email.split("@")[0].slice(1),
-            role: role,
-            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(
-              email.split("@")[0]
-            )}&background=6366f1&color=fff`,
-          };
-
-          setUser(mockUser);
-          localStorage.setItem("helpdesk_user", JSON.stringify(mockUser));
-          return true;
-        }
+        // No more demo credentials - all authentication through MongoDB
 
         // Check against registered users using MongoDB API
         try {
@@ -177,38 +131,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             console.warn("Checking localStorage fallback...");
           }
         } catch (dbError) {
-          console.warn(
-            "MongoDB not available, checking localStorage:",
-            dbError
-          );
-
-          // Fallback to localStorage using userStorage
-          const foundUser = userStorage.getUserByEmail(email);
-
-          if (foundUser) {
-            // Simple password validation (in production, use proper hashing)
-            const hashedPassword = btoa(password + "_hashed");
-            if (foundUser.password === hashedPassword) {
-              const authUser: User = {
-                id: foundUser._id || Math.random().toString(),
-                email: foundUser.email,
-                name: foundUser.fullName,
-                role: foundUser.role.toLowerCase() as
-                  | "admin"
-                  | "user"
-                  | "support",
-                avatar:
-                  foundUser.profileImage ||
-                  `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                    foundUser.fullName
-                  )}&background=6366f1&color=fff`,
-              };
-
-              setUser(authUser);
-              localStorage.setItem("helpdesk_user", JSON.stringify(authUser));
-              return true;
-            }
-          }
+          console.error("MongoDB login error:", dbError);
+          return false;
         }
       }
 

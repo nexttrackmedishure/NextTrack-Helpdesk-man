@@ -3,6 +3,38 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const path = require("path");
+const multer = require("multer");
+const cloudinary = require('cloudinary').v2;
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: 'dtywyqkfg',
+  api_key: '765689473539249',
+  api_secret: process.env.CLOUDINARY_API_SECRET || '**********' // You need to provide the actual API secret
+});
+
+// Configure multer for file uploads
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow images and common document types
+    const allowedTypes = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+      'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/plain', 'application/zip', 'application/x-rar-compressed'
+    ];
+    
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('File type not allowed'), false);
+    }
+  }
+});
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -439,6 +471,216 @@ app.delete("/api/users/:id", async (req, res) => {
   } catch (error) {
     console.error("User deletion error:", error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Image upload endpoints
+app.post("/api/upload/image", upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "No image file provided" 
+      });
+    }
+
+    // Upload to Cloudinary
+    const result = await new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        {
+          resource_type: 'image',
+          folder: 'nexttrack-chat',
+          transformation: [
+            { width: 1000, height: 1000, crop: 'limit' },
+            { quality: 'auto' }
+          ]
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      ).end(req.file.buffer);
+    });
+
+    res.json({
+      success: true,
+      data: {
+        url: result.secure_url,
+        publicId: result.public_id,
+        width: result.width,
+        height: result.height,
+        size: result.bytes
+      }
+    });
+  } catch (error) {
+    console.error("Image upload error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to upload image",
+      error: error.message 
+    });
+  }
+});
+
+// Multiple image upload for chat albums
+app.post("/api/upload/images", upload.array('images', 10), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "No image files provided" 
+      });
+    }
+
+    const uploadPromises = req.files.map(file => {
+      return new Promise((resolve, reject) => {
+        cloudinary.uploader.upload_stream(
+          {
+            resource_type: 'image',
+            folder: 'nexttrack-chat/albums',
+            transformation: [
+              { width: 800, height: 800, crop: 'limit' },
+              { quality: 'auto' }
+            ]
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve({
+              url: result.secure_url,
+              publicId: result.public_id,
+              width: result.width,
+              height: result.height,
+              size: result.bytes,
+              name: file.originalname
+            });
+          }
+        ).end(file.buffer);
+      });
+    });
+
+    const results = await Promise.all(uploadPromises);
+
+    res.json({
+      success: true,
+      data: results
+    });
+  } catch (error) {
+    console.error("Multiple image upload error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to upload images",
+      error: error.message 
+    });
+  }
+});
+
+// General file upload
+app.post("/api/upload/file", upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "No file provided" 
+      });
+    }
+
+    // For non-image files, we'll store them locally or use a different service
+    // For now, we'll create a simple file info response
+    const fileInfo = {
+      name: req.file.originalname,
+      size: req.file.size,
+      type: req.file.mimetype,
+      url: `/uploads/${req.file.originalname}`, // This would be the actual file URL
+      publicId: `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    };
+
+    res.json({
+      success: true,
+      data: fileInfo
+    });
+  } catch (error) {
+    console.error("File upload error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to upload file",
+      error: error.message 
+    });
+  }
+});
+
+// User avatar upload
+app.post("/api/upload/avatar", upload.single('avatar'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "No avatar file provided" 
+      });
+    }
+
+    // Upload to Cloudinary
+    const result = await new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        {
+          resource_type: 'image',
+          folder: 'nexttrack-users/avatars',
+          transformation: [
+            { width: 200, height: 200, crop: 'fill', gravity: 'face' },
+            { quality: 'auto' }
+          ]
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      ).end(req.file.buffer);
+    });
+
+    res.json({
+      success: true,
+      data: {
+        url: result.secure_url,
+        publicId: result.public_id,
+        width: result.width,
+        height: result.height,
+        size: result.bytes
+      }
+    });
+  } catch (error) {
+    console.error("Avatar upload error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to upload avatar",
+      error: error.message 
+    });
+  }
+});
+
+// Delete image from Cloudinary
+app.delete("/api/upload/image/:publicId", async (req, res) => {
+  try {
+    const { publicId } = req.params;
+    
+    const result = await cloudinary.uploader.destroy(publicId);
+    
+    if (result.result === 'ok') {
+      res.json({
+        success: true,
+        message: "Image deleted successfully"
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: "Image not found"
+      });
+    }
+  } catch (error) {
+    console.error("Image deletion error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to delete image",
+      error: error.message 
+    });
   }
 });
 

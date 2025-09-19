@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dropdown Debug Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const { MoreVertical, Reply, Forward, Copy, Flag, Trash2 } = lucide;
+
+        // Simple dropdown test component
+        const DropdownTest = () => {
+            const [showDropdown, setShowDropdown] = useState(false);
+            const dropdownRef = useRef(null);
+
+            // Close dropdown when clicking outside
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                        setShowDropdown(false);
+                    }
+                };
+
+                if (showDropdown) {
+                    document.addEventListener('mousedown', handleClickOutside);
+                }
+
+                return () => {
+                    document.removeEventListener('mousedown', handleClickOutside);
+                };
+            }, [showDropdown]);
+
+            const handleClick = () => {
+                console.log('Button clicked! Current state:', showDropdown);
+                setShowDropdown(!showDropdown);
+            };
+
+            return (
+                <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
+                    <h2 className="text-xl font-semibold mb-4">Dropdown Debug Test</h2>
+                    
+                    <div className="relative">
+                        <button 
+                            onClick={handleClick}
+                            className="inline-flex items-center p-2 text-sm font-medium text-center text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:ring-4 focus:outline-none dark:text-white focus:ring-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800 dark:focus:ring-gray-600 border border-gray-300" 
+                            type="button"
+                        >
+                            <MoreVertical className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                            <span className="ml-2">Click me</span>
+                        </button>
+                        
+                        {/* Dropdown Menu */}
+                        {showDropdown && (
+                            <div 
+                                ref={dropdownRef}
+                                className="absolute top-0 right-0 mt-12 mr-0 z-50 bg-white divide-y divide-gray-100 rounded-lg shadow-xl w-48 dark:bg-gray-700 dark:divide-gray-600 border border-gray-200 dark:border-gray-600" 
+                            >
+                                <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
+                                    <li>
+                                        <button 
+                                            onClick={() => {
+                                                alert('Reply clicked!');
+                                                setShowDropdown(false);
+                                            }}
+                                            className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                                        >
+                                            <Reply className="w-4 h-4 inline mr-2" />
+                                            Reply
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button 
+                                            onClick={() => {
+                                                alert('Forward clicked!');
+                                                setShowDropdown(false);
+                                            }}
+                                            className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                                        >
+                                            <Forward className="w-4 h-4 inline mr-2" />
+                                            Forward
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button 
+                                            onClick={() => {
+                                                alert('Copy clicked!');
+                                                setShowDropdown(false);
+                                            }}
+                                            className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                                        >
+                                            <Copy className="w-4 h-4 inline mr-2" />
+                                            Copy
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button 
+                                            onClick={() => {
+                                                alert('Report clicked!');
+                                                setShowDropdown(false);
+                                            }}
+                                            className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                                        >
+                                            <Flag className="w-4 h-4 inline mr-2" />
+                                            Report
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button 
+                                            onClick={() => {
+                                                alert('Delete clicked!');
+                                                setShowDropdown(false);
+                                            }}
+                                            className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white text-red-600 dark:text-red-400"
+                                        >
+                                            <Trash2 className="w-4 h-4 inline mr-2" />
+                                            Delete
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                    
+                    <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                        <p className="text-sm text-blue-800">
+                            <strong>Debug Info:</strong><br/>
+                            Dropdown state: {showDropdown ? 'OPEN' : 'CLOSED'}<br/>
+                            Check browser console for click logs
+                        </p>
+                    </div>
+                </div>
+            );
+        };
+
+        // Render the app
+        ReactDOM.render(<DropdownTest />, document.getElementById('root'));
+    </script>
+</body>
+</html>

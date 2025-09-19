@@ -10,9 +10,9 @@ import {
   SimpleMessage,
 } from "../utils/chatStorage";
 
-export interface RealtimeMessage extends SimpleMessage {
+export interface RealtimeMessage extends Omit<SimpleMessage, 'isRead'> {
   isDelivered?: boolean;
-  isRead?: boolean;
+  isRead: boolean;
 }
 
 export interface RealtimeConversation extends SimpleConversation {
@@ -142,13 +142,15 @@ class RealtimeChatService {
   async sendMessage(
     conversationId: string,
     text: string,
-    type: "text" | "image" | "file" = "text",
+    type: "text" | "image" | "file" | "audio" = "text",
     additionalData?: {
       images?: Array<{ name: string; url: string; size: number }>;
       fileName?: string;
       fileSize?: number;
       fileType?: string;
       fileUrl?: string;
+      audioUrl?: string;
+      duration?: string;
     }
   ): Promise<RealtimeMessage> {
     if (!this.currentUserEmail) {
@@ -208,7 +210,7 @@ class RealtimeChatService {
         this.typingTimeouts.delete(timeoutKey);
       }, 3000);
 
-      this.typingTimeouts.set(timeoutKey, timeout);
+      this.typingTimeouts.set(timeoutKey, timeout as any);
     } else {
       this.typingTimeouts.delete(timeoutKey);
     }

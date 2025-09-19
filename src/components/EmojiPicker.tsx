@@ -38,8 +38,11 @@ const EmojiPickerComponent: React.FC<EmojiPickerProps> = ({
 
   // Handle emoji selection from the emoji-picker-react library
   const handleEmojiClick = (emojiObject: any) => {
-    onEmojiSelect(emojiObject.emoji);
-    onClose();
+    console.log('Emoji clicked:', emojiObject);
+    if (emojiObject && emojiObject.emoji) {
+      onEmojiSelect(emojiObject.emoji);
+      onClose();
+    }
   };
 
   if (!isOpen) return null;
@@ -51,7 +54,13 @@ const EmojiPickerComponent: React.FC<EmojiPickerProps> = ({
       style={{
         top: position.top,
         left: position.left,
-        transform: 'translateY(-100%)'
+        transform: 'translateY(-100%)',
+        width: '600px',
+        height: '500px',
+        minWidth: '600px',
+        maxWidth: '600px',
+        minHeight: '280px',
+        maxHeight: '500px'
       }}
     >
       {/* Header with close button */}
@@ -70,11 +79,22 @@ const EmojiPickerComponent: React.FC<EmojiPickerProps> = ({
       </div>
 
       {/* Emoji Picker from emoji-picker-react */}
-      <div className="emoji-picker-wrapper">
+      <div 
+        className="emoji-picker-wrapper" 
+        style={{ 
+          width: '600px', 
+          height: '460px', 
+          overflow: 'auto',
+          minWidth: '600px',
+          maxWidth: '600px',
+          minHeight: '240px',
+          maxHeight: '460px'
+        }}
+      >
         <EmojiPicker
           onEmojiClick={handleEmojiClick}
-          width={320}
-          height={400}
+          width={600}
+          height={460}
           searchDisabled={false}
           skinTonesDisabled={false}
           previewConfig={{

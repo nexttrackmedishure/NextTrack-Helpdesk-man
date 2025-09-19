@@ -7,7 +7,7 @@ export default defineConfig({
   base:
     process.env.NODE_ENV === "production" ? "/NextTrack-Helpdesk-man/" : "/",
   server: {
-    port: 3000,
+    port: 3001,
     open: true,
     proxy: {
       "/api": {

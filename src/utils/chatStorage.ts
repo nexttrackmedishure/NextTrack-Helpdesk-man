@@ -25,7 +25,7 @@ export interface SimpleMessage {
   text: string;
   timestamp: string;
   isRead: boolean;
-  type?: "text" | "image" | "file";
+  type?: "text" | "image" | "file" | "audio";
   images?: Array<{
     name: string;
     url: string;
@@ -34,6 +34,8 @@ export interface SimpleMessage {
   fileName?: string;
   fileSize?: number;
   fileType?: string;
+  audioUrl?: string;
+  duration?: string;
   fileUrl?: string;
 }
 
@@ -166,13 +168,15 @@ class ChatStorage {
     conversationId: string,
     senderEmail: string,
     text: string,
-    type: "text" | "image" | "file" = "text",
+    type: "text" | "image" | "file" | "audio" = "text",
     additionalData?: {
       images?: Array<{ name: string; url: string; size: number }>;
       fileName?: string;
       fileSize?: number;
       fileType?: string;
       fileUrl?: string;
+      audioUrl?: string;
+      duration?: string;
     }
   ): SimpleMessage {
     const message: SimpleMessage = {
@@ -194,6 +198,7 @@ class ChatStorage {
     // Update conversation's last message
     const lastMessageText = type === "image" ? "📷 Image" : 
                            type === "file" ? `📎 ${additionalData?.fileName || "File"}` : 
+                           type === "audio" ? "🎤 Voice message" :
                            text;
     this.updateConversationLastMessage(conversationId, lastMessageText);
 

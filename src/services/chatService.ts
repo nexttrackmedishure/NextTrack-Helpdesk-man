@@ -176,10 +176,10 @@ export class ChatService {
       _id: `conv_${Date.now()}_${contactData.id}`,
       contactId: contactData.id,
       contactName: contactData.name,
-      contactEmail: contactData.email,
-      agentId: contactData.agentId,
-      agentName: contactData.agentName,
-      agentEmail: contactData.agentEmail,
+      contactEmail: contactData.email || "",
+      agentId: (contactData as any).agentId || "",
+      agentName: (contactData as any).agentName || "",
+      agentEmail: (contactData as any).agentEmail || "",
       status: "active",
       lastMessage: contactData.lastMessage,
       lastMessageTime: new Date(),
@@ -199,8 +199,8 @@ export class ChatService {
     const existingConv = existingConversations.find(
       (conv: ChatConversation) =>
         (conv.contactEmail === contactData.email &&
-          conv.agentEmail === contactData.agentEmail) ||
-        (conv.contactEmail === contactData.agentEmail &&
+          conv.agentEmail === (contactData as any).agentEmail) ||
+        (conv.contactEmail === (contactData as any).agentEmail &&
           conv.agentEmail === contactData.email)
     );
 

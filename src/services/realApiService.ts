@@ -5,8 +5,8 @@ import { ChatContact, ChatMessage, ChatConversation } from "./chatService";
 
 // API base URL - change this to your backend server URL
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.MODE === "production"
+  (import.meta as any).env?.VITE_API_BASE_URL ||
+  ((import.meta as any).env?.MODE === "production"
     ? "https://your-backend-domain.com"
     : "http://localhost:5000");
 
