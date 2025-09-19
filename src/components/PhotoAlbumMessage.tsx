@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download } from 'lucide-react';
+import { Download, ZoomIn, ZoomOut, RotateCw, Maximize2 } from 'lucide-react';
 import BasicDropdown from './BasicDropdown';
 
 interface PhotoAlbumMessageProps {
@@ -45,6 +45,10 @@ const PhotoAlbumMessage: React.FC<PhotoAlbumMessageProps> = ({
   onDelete
 }) => {
   const [hoveredImage, setHoveredImage] = useState<number | null>(null);
+  const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
+  const [imageSizes, setImageSizes] = useState<{ [key: number]: 'small' | 'medium' | 'large' }>({});
+  const [imageZoom, setImageZoom] = useState<{ [key: number]: number }>({});
+  const [showFullImage, setShowFullImage] = useState<{ [key: number]: boolean }>({});
 
   // Show first 4 images in grid, rest as "+X" overlay
   const displayImages = message.images.slice(0, 4);
@@ -85,6 +89,61 @@ const PhotoAlbumMessage: React.FC<PhotoAlbumMessageProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const handleImageError = (index: number) => {
+    console.warn(`Image ${index} failed to load:`, displayImages[index]?.url);
+    setImageErrors(prev => new Set(prev).add(index));
+  };
+
+  const handleImageLoad = (index: number) => {
+    setImageErrors(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(index);
+      return newSet;
+    });
+  };
+
+  // Image size management functions
+  const getImageSize = (index: number): 'small' | 'medium' | 'large' => {
+    return imageSizes[index] || 'medium';
+  };
+
+  const setImageSize = (index: number, size: 'small' | 'medium' | 'large') => {
+    setImageSizes(prev => ({ ...prev, [index]: size }));
+  };
+
+  const getImageZoom = (index: number): number => {
+    return imageZoom[index] || 1;
+  };
+
+  const setImageZoomLevel = (index: number, zoom: number) => {
+    setImageZoom(prev => ({ ...prev, [index]: Math.max(0.5, Math.min(3, zoom)) }));
+  };
+
+  const toggleFullImage = (index: number) => {
+    setShowFullImage(prev => ({ ...prev, [index]: !prev[index] }));
+  };
+
+  const getImageClasses = (index: number) => {
+    const size = getImageSize(index);
+    const zoom = getImageZoom(index);
+    
+    const sizeClasses = {
+      small: 'h-20',
+      medium: 'h-32',
+      large: 'h-48'
+    };
+
+    return `rounded-lg w-full ${sizeClasses[size]} object-cover transition-all duration-300`;
+  };
+
+  const getImageStyle = (index: number) => {
+    const zoom = getImageZoom(index);
+    return {
+      transform: `scale(${zoom})`,
+      transformOrigin: 'center center'
+    };
+  };
+
   return (
     <div className="flex items-start gap-2.5 mb-4">
       {/* User Avatar */}
@@ -123,23 +182,105 @@ const PhotoAlbumMessage: React.FC<PhotoAlbumMessageProps> = ({
                 onMouseEnter={() => setHoveredImage(index)}
                 onMouseLeave={() => setHoveredImage(null)}
               >
-                {/* Hover Overlay with Download Button */}
+                {/* Hover Overlay with Controls */}
                 <div className={`absolute w-full h-full bg-gray-900/50 transition-opacity duration-300 rounded-lg flex items-center justify-center ${
                   hoveredImage === index ? 'opacity-100' : 'opacity-0'
                 }`}>
-                  <button
-                    onClick={() => handleDownloadImage(img.url, img.name)}
-                    className="inline-flex items-center justify-center rounded-full h-8 w-8 bg-white/30 hover:bg-white/50 focus:ring-4 focus:outline-none dark:text-white focus:ring-gray-50"
-                    title="Download image"
-                  >
-                    <Download className="w-4 h-4 text-white" />
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    {/* Download Button */}
+                    <button
+                      onClick={() => handleDownloadImage(img.url, img.name)}
+                      className="inline-flex items-center justify-center rounded-full h-8 w-8 bg-white/30 hover:bg-white/50 focus:ring-4 focus:outline-none dark:text-white focus:ring-gray-50"
+                      title="Download image"
+                    >
+                      <Download className="w-4 h-4 text-white" />
+                    </button>
+                    
+                    {/* Size Controls */}
+                    <div className="flex items-center space-x-1">
+                      <button
+                        onClick={() => setImageSize(index, 'small')}
+                        className={`inline-flex items-center justify-center rounded-full h-6 w-6 text-xs font-bold ${
+                          getImageSize(index) === 'small' ? 'bg-white/50' : 'bg-white/30 hover:bg-white/40'
+                        } text-white`}
+                        title="Small size"
+                      >
+                        S
+                      </button>
+                      <button
+                        onClick={() => setImageSize(index, 'medium')}
+                        className={`inline-flex items-center justify-center rounded-full h-6 w-6 text-xs font-bold ${
+                          getImageSize(index) === 'medium' ? 'bg-white/50' : 'bg-white/30 hover:bg-white/40'
+                        } text-white`}
+                        title="Medium size"
+                      >
+                        M
+                      </button>
+                      <button
+                        onClick={() => setImageSize(index, 'large')}
+                        className={`inline-flex items-center justify-center rounded-full h-6 w-6 text-xs font-bold ${
+                          getImageSize(index) === 'large' ? 'bg-white/50' : 'bg-white/30 hover:bg-white/40'
+                        } text-white`}
+                        title="Large size"
+                      >
+                        L
+                      </button>
+                    </div>
+                    
+                    {/* Zoom Controls */}
+                    <div className="flex items-center space-x-1">
+                      <button
+                        onClick={() => setImageZoomLevel(index, getImageZoom(index) - 0.2)}
+                        className="inline-flex items-center justify-center rounded-full h-6 w-6 bg-white/30 hover:bg-white/50 text-white"
+                        title="Zoom out"
+                      >
+                        <ZoomOut className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => setImageZoomLevel(index, getImageZoom(index) + 0.2)}
+                        className="inline-flex items-center justify-center rounded-full h-6 w-6 bg-white/30 hover:bg-white/50 text-white"
+                        title="Zoom in"
+                      >
+                        <ZoomIn className="w-3 h-3" />
+                      </button>
+                    </div>
+                    
+                    {/* Full Screen Button */}
+                    <button
+                      onClick={() => toggleFullImage(index)}
+                      className="inline-flex items-center justify-center rounded-full h-6 w-6 bg-white/30 hover:bg-white/50 text-white"
+                      title="Full screen"
+                    >
+                      <Maximize2 className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
-                <img 
-                  src={img.url} 
-                  alt={`Image ${index + 1}`}
-                  className="rounded-lg w-full h-32 object-cover"
-                />
+                {imageErrors.has(index) ? (
+                  <div className={`rounded-lg w-full ${getImageClasses(index)} bg-gray-200 dark:bg-gray-600 flex items-center justify-center`}>
+                    <div className="text-center">
+                      <div className="text-gray-500 dark:text-gray-400 text-sm mb-1">
+                        📷
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Image {index + 1}
+                      </div>
+                      <div className="text-xs text-gray-400 dark:text-gray-500">
+                        Failed to load
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="overflow-hidden rounded-lg">
+                    <img 
+                      src={img.url} 
+                      alt={`Image ${index + 1}`}
+                      className={getImageClasses(index)}
+                      style={getImageStyle(index)}
+                      onError={() => handleImageError(index)}
+                      onLoad={() => handleImageLoad(index)}
+                    />
+                  </div>
+                )}
               </div>
             ))}
             
@@ -159,6 +300,12 @@ const PhotoAlbumMessage: React.FC<PhotoAlbumMessageProps> = ({
                   src={displayImages[0]?.url || '/docs/images/blog/image-1.jpg'} 
                   alt="More images"
                   className="rounded-lg w-full h-32 object-cover"
+                  onError={(e) => {
+                    // Fallback to a placeholder if the first image also fails
+                    if (e.currentTarget.src !== '/docs/images/blog/image-1.jpg') {
+                      e.currentTarget.src = '/docs/images/blog/image-1.jpg';
+                    }
+                  }}
                 />
               </div>
             )}
@@ -189,6 +336,60 @@ const PhotoAlbumMessage: React.FC<PhotoAlbumMessageProps> = ({
         onReport={onReport}
         onDelete={onDelete}
       />
+      
+      {/* Full Screen Image Modal */}
+      {Object.entries(showFullImage).map(([index, isOpen]) => {
+        if (!isOpen) return null;
+        const imgIndex = parseInt(index);
+        const img = displayImages[imgIndex];
+        if (!img) return null;
+        
+        return (
+          <div
+            key={index}
+            className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
+            onClick={() => toggleFullImage(imgIndex)}
+          >
+            <div className="relative max-w-4xl max-h-full">
+              <button
+                onClick={() => toggleFullImage(imgIndex)}
+                className="absolute top-4 right-4 z-10 bg-white/20 hover:bg-white/30 rounded-full p-2 text-white"
+              >
+                ✕
+              </button>
+              <img
+                src={img.url}
+                alt={`Full size image ${imgIndex + 1}`}
+                className="max-w-full max-h-full object-contain rounded-lg"
+                onClick={(e) => e.stopPropagation()}
+              />
+              <div className="absolute bottom-4 left-4 right-4 flex justify-center space-x-4">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setImageZoomLevel(imgIndex, getImageZoom(imgIndex) - 0.2);
+                  }}
+                  className="bg-white/20 hover:bg-white/30 rounded-full p-2 text-white"
+                >
+                  <ZoomOut className="w-5 h-5" />
+                </button>
+                <span className="bg-white/20 rounded-full px-3 py-2 text-white text-sm">
+                  {Math.round(getImageZoom(imgIndex) * 100)}%
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setImageZoomLevel(imgIndex, getImageZoom(imgIndex) + 0.2);
+                  }}
+                  className="bg-white/20 hover:bg-white/30 rounded-full p-2 text-white"
+                >
+                  <ZoomIn className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };

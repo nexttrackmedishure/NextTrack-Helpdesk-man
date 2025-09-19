@@ -43,8 +43,11 @@ class ImageUploadService {
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.warn('Server upload failed:', response.status, errorText);
+        
         // If server is not available, fall back to local URL
-        console.warn('Server upload failed, using local URL as fallback');
+        console.warn('Using local URL as fallback');
         return {
           success: true,
           data: {
@@ -59,6 +62,23 @@ class ImageUploadService {
       }
 
       const result = await response.json();
+      
+      // Validate the response
+      if (!result.success || !result.data || !result.data.url) {
+        console.warn('Invalid server response, using local URL as fallback');
+        return {
+          success: true,
+          data: {
+            url: URL.createObjectURL(file),
+            publicId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            width: 800,
+            height: 600,
+            size: file.size,
+            name: file.name
+          }
+        };
+      }
+      
       return result;
     } catch (error) {
       console.error('Image upload error:', error);
@@ -93,8 +113,11 @@ class ImageUploadService {
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.warn('Server upload failed:', response.status, errorText);
+        
         // If server is not available, fall back to local URLs
-        console.warn('Server upload failed, using local URLs as fallback');
+        console.warn('Using local URLs as fallback');
         const localImages = files.map(file => ({
           url: URL.createObjectURL(file),
           publicId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -111,6 +134,25 @@ class ImageUploadService {
       }
 
       const result = await response.json();
+      
+      // Validate the response
+      if (!result.success || !result.data || !Array.isArray(result.data)) {
+        console.warn('Invalid server response, using local URLs as fallback');
+        const localImages = files.map(file => ({
+          url: URL.createObjectURL(file),
+          publicId: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          width: 800,
+          height: 600,
+          size: file.size,
+          name: file.name
+        }));
+        
+        return {
+          success: true,
+          data: localImages
+        };
+      }
+      
       return result;
     } catch (error) {
       console.error('Multiple image upload error:', error);

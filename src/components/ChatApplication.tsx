@@ -32,13 +32,14 @@ import {
   Inbox,
   Plus,
 } from "lucide-react";
-import VideoCall from "./VideoCall";
+import VideoCallComponent from "./VideoCall";
 import EmojiPicker from "./EmojiPicker";
 import CreateGroupModal from "./CreateGroupModal";
 import GroupManagementModal from "./GroupManagementModal";
 import PhotoAlbumMessage from "./PhotoAlbumMessage";
 import ForwardMessageModal from "./ForwardMessageModal";
 import FileMessage from "./FileMessage";
+import VideoCallModal from "./VideoCallModal";
 import { chatService, ChatContact } from "../services/chatService";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -52,6 +53,7 @@ import {
   RealtimeConversation,
 } from "../services/realtimeChatService";
 import { imageUploadService } from "../services/imageUploadService";
+import { videoCallService, VideoCall as VideoCallType } from "../services/videoCallService";
 
 // Type definitions
 interface BaseMessage {
@@ -150,6 +152,11 @@ const ChatApplication: React.FC = () => {
   const [forwardToConversation, setForwardToConversation] = useState<RealtimeConversation | null>(null);
   const [showForwardModal, setShowForwardModal] = useState(false);
   const [messageToForward, setMessageToForward] = useState<RealtimeMessage | null>(null);
+
+  // Video call state
+  const [showVideoCallModal, setShowVideoCallModal] = useState(false);
+  const [currentCall, setCurrentCall] = useState<VideoCallType | null>(null);
+  const [isIncomingCall, setIsIncomingCall] = useState(false);
 
   // Filter contacts based on search term (works with both old and new systems)
   const filteredContacts = contacts.filter((contact) =>
@@ -914,6 +921,39 @@ const ChatApplication: React.FC = () => {
       stopVoiceCallRingtone();
     };
   }, [isVoiceCallOpen]);
+
+  // Listen for incoming video calls
+  useEffect(() => {
+    if (currentUser?.email) {
+      const unsubscribe = videoCallService.subscribeToUserCalls(currentUser.email, (calls) => {
+        // Check for incoming calls
+        const incomingCall = calls.find(call => 
+          call.receiverEmail === currentUser.email && 
+          call.status === 'ringing'
+        );
+        
+        if (incomingCall && !showVideoCallModal) {
+          setCurrentCall(incomingCall);
+          setIsIncomingCall(true);
+          setShowVideoCallModal(true);
+          
+          // Play call notification sound
+          playNotificationSound();
+          
+          // Show browser notification if supported
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('Incoming Video Call', {
+              body: `${incomingCall.callerName} is calling you`,
+              icon: '/logo.png',
+              tag: 'video-call'
+            });
+          }
+        }
+      });
+      
+      return unsubscribe;
+    }
+  }, [currentUser?.email, showVideoCallModal]);
 
   const handleSendMessage = async () => {
     if (newMessage.trim() && currentUser) {
@@ -1880,10 +1920,12 @@ const ChatApplication: React.FC = () => {
       }
 
       // Show loading state (optional - you can add a loading indicator here)
-      console.log('📤 Uploading images...');
+      console.log('📤 Uploading images...', files.map(f => ({ name: f.name, size: f.size, type: f.type })));
 
       // Upload images to Cloudinary (with fallback to local URLs)
       const uploadResult = await imageUploadService.uploadImages(files);
+      
+      console.log('📤 Upload result:', uploadResult);
       
       if (!uploadResult.success || !uploadResult.data) {
         throw new Error(uploadResult.message || 'Failed to upload images');
@@ -1896,6 +1938,8 @@ const ChatApplication: React.FC = () => {
         size: uploadedImage.size,
         publicId: uploadedImage.publicId,
       }));
+      
+      console.log('📤 Created image objects:', images);
       
       // Send message through realtime chat service
       await realtimeChatService.sendMessage(
@@ -1990,6 +2034,75 @@ const ChatApplication: React.FC = () => {
       // Here you would typically also delete from the backend
       console.log('🗑️ Message deleted:', message);
       showSuccessToast('Message deleted successfully');
+    }
+  };
+
+  // Request notification permission
+  const requestNotificationPermission = async () => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        console.log('✅ Notification permission granted');
+      }
+    }
+  };
+
+  // Video call functions
+  const startVideoCall = () => {
+    if (!selectedSimpleConversation || !currentUser?.email) {
+      showErrorToast('No conversation selected or user not logged in');
+      return;
+    }
+
+    // Request notification permission for incoming calls
+    requestNotificationPermission();
+
+    const receiverEmail = selectedSimpleConversation.type === 'group' 
+      ? 'Group Chat' 
+      : selectedSimpleConversation.groupMembers?.find((p: any) => p.email !== currentUser.email)?.email || 'Unknown';
+    
+    const receiverName = selectedSimpleConversation.type === 'group'
+      ? selectedSimpleConversation.groupName || 'Group Chat'
+      : selectedSimpleConversation.groupMembers?.find((p: any) => p.email !== currentUser.email)?.name || 'Unknown';
+
+    const callId = videoCallService.startCall(
+      currentUser.email,
+      currentUser.name || currentUser.email,
+      receiverEmail,
+      receiverName
+    );
+
+    const call = videoCallService.getCall(callId);
+    if (call) {
+      setCurrentCall(call);
+      setIsIncomingCall(false);
+      setShowVideoCallModal(true);
+    }
+  };
+
+  const handleAnswerCall = () => {
+    if (currentCall) {
+      videoCallService.answerCall(currentCall.id);
+      setIsIncomingCall(false);
+      showSuccessToast('Call answered');
+    }
+  };
+
+  const handleDeclineCall = () => {
+    if (currentCall) {
+      videoCallService.declineCall(currentCall.id);
+      setShowVideoCallModal(false);
+      setCurrentCall(null);
+      showInfoToast('Call declined');
+    }
+  };
+
+  const handleEndCall = () => {
+    if (currentCall) {
+      videoCallService.endCall(currentCall.id);
+      setShowVideoCallModal(false);
+      setCurrentCall(null);
+      showInfoToast('Call ended');
     }
   };
 
@@ -3394,7 +3507,7 @@ const ChatApplication: React.FC = () => {
                     </button>
                   )}
                   <button
-                    onClick={() => setIsVideoCallOpen(true)}
+                    onClick={startVideoCall}
                     className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                     title="Video call"
                   >
@@ -3445,7 +3558,7 @@ const ChatApplication: React.FC = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <button
-                    onClick={() => setIsVideoCallOpen(true)}
+                    onClick={startVideoCall}
                     className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                     title="Video call"
                   >
@@ -3906,18 +4019,6 @@ const ChatApplication: React.FC = () => {
         />
       )}
 
-      {/* Video Call Modal */}
-      {isVideoCallOpen && (
-      <VideoCall
-        isOpen={isVideoCallOpen}
-        onClose={() => setIsVideoCallOpen(false)}
-          contactName={selectedSimpleConversation?.type === "group" 
-            ? (selectedSimpleConversation.groupName || "Group Chat")
-            : (selectedSimpleConversation?.user1Email === currentUser?.email 
-                ? selectedSimpleConversation?.user2Name || "Unknown"
-                : selectedSimpleConversation?.user1Name || "Unknown")}
-        />
-      )}
 
       {/* User Selection Modal */}
       {isUserSelectionOpen && (
@@ -3981,27 +4082,43 @@ const ChatApplication: React.FC = () => {
         onGroupUpdated={handleGroupUpdated}
       />
 
-      {/* Forward Message Modal */}
-      <ForwardMessageModal
-        isOpen={showForwardModal}
-        onClose={() => {
-          setShowForwardModal(false);
-          setMessageToForward(null);
-        }}
-        onForward={handleForwardToConversation}
-        conversations={simpleConversations.map(conv => ({
-          id: conv.id,
-          name: (conv as any).name || conv.id,
-          type: conv.type as 'direct' | 'group',
-          lastMessage: conv.lastMessage,
-          unreadCount: conv.unreadCount
-        }))}
-        messageToForward={messageToForward ? {
-          text: messageToForward.text,
-          type: messageToForward.type || 'text',
-          images: (messageToForward as any).images
-        } : null}
-      />
+        {/* Forward Message Modal */}
+        <ForwardMessageModal
+          isOpen={showForwardModal}
+          onClose={() => {
+            setShowForwardModal(false);
+            setMessageToForward(null);
+          }}
+          onForward={handleForwardToConversation}
+          conversations={simpleConversations.map(conv => ({
+            id: conv.id,
+            name: (conv as any).name || conv.id,
+            type: conv.type as 'direct' | 'group',
+            lastMessage: conv.lastMessage,
+            unreadCount: conv.unreadCount
+          }))}
+          messageToForward={messageToForward ? {
+            text: messageToForward.text,
+            type: messageToForward.type || 'text',
+            images: (messageToForward as any).images
+          } : null}
+        />
+
+        {/* Video Call Modal */}
+        <VideoCallModal
+          isOpen={showVideoCallModal}
+          onClose={() => {
+            setShowVideoCallModal(false);
+            setCurrentCall(null);
+            setIsIncomingCall(false);
+          }}
+          callerName={currentCall?.callerName || 'Unknown'}
+          callerEmail={currentCall?.callerEmail || 'unknown@example.com'}
+          isIncoming={isIncomingCall}
+          onAnswer={handleAnswerCall}
+          onDecline={handleDeclineCall}
+          onEndCall={handleEndCall}
+        />
 
       {/* Camera Test Modal */}
       {isCameraTestOpen && (
